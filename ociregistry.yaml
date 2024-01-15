@@ -1,0 +1,658 @@
+openapi: 3.0.3
+info:
+  title: OCI Registry - OpenAPI 3.0
+  description: TODO
+  termsOfService: ""
+  contact:
+    email: todo@google.com
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  version: 1.0.11
+externalDocs:
+  description: TODO
+  url: ""
+servers:
+  - url: https://ociregistry/api/v2
+tags: []
+paths:
+  /:
+    connect:
+      tags: []
+      summary: ""
+      description: "connect"
+      operationId: connect
+      parameters: []
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+  /v2/:
+    get:
+      tags: []
+      summary: ""
+      description: "end-1 get"
+      operationId: v2-default
+      parameters: []
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '400':
+          description: Invalid status value
+        '401':
+          description: Invalid status value
+  /v2/auth:
+    get:
+      tags: []
+      summary: ""
+      description: "auth"
+      operationId: v2-auth
+      parameters:
+      - name: authorization
+        in: header
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: scope
+        in: query
+        description: TODO  cant make true work
+        required: false
+        schema:
+          type: string
+      - name: service
+        in: query
+        description: TODO cant make true work
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '401':
+          description: Unauthorized
+  /v2/{org}/{image}/blobs/{digest}:
+    get:
+      tags: []
+      summary: ""
+      description: "end-2 get"
+      operationId: v2-get-org-image-blobs-digest
+      parameters:
+      - name: org
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+    head:
+      tags: []
+      summary: ""
+      description: "end-2 head"
+      operationId: v2-head-org-image-blobs-digest
+      parameters:
+      - name: org
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+    delete:
+      tags: []
+      summary: ""
+      description: "end-10-delete"
+      operationId: v2-delete-org-image-blobs-digest
+      parameters:
+      - name: org
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+        '405':
+          description: Invalid status value
+  /v2/{image}/blobs/{digest}:
+    get:
+      tags: []
+      summary: ""
+      description: "end-2 get"
+      operationId: v2-get-image-blobs-digest
+      parameters:
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+    head:
+      tags: []
+      summary: ""
+      description: "end-2 head"
+      operationId: v2-head-image-blobs-digest
+      parameters:
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+    delete:
+      tags: []
+      summary: ""
+      description: "end-10-delete"
+      operationId: v2-delete-image-blobs-digest
+      parameters:
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+        '405':
+          description: Invalid status value
+  /v2/{name}/blobs/uploads:
+    post:
+      tags: []
+      summary: ""
+      description: "end-4a-post"
+      operationId: v2-post-name-blobs-uploads
+      parameters:
+      - name: name
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: query
+        description: changes this to ID end-4b-post
+        required: false
+        schema:
+          type: string
+      - name: mount
+        in: query
+        description: changes this to ID end-11-post
+        required: false
+        schema:
+          type: string
+      - name: from
+        in: query
+        description: changes this to ID end-11-post
+        required: false
+        schema:
+          type: string
+      responses:
+        '201':
+          description: successful operation (end-4b-post)
+          content: {}
+        '202':
+          description: successful operation (end-4a-post) (end-4b-post)
+          content: {}
+        '400':
+          description: Invalid status value (end-4b-post)
+        '404':
+          description: Invalid status value (end-4a-post) (end-4b-post)
+  /v2/{name}/blobs/uploads/{reference}:
+    put:
+      tags: []
+      summary: ""
+      description: "end-6-put"
+      operationId: v2-put-name-blobs-uploads-reference
+      parameters:
+      - name: name
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: query
+        description: makes it end-6-put
+        required: false
+        schema:
+          type: string
+      responses:
+        '201':
+          description: successful operation
+          content: {}
+        '400':
+          description: Invalid status value
+        '404':
+          description: Invalid status value
+    patch:
+      tags: []
+      summary: ""
+      description: "end-5-patch"
+      operationId: v2-patch-name-blobs-uploads-reference
+      parameters:
+      - name: name
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+        '416':
+          description: Invalid status value
+    get:
+      tags: []
+      summary: ""
+      description: "end-13-get"
+      operationId: v2-get-name-blobs-uploads-reference
+      parameters:
+      - name: name
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+  /v2/{org}/{image}/manifests/{reference}:
+    get:
+      tags: []
+      summary: ""
+      description: "end-3-get"
+      operationId: v2-get-org-image-manifests-reference
+      parameters:
+      - name: org
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+    head:
+      tags: []
+      summary: ""
+      description: "end-3-head"
+      operationId: v2-head-org-image-manifests-reference
+      parameters:
+      - name: org
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+    put:
+      tags: []
+      summary: ""
+      description: "end-7-put"
+      operationId: v2-put-org-image-manifests-reference
+      parameters:
+      - name: org
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '201':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+    delete:
+      tags: []
+      summary: ""
+      description: "end-9-delete"
+      operationId: v2-delete-org-image-manifests-reference
+      parameters:
+      - name: org
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: successful operation
+          content: {}
+        '400':
+          description: Invalid status value
+        '404':
+          description: Invalid status value
+        '405':
+          description: Invalid status value
+  /v2/{image}/manifests/{reference}:
+    get:
+      tags: []
+      summary: ""
+      description: "end-3-get"
+      operationId: v2-get-image-manifests-reference
+      parameters:
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+    head:
+      tags: []
+      summary: ""
+      description: "end-3-head"
+      operationId: v2-head-image-manifests-reference
+      parameters:
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+    put:
+      tags: []
+      summary: ""
+      description: "end-7-put"
+      operationId: v2-put-image-manifests-reference
+      parameters:
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '201':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+    delete:
+      tags: []
+      summary: ""
+      description: "end-9-delete"
+      operationId: v2-delete-image-manifests-reference
+      parameters:
+      - name: image
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: successful operation
+          content: {}
+        '400':
+          description: Invalid status value
+        '404':
+          description: Invalid status value
+        '405':
+          description: Invalid status value
+  /v2/{name}/tags/list:
+    get:
+      tags: []
+      summary: ""
+      description: "end-8a-get"
+      operationId: v2-get-name-tags-list
+      parameters:
+      - name: name
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: n
+        in: query
+        description: makes it end-8b-get
+        required: false
+        schema:
+          type: string
+      - name: last
+        in: query
+        description: makes it end-8b-get
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '404':
+          description: Invalid status value
+  /v2/{name}/referrers/{digest}:
+    get:
+      tags: []
+      summary: ""
+      description: "end-12a-get"
+      operationId: v2-get-name-referrers-digest
+      parameters:
+      - name: name
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description: TODO
+        required: true
+        schema:
+          type: string
+      - name: artifactType
+        in: query
+        description: make this end-12b-get
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: successful operation
+          content: {}
+        '400':
+          description: Invalid status value
+        '404':
+          description: Invalid status value

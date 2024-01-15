@@ -1,0 +1,9 @@
+curl -X CONNECT https://localhost:8080/
+curl -X GET http://localhost:8080/v2/
+curl -X GET http://localhost:8080/v2/appzygy/smallgo/manifests/v1.0.0
+curl -X GET http://localhost:8080/v2/appzygy/smallgo/blobs/sha256:c07281f652bace2b746f8241a5013b6034d32d6b001967295c7e99b31a49b01e
+curl -X GET http://localhost:8080/v2/appzygy/smallgo/blobs/sha256:e9a5742d071431258605f03e2eee366586042dcf71cf59a5a88d07e07b49a2cd -o nocheckin && tar -tvf nocheckin
+curl -X GET http://localhost:8080/v2/appzygy/smallgo/blobs/sha256:a28711b5343eec30b7799fc0482b85560aa02717445bf415c081bef15323e6b6 -o nocheckin && tar -tvf nocheckin
+curl -X GET http://localhost:8080/v2/appzygy/smallgo/blobs/sha256:033967b6126e74d6e31fc90c016476c328b4eea755b4b6750a2d758df0070aed -o nocheckin && tar -tvf nocheckin
+
+https://medium.com/@chaewonkong/a-five-step-guide-to-integrating-swagger-with-echo-in-go-79be49cfedbe

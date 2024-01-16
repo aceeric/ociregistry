@@ -7,3 +7,25 @@ curl -X GET http://localhost:8080/v2/appzygy/smallgo/blobs/sha256:a28711b5343eec
 curl -X GET http://localhost:8080/v2/appzygy/smallgo/blobs/sha256:033967b6126e74d6e31fc90c016476c328b4eea755b4b6750a2d758df0070aed -o nocheckin && tar -tvf nocheckin
 
 https://medium.com/@chaewonkong/a-five-step-guide-to-integrating-swagger-with-echo-in-go-79be49cfedbe
+
+WORKS: docker run localhost:8080/hello-world:latest
+
+
+CONTAINERD FAILS
+
+Failed to pull image "192.168.0.49:8080/hello-world:latest": rpc error:
+code = FailedPrecondition desc = failed to pull and unpack image "192.168.0.49:8080/hello-world:latest":
+failed commit on ref "manifest-sha256:fc6f55a34c15c5c6ff67e7d1c13dcf3ea9bf434abc1a3b0325836c848109e668":
+unexpected commit digest sha256:54b0113ac493d0baef679103f4a7cf9dd8d1b18575395518b6e631693c014bc5,
+expected sha256:fc6f55a34c15c5c6ff67e7d1c13dcf3ea9bf434abc1a3b0325836c848109e668:
+failed precondition
+
+Failed to pull image "192.168.0.49:8080/appzygy/smallgo:v1.0.0": rpc error:
+code = FailedPrecondition desc = failed to pull and unpack image "192.168.0.49:8080/appzygy/smallgo:v1.0.0":
+failed commit on ref "manifest-sha256:c79ddd7f1e6ebba54b0eeb294b7a09081857e09350eb5d4022cbdb2738fe2629":
+unexpected commit digest sha256:ca29bce1f1767890ca8e59948cc1652f24fd514b463e091892fa6646386ab2ed,
+expected sha256:c79ddd7f1e6ebba54b0eeb294b7a09081857e09350eb5d4022cbdb2738fe2629: failed precondition
+
+THEORY - containerd is calcing a digest somehow that is different from the one we calc. WHAT ALGORITHM DOES
+CONTAINERD USE?
+

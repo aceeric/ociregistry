@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"io/fs"
 	"os"
@@ -69,17 +70,30 @@ func getArtifactPath(base string, shapat string) string {
 	return found
 }
 
-// wip
-// func manifewstShaToOrg(base string, sha string) string {
-// 	pat := filepath.Join(base, "*", "manifest.json")
-// 	files, err := filepath.Glob(pat)
-// 	if err != nil {
-// 		for _, file := range files {
-// 			SHA, err := computeMd5Sum(file)
-// 			if err == nil && SHA == sha {
-// 				return filepath.Base(filepath.Dir(file))
-// 			}
-// 		}
-// 	}
-// 	return ""
-// }
+// the GET /v2/{org}/{image}/manifests/{reference} /v2/{image}/manifests/{reference} handlers
+// return a manifest and set a header Docker-Content-Digest with the SHA of that manifest. A client
+// (e.g. when you docker run that image) may ask for the manifest with that SHA. So this function
+// is called to write the calculated sha to an empty file as a child of the tag that holds the
+// image artifacts. So for example if a SHA is calculated for the image component in the directory
+// images/library/hello-world/latest, then the caller passes that path in 'manifest_path' and the
+// manifest digest in 'sha' and this function creates a file
+// 'images/library/hello-world/latest/sha256:<sha>.manifest.digest'. The presence of the file
+// is later used in a call to xlatManifestDigest with the same sha to determine that the SHA was
+// calculated from the image artifacts in 'images/library/hello-world/latest'.
+func saveManifestDigest(manifest_path string, sha hash.Hash) {
+	shafile := fmt.Sprintf("sha256:%x.manifest.digest", sha.Sum(nil))
+	filename := filepath.Join(filepath.Dir(manifest_path), shafile)
+	if _, err := os.Stat(filename); err != nil {
+		os.Create(filename)
+	}
+}
+
+// Example: if exists 'images/library/hello-world/latest/sha256:<somesha>.manifest.digest'
+// then return 'latest'. (See 'saveManifestDigest' above.)
+func xlatManifestDigest(image_path string, org string, image, manifest_sha string) string {
+	pat := filepath.Join(image_path, org, image, "*", manifest_sha+".manifest.digest")
+	if files, err := filepath.Glob(pat); err == nil && len(files) == 1 {
+		return filepath.Base(filepath.Dir(files[0]))
+	}
+	return ""
+}

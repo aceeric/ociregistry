@@ -114,6 +114,14 @@ func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org stri
 
 func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, isGet bool) error {
 	ctx.Logger().Info(fmt.Sprintf("get manifest - org: %s, image: %s, ref: %s", org, image, reference))
+
+	if strings.HasPrefix(reference, "sha256:") {
+		reference = xlatManifestDigest(image_path, org, image, reference)
+		if reference == "" {
+			return ctx.JSON(http.StatusNotFound, "")
+		}
+	}
+
 	manifest_path := getArtifactPath(filepath.Join(image_path, org, image, reference, "manifest.json"), "")
 	if manifest_path == "" {
 		return ctx.JSON(http.StatusNotFound, "")
@@ -174,6 +182,8 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 	}
 	sha := sha256.New()
 	sha.Write(mb)
+	saveManifestDigest(manifest_path, sha)
+
 	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+fmt.Sprintf("%x", sha.Sum(nil)))
 	ctx.Response().Header().Add("Vary", "Cookie")
 	ctx.Response().Header().Add("Strict-Transport-Security", "max-age=63072000; preload")
@@ -182,12 +192,14 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 	if isGet {
 		return ctx.JSON(http.StatusOK, manifest)
 	} else {
-		ctx.Response().Header().Add("Content-Length", "42") // TEST
+		mstr := string(mb)
+		mlen := len(mstr) + 1
+		ctx.Response().Header().Add("Content-Length", strconv.Itoa(mlen))
 		return ctx.NoContent(http.StatusOK)
 	}
 }
 
-// unimplemented methods:
+// unimplemented methods of the OCI distribution spec
 
 func (r *OciRegistry) V2HeadOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
 	return ctx.JSON(http.StatusOK, "V2HeadNameBlobsDigest")

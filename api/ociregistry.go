@@ -184,6 +184,9 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 	sha.Write(mb)
 	saveManifestDigest(manifest_path, sha)
 
+	mstr := string(mb)
+	mlen := len(mstr) + 1
+	ctx.Response().Header().Add("Content-Length", strconv.Itoa(mlen))
 	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+fmt.Sprintf("%x", sha.Sum(nil)))
 	ctx.Response().Header().Add("Vary", "Cookie")
 	ctx.Response().Header().Add("Strict-Transport-Security", "max-age=63072000; preload")
@@ -192,9 +195,6 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 	if isGet {
 		return ctx.JSON(http.StatusOK, manifest)
 	} else {
-		mstr := string(mb)
-		mlen := len(mstr) + 1
-		ctx.Response().Header().Add("Content-Length", strconv.Itoa(mlen))
 		return ctx.NoContent(http.StatusOK)
 	}
 }

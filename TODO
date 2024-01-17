@@ -6,9 +6,17 @@ curl -X GET http://localhost:8080/v2/appzygy/smallgo/blobs/sha256:e9a5742d071431
 curl -X GET http://localhost:8080/v2/appzygy/smallgo/blobs/sha256:a28711b5343eec30b7799fc0482b85560aa02717445bf415c081bef15323e6b6 -o nocheckin && tar -tvf nocheckin
 curl -X GET http://localhost:8080/v2/appzygy/smallgo/blobs/sha256:033967b6126e74d6e31fc90c016476c328b4eea755b4b6750a2d758df0070aed -o nocheckin && tar -tvf nocheckin
 
+
+curl -X GET http://localhost:8080/v2/hello-world/manifests/latest
+curl -X GET http://localhost:8080/v2/hello-world/blobs/sha256:d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a
+curl -X GET http://localhost:8080/v2/hello-world/blobs/sha256:ac28800ec8bb38d5c35b49d45a6ac4777544941199075dff8c4eb63e093aa81e -o nocheckin && tar -tvf nocheckin
+
+
 https://medium.com/@chaewonkong/a-five-step-guide-to-integrating-swagger-with-echo-in-go-79be49cfedbe
 
 WORKS: docker run localhost:8080/hello-world:latest
+
+WORKS?: crane pull localhost:8080/hello-world:latest cranepull.tar --cache_path=/tmp
 
 
 CONTAINERD FAILS

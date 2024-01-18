@@ -4,7 +4,6 @@ import (
 	"crypto/md5"
 	"errors"
 	"fmt"
-	"hash"
 	"io"
 	"io/fs"
 	"os"
@@ -70,30 +69,30 @@ func getArtifactPath(base string, shapat string) string {
 	return found
 }
 
-// the GET /v2/{org}/{image}/manifests/{reference} /v2/{image}/manifests/{reference} handlers
-// return a manifest and set a header Docker-Content-Digest with the SHA of that manifest. A client
-// (e.g. when you docker run that image) may ask for the manifest with that SHA. So this function
-// is called to write the calculated sha to an empty file as a child of the tag that holds the
-// image artifacts. So for example if a SHA is calculated for the image component in the directory
-// images/library/hello-world/latest, then the caller passes that path in 'manifest_path' and the
-// manifest digest in 'sha' and this function creates a file
-// 'images/library/hello-world/latest/sha256:<sha>.manifest.digest'. The presence of the file
-// is later used in a call to xlatManifestDigest with the same sha to determine that the SHA was
-// calculated from the image artifacts in 'images/library/hello-world/latest'.
-func saveManifestDigest(manifest_path string, sha hash.Hash) {
-	shafile := fmt.Sprintf("sha256:%x.manifest.digest", sha.Sum(nil))
-	filename := filepath.Join(filepath.Dir(manifest_path), shafile)
-	if _, err := os.Stat(filename); err != nil {
-		os.Create(filename)
+func saveManifestDigest(image_path string, reference string, manifest_sha string) {
+	map_path := filepath.Join(image_path, "manifest_map")
+	if _, err := os.Stat(map_path); os.IsNotExist(err) {
+		os.Mkdir(map_path, 0775)
+	}
+	map_file := filepath.Join(map_path, "sha256:"+manifest_sha)
+	if _, err := os.Stat(map_file); err != nil {
+		f, _ := os.Create(map_file)
+		defer f.Close()
+		f.Write([]byte(reference))
 	}
 }
 
-// Example: if exists 'images/library/hello-world/latest/sha256:<somesha>.manifest.digest'
-// then return 'latest'. (See 'saveManifestDigest' above.)
-func xlatManifestDigest(image_path string, org string, image, manifest_sha string) string {
-	pat := filepath.Join(image_path, org, image, "*", manifest_sha+".manifest.digest")
-	if files, err := filepath.Glob(pat); err == nil && len(files) == 1 {
-		return filepath.Base(filepath.Dir(files[0]))
+// read <image_path>/<manifest_sha> if it exists and return the contents
+// basically it maps a SHA to a ref (like "latest" or "v1.0.0")
+func xlatManifestDigest(image_path string, manifest_sha string) string {
+	map_path := filepath.Join(image_path, "manifest_map")
+	if _, err := os.Stat(map_path); os.IsNotExist(err) {
+		return ""
+	}
+	map_file := filepath.Join(map_path, manifest_sha)
+	if _, err := os.Stat(map_file); err == nil {
+		b, _ := os.ReadFile(map_file)
+		return string(b)
 	}
 	return ""
 }

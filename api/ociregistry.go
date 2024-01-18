@@ -3,7 +3,6 @@
 package api
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,7 +13,11 @@ import (
 	"strings"
 	"time"
 
+	_ "crypto/sha256"
+	_ "crypto/sha512"
+
 	"github.com/labstack/echo/v4"
+	digest "github.com/opencontainers/go-digest"
 )
 
 type OciRegistry struct{}
@@ -84,6 +87,7 @@ func (r *OciRegistry) V2GetOrgImageBlobsDigest(ctx echo.Context, org string, ima
 	ctx.Response().Header().Add("Expires", now.Add(time.Hour*24).Format(time.RFC1123))
 	ctx.Response().Header().Add("Last-Modified", now.Format(time.RFC1123))
 	ctx.Response().Header().Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+	ctx.Response().Header().Add("Docker-Distribution-Api-Version", "registry/2.0")
 	f, err := os.Open(blob_file)
 	if err != nil {
 		return err
@@ -113,10 +117,14 @@ func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org stri
 }
 
 func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, isGet bool) error {
-	ctx.Logger().Info(fmt.Sprintf("get manifest - org: %s, image: %s, ref: %s", org, image, reference))
+	verb := "HEAD"
+	if isGet {
+		verb = "GET"
+	}
+	ctx.Logger().Info(fmt.Sprintf("%s manifest - org: %s, image: %s, ref: %s", verb, org, image, reference))
 
 	if strings.HasPrefix(reference, "sha256:") {
-		reference = xlatManifestDigest(image_path, org, image, reference)
+		reference = xlatManifestDigest(image_path, reference)
 		if reference == "" {
 			return ctx.JSON(http.StatusNotFound, "")
 		}
@@ -131,6 +139,7 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 		return ctx.JSON(http.StatusNotFound, "")
 	}
 	ctx.Logger().Info(fmt.Sprintf("found manifest - %s", manifest_path))
+
 	var m []ManifestJson
 	jerr := json.Unmarshal(b, &m)
 	if jerr != nil {
@@ -142,10 +151,10 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 	}
 	fi, _ := os.Stat(config_path)
 
-	var digest string
-	digest = strings.Replace(m[0].Config, ".json", "", 1)
-	if !strings.HasPrefix(digest, "sha256:") {
-		digest = "sha256:" + digest
+	var tmpdgst string
+	tmpdgst = strings.Replace(m[0].Config, ".json", "", 1)
+	if !strings.HasPrefix(tmpdgst, "sha256:") {
+		tmpdgst = "sha256:" + tmpdgst
 	}
 	manifest := ImageManifest{
 		SchemaVersion: 2,
@@ -153,7 +162,7 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 		Config: ManifestConfig{
 			MediaType: "application/vnd.docker.container.image.v1+json",
 			Size:      int(fi.Size()),
-			Digest:    digest,
+			Digest:    tmpdgst,
 		},
 	}
 	for i := 0; i < len(m[0].Layers); i++ {
@@ -164,36 +173,44 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 		}
 		ctx.Logger().Info(fmt.Sprintf("found layer - %s", layer_path))
 		fi, _ := os.Stat(layer_path)
-		digest = strings.Replace(m[0].Layers[i], ".tar.gz", "", 1)
-		digest = strings.Replace(digest, "/layer.tar", "", 1)
+		tmpdgst = strings.Replace(m[0].Layers[i], ".tar.gz", "", 1)
+		tmpdgst = strings.Replace(tmpdgst, "/layer.tar", "", 1)
 		new_layer := ManifestLayer{
 			MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
 			Size:      int(fi.Size()),
-			Digest:    "sha256:" + digest,
+			Digest:    "sha256:" + tmpdgst,
 		}
 		manifest.Layers = append(manifest.Layers, new_layer)
 	}
-	ctx.Response().Header().Add("Content-Type", " application/vnd.docker.distribution.manifest.v2+json")
+	// TEST (BLOB BELOW) ctx.Response().Header().Add("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
 
 	// compute manifest digest
 	mb, err := json.Marshal(manifest)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}
-	sha := sha256.New()
-	sha.Write(mb)
-	saveManifestDigest(manifest_path, sha)
 
-	mstr := string(mb)
-	mlen := len(mstr) + 1
-	ctx.Response().Header().Add("Content-Length", strconv.Itoa(mlen))
-	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+fmt.Sprintf("%x", sha.Sum(nil)))
+	var digester = digest.Canonical.Digester()
+	mblen := len(mb)
+	cnt, _ := digester.Hash().Write(mb)
+	dgst := digester.Digest()
+	ctx.Logger().Info(fmt.Sprintf("computed digest for ref %s = sha256:%s (cnt: %d / mblen:%d)", reference, dgst.Hex(), cnt, mblen))
+
+	saveManifestDigest(image_path, reference, dgst.Hex())
+
+	//mstr := string(mb)
+	//mlen := len(mstr)
+	// content length seems to be auto-calculated but it is +1 greater than actual length...
+	ctx.Response().Header().Add("Content-Length", strconv.Itoa(mblen))
+	ctx.Response().Header().Add("Docker-Content-Digest", fmt.Sprintf("sha256:%s", dgst.Hex()))
 	ctx.Response().Header().Add("Vary", "Cookie")
 	ctx.Response().Header().Add("Strict-Transport-Security", "max-age=63072000; preload")
 	ctx.Response().Header().Add("X-Frame-Options", "DENY")
+	ctx.Response().Header().Add("Docker-Distribution-Api-Version", "registry/2.0")
 
 	if isGet {
-		return ctx.JSON(http.StatusOK, manifest)
+		//return ctx.JSON(http.StatusOK, manifest)
+		return ctx.Blob(http.StatusOK, "application/vnd.docker.distribution.manifest.v2+json", mb)
 	} else {
 		return ctx.NoContent(http.StatusOK)
 	}
@@ -202,57 +219,57 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 // unimplemented methods of the OCI distribution spec
 
 func (r *OciRegistry) V2HeadOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
-	return ctx.JSON(http.StatusOK, "V2HeadNameBlobsDigest")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2PostNameBlobsUploads(ctx echo.Context, name string, params V2PostNameBlobsUploadsParams) error {
-	return ctx.JSON(http.StatusOK, "V2PostNameBlobsUploads")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2GetNameBlobsUploadsReference(ctx echo.Context, name string, reference string) error {
-	return ctx.JSON(http.StatusOK, "V2GetNameBlobsUploadsReference")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2PatchNameBlobsUploadsReference(ctx echo.Context, name string, reference string) error {
-	return ctx.JSON(http.StatusOK, "V2PatchNameBlobsUploadsReference")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2PutNameBlobsUploadsReference(ctx echo.Context, name string, reference string, params V2PutNameBlobsUploadsReferenceParams) error {
-	return ctx.JSON(http.StatusOK, "")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2PutOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
-	return ctx.JSON(http.StatusOK, "V2PutNameManifestsReference")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2GetNameReferrersDigest(ctx echo.Context, name string, digest string, params V2GetNameReferrersDigestParams) error {
-	return ctx.JSON(http.StatusOK, "V2GetNameReferrersDigest")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2GetNameTagsList(ctx echo.Context, name string, params V2GetNameTagsListParams) error {
-	return ctx.JSON(http.StatusOK, "V2GetNameTagsList")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2DeleteImageBlobsDigest(ctx echo.Context, image string, digest string) error {
-	return ctx.JSON(http.StatusOK, "V2GetNameTagsList")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2DeleteImageManifestsReference(ctx echo.Context, image string, reference string) error {
-	return ctx.JSON(http.StatusOK, "V2GetNameTagsList")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2DeleteOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
-	return ctx.JSON(http.StatusOK, "V2GetNameTagsList")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2DeleteOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
-	return ctx.JSON(http.StatusOK, "V2GetNameTagsList")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2HeadImageBlobsDigest(ctx echo.Context, image string, digest string) error {
-	return ctx.JSON(http.StatusOK, "V2GetNameTagsList")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
 func (r *OciRegistry) V2PutImageManifestsReference(ctx echo.Context, image string, reference string) error {
-	return ctx.JSON(http.StatusOK, "V2GetNameTagsList")
+	return ctx.NoContent(http.StatusMethodNotAllowed)
 }

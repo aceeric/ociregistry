@@ -67,6 +67,16 @@ func (r *OciRegistry) V2GetImageBlobsDigest(ctx echo.Context, image string, dige
 // GET /v2/{org}/{image}/blobs/{digest}
 func (r *OciRegistry) V2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
 	ctx.Logger().Info(fmt.Sprintf("get blob - org: %s, image: %s, digest: %s", org, image, digest))
+
+	// client can ask for the manifest using the /blobs/ endpoint using the Docker-Content-Digest value
+	// provided by the /manifests/reference endpoint
+	if strings.HasPrefix(digest, "sha256:") {
+		manifest_ref := xlatManifestDigest(image_path, digest)
+		if manifest_ref != "" {
+			return r.handleOrgImageManifestsReference(ctx, org, image, manifest_ref, true)
+		}
+	}
+
 	blob_file := getArtifactPath(filepath.Join(image_path, org, image), digest)
 	if blob_file == "" {
 		return ctx.JSON(http.StatusNotFound, "")
@@ -124,6 +134,7 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 	ctx.Logger().Info(fmt.Sprintf("%s manifest - org: %s, image: %s, ref: %s", verb, org, image, reference))
 
 	if strings.HasPrefix(reference, "sha256:") {
+		// test - might never get here now...
 		reference = xlatManifestDigest(image_path, reference)
 		if reference == "" {
 			return ctx.JSON(http.StatusNotFound, "")
@@ -158,9 +169,9 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 	}
 	manifest := ImageManifest{
 		SchemaVersion: 2,
-		MediaType:     "application/vnd.docker.distribution.manifest.v2+json",
+		MediaType:     "application/vnd.oci.image.manifest.v1+json",
 		Config: ManifestConfig{
-			MediaType: "application/vnd.docker.container.image.v1+json",
+			MediaType: "application/vnd.oci.image.config.v1+json",
 			Size:      int(fi.Size()),
 			Digest:    tmpdgst,
 		},
@@ -176,13 +187,12 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 		tmpdgst = strings.Replace(m[0].Layers[i], ".tar.gz", "", 1)
 		tmpdgst = strings.Replace(tmpdgst, "/layer.tar", "", 1)
 		new_layer := ManifestLayer{
-			MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
+			MediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
 			Size:      int(fi.Size()),
 			Digest:    "sha256:" + tmpdgst,
 		}
 		manifest.Layers = append(manifest.Layers, new_layer)
 	}
-	// TEST (BLOB BELOW) ctx.Response().Header().Add("Content-Type", "application/vnd.docker.distribution.manifest.v2+json")
 
 	// compute manifest digest
 	mb, err := json.Marshal(manifest)
@@ -198,19 +208,16 @@ func (r *OciRegistry) handleOrgImageManifestsReference(ctx echo.Context, org str
 
 	saveManifestDigest(image_path, reference, dgst.Hex())
 
-	//mstr := string(mb)
-	//mlen := len(mstr)
-	// content length seems to be auto-calculated but it is +1 greater than actual length...
 	ctx.Response().Header().Add("Content-Length", strconv.Itoa(mblen))
 	ctx.Response().Header().Add("Docker-Content-Digest", fmt.Sprintf("sha256:%s", dgst.Hex()))
 	ctx.Response().Header().Add("Vary", "Cookie")
 	ctx.Response().Header().Add("Strict-Transport-Security", "max-age=63072000; preload")
 	ctx.Response().Header().Add("X-Frame-Options", "DENY")
 	ctx.Response().Header().Add("Docker-Distribution-Api-Version", "registry/2.0")
+	ctx.Response().Header().Add("Content-Type", "application/vnd.oci.image.manifest.v1+json")
 
 	if isGet {
-		//return ctx.JSON(http.StatusOK, manifest)
-		return ctx.Blob(http.StatusOK, "application/vnd.docker.distribution.manifest.v2+json", mb)
+		return ctx.Blob(http.StatusOK, "application/vnd.oci.image.manifest.v1+json", mb)
 	} else {
 		return ctx.NoContent(http.StatusOK)
 	}

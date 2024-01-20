@@ -11,6 +11,8 @@ curl -X GET http://localhost:8080/v2/hello-world/manifests/latest
 curl -X GET http://localhost:8080/v2/hello-world/blobs/sha256:d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a
 curl -X GET http://localhost:8080/v2/hello-world/blobs/sha256:ac28800ec8bb38d5c35b49d45a6ac4777544941199075dff8c4eb63e093aa81e -o nocheckin && tar -tvf nocheckin
 
+curl -X HEAD http://localhost:8080/v2/hello-world/manifests/latest
+
 
 https://medium.com/@chaewonkong/a-five-step-guide-to-integrating-swagger-with-echo-in-go-79be49cfedbe
 

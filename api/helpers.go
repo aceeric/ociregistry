@@ -8,14 +8,26 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
 // where image tarballs are unarchived to
 var image_path string
 
-func SetImagePath(_image_path string) {
-	image_path = _image_path
+func SetImagePath(image_path_arg string) {
+	image_path = image_path_arg
+}
+
+var srch = `.*([a-f0-9]{64}).*`
+
+func getSHAfromPath(shaExpr string) string {
+	re := regexp.MustCompile(srch)
+	tmpdgst := re.FindStringSubmatch(shaExpr)
+	if re.NumSubexp() == 1 {
+		return tmpdgst[1]
+	}
+	return ""
 }
 
 // computes an MD5 sum on a file
@@ -69,6 +81,9 @@ func getArtifactPath(base string, shapat string) string {
 	return found
 }
 
+// Creates a file in the manifest_map path whose name is a sha and whose content
+// is a tag. Enables retrieval of a manifest for "latest" using "sha256:zzz"
+// companion function to xlatManifestDigest
 func saveManifestDigest(image_path string, reference string, manifest_sha string) {
 	map_path := filepath.Join(image_path, "manifest_map")
 	if _, err := os.Stat(map_path); os.IsNotExist(err) {
@@ -84,6 +99,7 @@ func saveManifestDigest(image_path string, reference string, manifest_sha string
 
 // read <image_path>/<manifest_sha> if it exists and return the contents
 // basically it maps a SHA to a ref (like "latest" or "v1.0.0")
+// companion function to saveManifestDigest
 func xlatManifestDigest(image_path string, manifest_sha string) string {
 	map_path := filepath.Join(image_path, "manifest_map")
 	if _, err := os.Stat(map_path); os.IsNotExist(err) {

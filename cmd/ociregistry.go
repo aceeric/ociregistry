@@ -19,8 +19,9 @@ import (
 
 func main() {
 	// parse args
-	var level, port string
+	var level, imagePath, port string
 	flag.StringVar(&level, "log-level", string(log.ERROR), "Log level")
+	flag.StringVar(&imagePath, "image-path", "", "Image path")
 	flag.StringVar(&port, "port", "8080", "Port for test HTTP server")
 	flag.Parse()
 
@@ -34,12 +35,16 @@ func main() {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
-	ex, err := os.Executable()
-	if err != nil {
-		panic(err)
+	if imagePath == "" {
+		ex, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		imagePath = filepath.Join(filepath.Dir(ex), "..", "images")
 	}
+
 	// set the path where all image metadata and blobs are stored
-	api.SetImagePath(filepath.Join(filepath.Dir(ex), "..", "images"))
+	api.SetImagePath(imagePath)
 
 	// create an instance of our handler which satisfies the generated interface
 	ociRegistry := api.NewOciRegistry()
@@ -56,6 +61,9 @@ func main() {
 
 	// register our OCI Registry above as the handler for the interface
 	api.RegisterHandlers(e, ociRegistry)
+
+	// set up the ability to handle image tarballs
+	go importer(imagePath, e.Logger)
 
 	// serve HTTP until the world ends
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", port)))

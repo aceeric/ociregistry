@@ -3,6 +3,7 @@ module ociregistry
 go 1.21.4
 
 require (
+	github.com/fsnotify/fsnotify v1.7.0
 	github.com/getkin/kin-openapi v0.122.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/labstack/gommon v0.4.2
@@ -20,6 +21,7 @@ require (
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/invopop/yaml v0.2.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
+	github.com/labstack/echo v3.3.10+incompatible
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect

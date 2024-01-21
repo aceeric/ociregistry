@@ -1,5 +1,7 @@
 package api
 
+type OciRegistry struct{}
+
 // a pretend auth token
 type Token struct {
 	Token string `json:"token"`

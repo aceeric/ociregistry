@@ -18,13 +18,16 @@ var (
 	timers  = make(map[string]*time.Timer)
 )
 
-// The watcher can emanate many messages during creation of a single file. This approach
-// uses time-based event deduplication based on:
+// fsnotify can emanate many messages during creation of a single file. The approach
+// implemented below to address that uses time-based event deduplication based on:
 //
-//	https://github.com/fsnotify/fsnotify/blob/main/cmd/fsnotify/dedup.go
+// https://github.com/fsnotify/fsnotify/blob/main/cmd/fsnotify/dedup.go
 //
-// Then after deduplication the file name is sent to a channel which sequences it and handles
-// the case where depdup doesn't catch all the dups.
+// Then after deduplication, the file name is sent to a channel which sequences it and handles
+// the case where depdup doesn't catch all the dups. The last thing the imported does is delete
+// the incoming archive so - if two events to unarchive the same file are enqueued then when
+// the process deques the second file and sees its not there its not treated as an error, it
+// is simply ignored
 func importer(tarfilePath string, logger echo.Logger) {
 	logger.Info("initializing watcher for " + tarfilePath)
 	watcher, err := fsnotify.NewWatcher()
@@ -90,14 +93,12 @@ func importer(tarfilePath string, logger echo.Logger) {
 	logger.Info("terminating watcher")
 }
 
+// extracts the passed archive and then removes it. If the file in the event
+// doesnt exist - then assumes it was a dup and just ignores it
 func handleArchive(archiveFile string, e fsnotify.Event, logger echo.Logger) {
 	mu.Lock()
 	delete(timers, e.Name)
 	mu.Unlock()
-	if e.Name == "" {
-		logger.Info("channel handler exiting")
-		return
-	}
 	if _, err := os.Stat(e.Name); err == nil {
 		if err := extract(e.Name, archiveFile); err == nil {
 			logger.Info("removing: " + e.Name)

@@ -40,7 +40,7 @@ func extract(fileName string, destPath string) error {
 		tarReader = tar.NewReader(r)
 		// ? defer r.Close()
 	} else {
-		return errors.New("archive not presently supported: " + fileName)
+		return errors.New("archive format not presently supported: " + fileName)
 	}
 	for {
 		header, err := tarReader.Next()
@@ -81,8 +81,9 @@ func extract(fileName string, destPath string) error {
 			}
 		}
 	}
-	// write the manifest last so the pull logic can't outrun the extraction of the
-	// other files from the archive
+	// write the manifest last so a concurrent pull can't outrun the extraction of all the
+	// other files from the archive since the image is determined to exist on the basis of
+	// the manifest.json file being present on the filesystem.
 	if manifestBytes != nil {
 		f, err := os.OpenFile(manifestPath, os.O_CREATE|os.O_RDWR, 0766)
 		if err != nil {
@@ -98,7 +99,7 @@ func extract(fileName string, destPath string) error {
 
 var ignore = []string{"docker.io", "quay.io", "ghcr.io"}
 
-// if archive name is "docker.io+calico+pod2daemon-flexvol+v3.27.0.tar" then
+// e.g. if archive name is "docker.io+calico+pod2daemon-flexvol+v3.27.0.tar" then
 // create <destPath>/calico/pod2daemon-flexvol/v3.27.0
 func parseAndCreateDirs(archiveName string, destPath string) (string, error) {
 	// get the bare archive name
@@ -112,6 +113,5 @@ func parseAndCreateDirs(archiveName string, destPath string) (string, error) {
 		}
 		destPath = filepath.Join(destPath, segment)
 	}
-	err := os.MkdirAll(destPath, 0755)
-	return destPath, err
+	return destPath, os.MkdirAll(destPath, 0755)
 }

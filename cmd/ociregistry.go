@@ -1,4 +1,3 @@
-// runs the registry server
 package main
 
 import (
@@ -9,6 +8,8 @@ import (
 	"path/filepath"
 
 	"ociregistry/api"
+	"ociregistry/apiimpl"
+	"ociregistry/importer"
 
 	"github.com/labstack/gommon/log"
 
@@ -22,7 +23,7 @@ func main() {
 	var level, imagePath, port string
 	flag.StringVar(&level, "log-level", string(log.ERROR), "Log level")
 	flag.StringVar(&imagePath, "image-path", "", "Image path")
-	flag.StringVar(&port, "port", "8080", "Port for test HTTP server")
+	flag.StringVar(&port, "port", "8080", "Port for server")
 	flag.Parse()
 
 	swagger, err := api.GetSwagger()
@@ -35,6 +36,8 @@ func main() {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
+	// if --image-path arg not supplied then use ""../images" (expecting that
+	// this binary is running in <project root>/bin)
 	if imagePath == "" {
 		ex, err := os.Executable()
 		if err != nil {
@@ -44,10 +47,10 @@ func main() {
 	}
 
 	// set the path where all image metadata and blobs are stored
-	api.SetImagePath(imagePath)
+	apiimpl.SetImagePath(imagePath)
 
 	// create an instance of our handler which satisfies the generated interface
-	ociRegistry := api.NewOciRegistry()
+	ociRegistry := apiimpl.NewOciRegistry()
 
 	// this is how you set up a basic Echo router
 	e := echo.New()
@@ -62,8 +65,8 @@ func main() {
 	// register our OCI Registry above as the handler for the interface
 	api.RegisterHandlers(e, ociRegistry)
 
-	// set up the ability to handle image tarballs
-	go importer(imagePath, e.Logger)
+	// set up the ability to handle image tarballs placed in the images dir
+	go importer.Importer(imagePath, e.Logger)
 
 	// serve HTTP until the world ends
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", port)))

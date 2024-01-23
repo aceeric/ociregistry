@@ -118,7 +118,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	fi, _ := os.Stat(config_path)
 
 	var tmpdgst string
-	tmpdgst = getSHAfromPath(m[0].Config)
+	tmpdgst = GetSHAfromPath(m[0].Config)
 	if tmpdgst == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
@@ -139,7 +139,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 		}
 		ctx.Logger().Info(fmt.Sprintf("found layer - %s", layer_path))
 		fi, _ := os.Stat(layer_path)
-		tmpdgst = getSHAfromPath(m[0].Layers[i])
+		tmpdgst = GetSHAfromPath(m[0].Layers[i])
 		if tmpdgst == "" {
 			return ctx.JSON(http.StatusNotFound, "")
 		}

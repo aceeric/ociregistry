@@ -1,6 +1,7 @@
 package importer
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -36,7 +37,14 @@ var (
 // if two events to unarchive the same file are enqueued then when the process deques the
 // second one, the handler does not treat a amissing file as an error, it simply ignores
 // the event.
-func Importer(tarfilePath string, logger echo.Logger) {
+func Importer(tarfilePath string, logger echo.Logger) error {
+	if fi, err := os.Stat(tarfilePath); err != nil {
+		if err := os.MkdirAll(tarfilePath, 0755); err != nil {
+			return err
+		}
+	} else if !fi.Mode().IsDir() {
+		return errors.New("path exists and is not a directory: " + tarfilePath)
+	}
 	logger.Info("initializing watcher for " + tarfilePath)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -102,17 +110,18 @@ func Importer(tarfilePath string, logger echo.Logger) {
 	}
 	<-done
 	logger.Info("terminating watcher")
+	return nil
 }
 
 // handleArchive extracts the passed archive and then removes it. If the file
 // in the passed event doesnt exist then the function assumes it was a dup event
 // and just ignores it.
-func handleArchive(archiveFile string, e fsnotify.Event, logger echo.Logger) {
+func handleArchive(tarfilePath string, e fsnotify.Event, logger echo.Logger) {
 	mu.Lock()
 	delete(timers, e.Name)
 	mu.Unlock()
 	if _, err := os.Stat(e.Name); err == nil {
-		if err := extract(e.Name, archiveFile); err == nil {
+		if err := extract(e.Name, tarfilePath); err == nil {
 			logger.Info("removing: " + e.Name)
 			err := os.Remove(e.Name)
 			if err != nil {

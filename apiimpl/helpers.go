@@ -21,10 +21,10 @@ func SetImagePath(image_path_arg string) {
 
 var srch = `.*([a-f0-9]{64}).*`
 
-func getSHAfromPath(shaExpr string) string {
+func GetSHAfromPath(shaExpr string) string {
 	re := regexp.MustCompile(srch)
 	tmpdgst := re.FindStringSubmatch(shaExpr)
-	if re.NumSubexp() == 1 {
+	if len(tmpdgst) == 2 {
 		return tmpdgst[1]
 	}
 	return ""
@@ -45,7 +45,7 @@ func computeMd5Sum(file string) (string, error) {
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
-// Looks for a file on the file system. Two use cases:
+// getArtifactPath looks for a file on the file system. Two use cases:
 //
 //  1. Exact match: looking for 'images/appzygy/smallgo/v1.0.0/manifest.json'
 //     In this case, pass that exact value in 'base', and leave 'shapat' empty
@@ -81,9 +81,10 @@ func getArtifactPath(base string, shapat string) string {
 	return found
 }
 
-// Creates a file in the manifest_map path whose name is a sha and whose content
-// is a tag. Enables retrieval of a manifest for "latest" using "sha256:zzz"
-// companion function to xlatManifestDigest
+// saveManifestDigest creates a file in the manifest_map path whose name is a sha
+// and whose content is a tag. Enables retrieval of a manifest for a ref like
+// "latest" or "v1.2.3" using "sha256:zzz". This is the companion function to
+// xlatManifestDigest
 func saveManifestDigest(image_path string, reference string, manifest_sha string) {
 	map_path := filepath.Join(image_path, "manifest_map")
 	if _, err := os.Stat(map_path); os.IsNotExist(err) {
@@ -97,9 +98,9 @@ func saveManifestDigest(image_path string, reference string, manifest_sha string
 	}
 }
 
-// read <image_path>/<manifest_sha> if it exists and return the contents
-// basically it maps a SHA to a ref (like "latest" or "v1.0.0")
-// companion function to saveManifestDigest
+// xlatManifestDigest reads <image_path>/manifest_map/<manifest_sha> if it exists
+// and returns the contents. Basically it maps a SHA to a ref (like "latest" or
+// "v1.0.0"). This is the companion function to saveManifestDigest
 func xlatManifestDigest(image_path string, manifest_sha string) string {
 	map_path := filepath.Join(image_path, "manifest_map")
 	if _, err := os.Stat(map_path); os.IsNotExist(err) {

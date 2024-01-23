@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"io"
+	"ociregistry/apiimpl"
 	"os"
 	"path/filepath"
 	"slices"
@@ -21,8 +22,8 @@ var ignore = []string{"docker.io", "quay.io", "ghcr.io"}
 // from the filename. Then the archive is uncompressed into that directory.
 // The "fileName" arg is the full path plus archive filename, and the
 // "destPath is the full path to the root of the "images" directory.
-func extract(fileName string, destPath string) error {
-	destPath, err := parseAndCreateDirs(fileName, destPath)
+func extract(fileName string, tarfilePath string) error {
+	targetPath, err := parseAndCreateDirs(fileName, tarfilePath)
 	if err != nil {
 		return err
 	}
@@ -30,6 +31,7 @@ func extract(fileName string, destPath string) error {
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	r := bufio.NewReader(f)
 	var tarReader *tar.Reader
 	var manifestBytes *bytes.Buffer
@@ -56,17 +58,15 @@ func extract(fileName string, destPath string) error {
 		if header == nil {
 			continue
 		}
-		// the target location where the dir/file should be created
-		target := filepath.Join(destPath, header.Name)
 
 		// check the file type
 		switch header.Typeflag {
-		case tar.TypeDir:
-			if _, err := os.Stat(target); err != nil {
-				if err := os.MkdirAll(target, 0755); err != nil {
-					return err
-				}
-			}
+		//case tar.TypeDir:
+		//	if _, err := os.Stat(target); err != nil {
+		//		if err := os.MkdirAll(target, 0755); err != nil {
+		//			return err
+		//		}
+		//	}
 		case tar.TypeReg:
 			// hold manifest for last (see below)
 			if header.Name == "manifest.json" {
@@ -74,16 +74,26 @@ func extract(fileName string, destPath string) error {
 				if _, err := io.Copy(manifestBytes, tarReader); err != nil {
 					return err
 				}
-				manifestPath = target
+				manifestPath = filepath.Join(targetPath, header.Name)
 			} else {
-				f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, 0766)
-				if err != nil {
-					return err
+				var filePath = filepath.Join(targetPath, header.Name)
+				sha := apiimpl.GetSHAfromPath(header.Name)
+				if sha != "" {
+					filePath = filepath.Join(tarfilePath, "blobs", sha)
 				}
-				if _, err := io.Copy(f, tarReader); err != nil {
-					return err
+				if _, err := os.Stat(filePath); err != nil {
+					if err := createAllDirs(filePath); err != nil {
+						return err
+					}
+					f, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR, 0766)
+					if err != nil {
+						return err
+					}
+					if _, err := io.Copy(f, tarReader); err != nil {
+						return err
+					}
+					f.Close()
 				}
-				f.Close()
 			}
 		}
 	}
@@ -91,6 +101,9 @@ func extract(fileName string, destPath string) error {
 	// other files from the archive since the image is determined to exist on the basis of
 	// the manifest.json file being present on the filesystem.
 	if manifestBytes != nil {
+		if err := createAllDirs(manifestPath); err != nil {
+			return err
+		}
 		f, err := os.OpenFile(manifestPath, os.O_CREATE|os.O_RDWR, 0766)
 		if err != nil {
 			return err
@@ -123,4 +136,14 @@ func parseAndCreateDirs(archiveName string, destPath string) (string, error) {
 		destPath = filepath.Join(destPath, segment)
 	}
 	return destPath, os.MkdirAll(destPath, 0755)
+}
+
+func createAllDirs(filePath string) error {
+	targetPathDir := filepath.Dir(filePath)
+	if _, err := os.Stat(targetPathDir); err != nil {
+		if err := os.MkdirAll(targetPathDir, 0755); err != nil {
+			return err
+		}
+	}
+	return nil
 }

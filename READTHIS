@@ -1,0 +1,2 @@
+The approach of storing all the blobs in images/blobs has to handle the Docker save
+case where they have like <sha>/layer.tar and "layer.tar" is the tar!

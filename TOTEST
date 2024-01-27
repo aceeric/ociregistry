@@ -1,0 +1,62 @@
+
+
+crane pull
+ctr export
+docker save
+
+from those:
+
+1) docker run
+2) run workload in the cluster
+
+
+
+
+handler 1 pull X
+  not available
+    call crane wrapper
+      block with timeout
+    if timed out or fail
+      not found
+
+handler 2 pull X
+  (same logic)
+
+problems crane wrapper has to solve:
+ 1. dont pull the same image twice - so needs to know if a pull of X is in progress
+ 2. signal two callers on completion - one actually pulling the other just waiting
+
+crane wrapper
+  pull
+  manually unzip - don't use notifier
+  return success/fail
+
+ideas:
+
+struct pull{
+    image identifier (image:tag?)
+    array of channels
+}
+
+// guard access with mutex
+var pulls []pull
+
+so - pull wrapper needs two things - an image and a channel
+
+logic
+
+if image on filesystem return true
+
+if pulls already contains image
+  add the channel and exit
+
+add image and channel
+pull
+unpack
+for channel in pulls[image].channels
+    signal
+delete entry from pulls
+
+
+in a multi nodes cluster with a daemonset multiple pods
+will request the same image at basically the same time

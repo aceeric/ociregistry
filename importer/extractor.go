@@ -7,7 +7,7 @@ import (
 	"compress/gzip"
 	"errors"
 	"io"
-	"ociregistry/apiimpl"
+	"ociregistry/helpers"
 	"os"
 	"path/filepath"
 	"slices"
@@ -22,7 +22,9 @@ var ignore = []string{"docker.io", "quay.io", "ghcr.io"}
 // from the filename. Then the archive is uncompressed into that directory.
 // The "fileName" arg is the full path plus archive filename, and the
 // "destPath is the full path to the root of the "images" directory.
-func extract(fileName string, tarfilePath string) error {
+
+// TODO PRIVATE??
+func Extract(fileName string, tarfilePath string) error {
 	targetPath, err := parseAndCreateDirs(fileName, tarfilePath)
 	if err != nil {
 		return err
@@ -77,7 +79,7 @@ func extract(fileName string, tarfilePath string) error {
 				manifestPath = filepath.Join(targetPath, header.Name)
 			} else {
 				var filePath = filepath.Join(targetPath, header.Name)
-				sha := apiimpl.GetSHAfromPath(header.Name)
+				sha := helpers.GetSHAfromPath(header.Name)
 				if sha != "" {
 					filePath = filepath.Join(tarfilePath, "blobs", sha)
 				}
@@ -138,6 +140,7 @@ func parseAndCreateDirs(archiveName string, destPath string) (string, error) {
 	return destPath, os.MkdirAll(destPath, 0755)
 }
 
+// createAllDirs creates all directories in the passed 'filePath' arg
 func createAllDirs(filePath string) error {
 	targetPathDir := filepath.Dir(filePath)
 	if _, err := os.Stat(targetPathDir); err != nil {

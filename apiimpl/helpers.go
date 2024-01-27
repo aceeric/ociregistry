@@ -6,31 +6,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"ociregistry/helpers"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 )
 
-// where image tarballs are unarchived to
-var image_path string
-
-func SetImagePath(image_path_arg string) {
-	image_path = image_path_arg
-}
-
-var srch = `.*([a-f0-9]{64}).*`
-
-func GetSHAfromPath(shaExpr string) string {
-	re := regexp.MustCompile(srch)
-	tmpdgst := re.FindStringSubmatch(shaExpr)
-	if len(tmpdgst) == 2 {
-		return tmpdgst[1]
-	}
-	return ""
-}
-
-// computes an MD5 sum on a file
+// computeMd5Sum computes an MD5 sum of the passed 'file'.
 func computeMd5Sum(file string) (string, error) {
 	f, err := os.Open(file)
 	if err != nil {
@@ -57,16 +38,16 @@ func getArtifactPath(base string, shapat string) string {
 	var found string
 	var srch = ""
 	if shapat != "" {
-		arr := strings.Split(shapat, ":")
-		srch = arr[len(arr)-1]
-		srch = strings.Replace(srch, ".tar.gz", "", 1)
+		srch = helpers.GetSHAfromPath(shapat)
 	}
 	filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if srch != "" && strings.Contains(path, srch) {
+		//if srch != "" && strings.Contains(path, srch) {
+		if srch != "" && filepath.Base(path) == srch {
 			found = path
+			// TODO DOCKER THE IMPORTER SHOULD ALREADY HAVE HANDLED THIS
 			// handles the case of a tarball produced by 'docker save'
 			if _, err := os.Stat(filepath.Join(path, "layer.tar")); err == nil {
 				found = filepath.Join(path, "layer.tar")

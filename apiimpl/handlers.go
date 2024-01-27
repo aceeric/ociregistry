@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	. "ociregistry/api/models"
+	"ociregistry/helpers"
+	"ociregistry/pullsync"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -57,7 +59,7 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 		}
 	}
 
-	blob_file := getArtifactPath(filepath.Join(image_path, org, image), digest)
+	blob_file := getArtifactPath(filepath.Join(image_path, "blobs"), digest)
 	if blob_file == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
@@ -96,7 +98,13 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 		}
 	}
 
-	manifest_path := getArtifactPath(filepath.Join(image_path, org, image, reference, "manifest.json"), "")
+	var manifest_path string = ""
+	for i := 0; i < 2; i++ {
+		manifest_path = getArtifactPath(filepath.Join(image_path, org, image, reference, "manifest.json"), "")
+		if manifest_path == "" {
+			pullsync.PullImage(fmt.Sprintf("%s/%s:%s", org, image, reference), 60000, ctx.Logger())
+		}
+	}
 	if manifest_path == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
@@ -111,14 +119,14 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	if jerr != nil {
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}
-	config_path := getArtifactPath(filepath.Join(image_path, org, image, reference, m[0].Config), "")
+	config_path := getArtifactPath(filepath.Join(image_path, "blobs"), m[0].Config)
 	if config_path == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
 	fi, _ := os.Stat(config_path)
 
 	var tmpdgst string
-	tmpdgst = GetSHAfromPath(m[0].Config)
+	tmpdgst = helpers.GetSHAfromPath(m[0].Config)
 	if tmpdgst == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
@@ -133,13 +141,13 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	}
 	for i := 0; i < len(m[0].Layers); i++ {
 		ctx.Logger().Info(fmt.Sprintf("get layer - %s", m[0].Layers[i]))
-		layer_path := getArtifactPath(filepath.Join(image_path, org, image, reference, m[0].Layers[i]), "")
+		layer_path := getArtifactPath(filepath.Join(image_path, "blobs"), m[0].Layers[i])
 		if layer_path == "" {
 			return ctx.JSON(http.StatusNotFound, "")
 		}
 		ctx.Logger().Info(fmt.Sprintf("found layer - %s", layer_path))
 		fi, _ := os.Stat(layer_path)
-		tmpdgst = GetSHAfromPath(m[0].Layers[i])
+		tmpdgst = helpers.GetSHAfromPath(m[0].Layers[i])
 		if tmpdgst == "" {
 			return ctx.JSON(http.StatusNotFound, "")
 		}

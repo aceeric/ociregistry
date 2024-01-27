@@ -12,6 +12,15 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+const library = "library"
+
+// where image tarballs are unarchived to
+var image_path string
+
+func SetImagePath(image_path_arg string) {
+	image_path = image_path_arg
+}
+
 func NewOciRegistry() *OciRegistry {
 	return &OciRegistry{}
 }
@@ -33,7 +42,7 @@ func (r *OciRegistry) V2Default(ctx echo.Context) error {
 
 // GET /v2/{image}/blobs/{digest}
 func (r *OciRegistry) V2GetImageBlobsDigest(ctx echo.Context, image string, digest string) error {
-	return r.V2GetOrgImageBlobsDigest(ctx, "library", image, digest)
+	return r.V2GetOrgImageBlobsDigest(ctx, library, image, digest)
 }
 
 // GET /v2/{org}/{image}/blobs/{digest}
@@ -43,7 +52,7 @@ func (r *OciRegistry) V2GetOrgImageBlobsDigest(ctx echo.Context, org string, ima
 
 // HEAD /v2/{image}/manifests/{reference}
 func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image string, reference string) error {
-	return handleOrgImageManifestsReference(r, ctx, "library", image, reference, http.MethodHead)
+	return handleOrgImageManifestsReference(r, ctx, library, image, reference, http.MethodHead)
 }
 
 // HEAD /v2/{org}/{image}/manifests/{reference}
@@ -53,7 +62,7 @@ func (r *OciRegistry) V2HeadOrgImageManifestsReference(ctx echo.Context, org str
 
 // GET /v2/{image}/manifests/{reference}
 func (r *OciRegistry) V2GetImageManifestsReference(ctx echo.Context, image string, reference string) error {
-	return handleOrgImageManifestsReference(r, ctx, "library", image, reference, http.MethodGet)
+	return handleOrgImageManifestsReference(r, ctx, library, image, reference, http.MethodGet)
 }
 
 // GET /v2/{org}/{image}/manifests/{reference}

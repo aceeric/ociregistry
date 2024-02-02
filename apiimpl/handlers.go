@@ -6,7 +6,6 @@ import (
 	"net/http"
 	. "ociregistry/api/models"
 	"ociregistry/helpers"
-	"ociregistry/pullsync"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -20,9 +19,11 @@ import (
 	digest "github.com/opencontainers/go-digest"
 )
 
+// GET /v2/auth
 // everyone authenticates successfully and gets the same token which is
 // subsequently ignored by the server
 func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
+	logRequestHeaders(ctx)
 	body := &Token{Token: "FROBOZZ"}
 	ctx.Response().Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
 	ctx.Response().Header().Add("Vary", "Cookie")
@@ -30,7 +31,9 @@ func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
 	return ctx.JSON(http.StatusOK, body)
 }
 
+// GET /v2/
 func handleV2Default(r *OciRegistry, ctx echo.Context) error {
+	logRequestHeaders(ctx)
 	var scheme string
 	if ctx.Request().URL.Scheme == "" {
 		scheme = "http"
@@ -47,9 +50,11 @@ func handleV2Default(r *OciRegistry, ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, "true")
 }
 
+// GET /v2/{org}/{image}/blobs/{digest}
 // client can ask for the manifest using the /blobs/ endpoint using the Docker-Content-Digest value
 // provided by a prior call to the /manifests/reference endpoint
 func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string, image string, digest string) error {
+	logRequestHeaders(ctx)
 	ctx.Logger().Info(fmt.Sprintf("get blob - org: %s, image: %s, digest: %s", org, image, digest))
 
 	if strings.HasPrefix(digest, "sha256:") {
@@ -87,7 +92,9 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 	return ctx.Stream(http.StatusOK, "binary/octet-stream", f)
 }
 
+// GET or HEAD /v2/{image}/manifests/{reference} or /v2/{org}/{image}/manifests/{reference}
 func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org string, image string, reference string, verb string) error {
+	logRequestHeaders(ctx)
 	ctx.Logger().Info(fmt.Sprintf("%s manifest - org: %s, image: %s, ref: %s", verb, org, image, reference))
 
 	if strings.HasPrefix(reference, "sha256:") {
@@ -99,11 +106,16 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	}
 
 	var manifest_path string = ""
-	for i := 0; i < 2; i++ {
+
+	// TODO PULL LOGIC COMMENTED OUT FOR NOW TILL PULL THRU DONE
+
+	iterations := 1
+	for i := 0; i < iterations; i++ {
 		manifest_path = getArtifactPath(filepath.Join(image_path, org, image, reference, "manifest.json"), "")
-		if manifest_path == "" {
-			pullsync.PullImage(fmt.Sprintf("%s/%s:%s", org, image, reference), 60000, ctx.Logger())
-		}
+		//if manifest_path == "" {
+		//	// TODO X-REMOTE header in front of org/image: [docker.io]/org/image/reference
+		//	pullsync.PullImage(fmt.Sprintf("%s/%s:%s", org, image, reference), 60000, ctx.Logger())
+		//}
 	}
 	if manifest_path == "" {
 		return ctx.JSON(http.StatusNotFound, "")

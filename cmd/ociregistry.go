@@ -20,8 +20,8 @@ import (
 
 func main() {
 	// parse args
-	var level, imagePath, port string
-	flag.StringVar(&level, "log-level", string(log.ERROR), "Log level")
+	var logLevel, imagePath, port string
+	flag.StringVar(&logLevel, "log-level", string(log.ERROR), "Log level")
 	flag.StringVar(&imagePath, "image-path", "", "Image path")
 	flag.StringVar(&port, "port", "8080", "Port for server")
 	flag.Parse()
@@ -49,7 +49,7 @@ func main() {
 	// set the path where all image metadata and blobs are stored
 	apiimpl.SetImagePath(imagePath)
 
-	// create an instance of our handler which satisfies the generated interface
+	// create an instance of our handler which implements the generated interface
 	ociRegistry := apiimpl.NewOciRegistry()
 
 	// this is how you set up a basic Echo router
@@ -57,7 +57,7 @@ func main() {
 
 	// log all requests
 	e.Use(echomiddleware.Logger())
-	e.Logger.SetLevel(xlatLogLevel(level))
+	e.Logger.SetLevel(xlatLogLevel(logLevel))
 
 	// use our validation middleware to check all requests against the OpenAPI schema.
 	e.Use(middleware.OapiRequestValidator(swagger))

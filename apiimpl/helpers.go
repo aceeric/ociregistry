@@ -9,7 +9,19 @@ import (
 	"ociregistry/helpers"
 	"os"
 	"path/filepath"
+	"strings"
+
+	"github.com/labstack/echo/v4"
 )
+
+// logRequestHeaders logs the request headers at the DEBUG level
+func logRequestHeaders(ctx echo.Context) {
+	hdrs := ctx.Request().Header
+	for h := range hdrs {
+		v := strings.Join(hdrs[h], ",")
+		ctx.Logger().Debugf("HDR: %s, VALUES: %s", h, v)
+	}
+}
 
 // computeMd5Sum computes an MD5 sum of the passed 'file'.
 func computeMd5Sum(file string) (string, error) {

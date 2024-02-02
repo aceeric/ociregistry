@@ -25,18 +25,18 @@ var (
 // image pull request.
 //
 // This function uses the Go fsnotify library which can emanate many messages during
-// creation of a single file. The approach implemented below to address that uses
+// creation of a single file. The approach implemented in the code to address that uses
 // time-based event deduplication based on:
 //
 // https://github.com/fsnotify/fsnotify/blob/main/cmd/fsnotify/dedup.go
 //
 // However even using this dedup logic there can still be multiple events for the creation of
-// a single file. So - after deduplication- the function sends the notifier event to a channel
-// which effectively sequences the event stream. This handles the case where depdup doesn't
-// catch all the dups. The last thing the importer does is delete the incoming archive so -
-// if two events to unarchive the same file are enqueued then when the process deques the
-// second one, the handler does not treat a amissing file as an error, it simply ignores
-// the event.
+// a single file. So - after deduplication - the function sends the notifier event to a channel
+// which effectively sequences the _mostly_ deduplicated events. This handles the case where
+// depdup doesn't catch all the dups. The last thing the importer does is delete the incoming
+// archive so - if two events to unarchive the same file are enqueued then when the process
+// dequeues the second one, the handler does not treat a amissing file as an error, it simply
+// ignores the event, assuming it was a dup.
 func Importer(tarfilePath string, logger echo.Logger) error {
 	if fi, err := os.Stat(tarfilePath); err != nil {
 		if err := os.MkdirAll(tarfilePath, 0755); err != nil {
@@ -71,6 +71,10 @@ func Importer(tarfilePath string, logger echo.Logger) error {
 					return
 				}
 				if !event.Has(fsnotify.Create) && !event.Has(fsnotify.Write) {
+					continue
+				}
+				// ignore directories
+				if fi, err := os.Stat(tarfilePath); err != nil && fi.Mode().IsDir() {
 					continue
 				}
 				// ensure supported archive extensions

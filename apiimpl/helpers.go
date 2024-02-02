@@ -38,6 +38,15 @@ func computeMd5Sum(file string) (string, error) {
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
+// plan - continue to save like the new way:
+//        images/docker.io/kubernetesui/dashboard/v2.7.0/manifest.json
+// then
+// to get the manifest:
+// search images for all files named manifest.json
+// and match to the incoming org/image/reference
+//
+// also consider a images/manifests dir like we have images/blobs
+
 // getArtifactPath looks for a file on the file system. Two use cases:
 //
 //  1. Exact match: looking for 'images/appzygy/smallgo/v1.0.0/manifest.json'

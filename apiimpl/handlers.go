@@ -23,6 +23,7 @@ import (
 // everyone authenticates successfully and gets the same token which is
 // subsequently ignored by the server
 func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
+	ctx.Logger().Info(fmt.Sprintf("get auth - scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization))
 	logRequestHeaders(ctx)
 	body := &Token{Token: "FROBOZZ"}
 	ctx.Response().Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -31,8 +32,10 @@ func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
 	return ctx.JSON(http.StatusOK, body)
 }
 
+// TODO THIS DOES NOT TRIGGER AUTH...
 // GET /v2/
 func handleV2Default(r *OciRegistry, ctx echo.Context) error {
+	ctx.Logger().Info("get /v2/")
 	logRequestHeaders(ctx)
 	var scheme string
 	if ctx.Request().URL.Scheme == "" {
@@ -64,7 +67,7 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 		}
 	}
 
-	blob_file := getArtifactPath(filepath.Join(image_path, "blobs"), digest)
+	blob_file := getBlobPath(image_path, digest)
 	if blob_file == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
@@ -98,7 +101,6 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	ctx.Logger().Info(fmt.Sprintf("%s manifest - org: %s, image: %s, ref: %s", verb, org, image, reference))
 
 	if strings.HasPrefix(reference, "sha256:") {
-		// test - might never get here now...
 		reference = xlatManifestDigest(image_path, reference)
 		if reference == "" {
 			return ctx.JSON(http.StatusNotFound, "")
@@ -111,7 +113,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 
 	iterations := 1
 	for i := 0; i < iterations; i++ {
-		manifest_path = getArtifactPath(filepath.Join(image_path, org, image, reference, "manifest.json"), "")
+		manifest_path = getManifestPath(image_path, filepath.Join(org, image, reference))
 		//if manifest_path == "" {
 		//	// TODO X-REMOTE header in front of org/image: [docker.io]/org/image/reference
 		//	pullsync.PullImage(fmt.Sprintf("%s/%s:%s", org, image, reference), 60000, ctx.Logger())
@@ -131,7 +133,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	if jerr != nil {
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}
-	config_path := getArtifactPath(filepath.Join(image_path, "blobs"), m[0].Config)
+	config_path := getBlobPath(image_path, m[0].Config)
 	if config_path == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
@@ -153,7 +155,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	}
 	for i := 0; i < len(m[0].Layers); i++ {
 		ctx.Logger().Info(fmt.Sprintf("get layer - %s", m[0].Layers[i]))
-		layer_path := getArtifactPath(filepath.Join(image_path, "blobs"), m[0].Layers[i])
+		layer_path := getBlobPath(image_path, m[0].Layers[i])
 		if layer_path == "" {
 			return ctx.JSON(http.StatusNotFound, "")
 		}

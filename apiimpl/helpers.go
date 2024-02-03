@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"ociregistry/globals"
 	"ociregistry/helpers"
 	"os"
 	"path/filepath"
@@ -14,7 +15,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// logRequestHeaders logs the request headers at the DEBUG level
+// logRequestHeaders logs the request headers at the DEBUG level to
+// the echo logger in teh `ctx` arg.
 func logRequestHeaders(ctx echo.Context) {
 	hdrs := ctx.Request().Header
 	for h := range hdrs {
@@ -38,43 +40,37 @@ func computeMd5Sum(file string) (string, error) {
 	return fmt.Sprintf("%x", hash.Sum(nil)), nil
 }
 
-// plan - continue to save like the new way:
-//        images/docker.io/kubernetesui/dashboard/v2.7.0/manifest.json
-// then
-// to get the manifest:
-// search images for all files named manifest.json
-// and match to the incoming org/image/reference
-//
-// also consider a images/manifests dir like we have images/blobs
-
-// getArtifactPath looks for a file on the file system. Two use cases:
-//
-//  1. Exact match: looking for 'images/appzygy/smallgo/v1.0.0/manifest.json'
-//     In this case, pass that exact value in 'base', and leave 'shapat' empty
-//
-//  2. Pattern match: looking for images/appzygy/smallgo/v1.0.0/<sha>.tar.gz or
-//     images/library/hello-world-save/<sha>/layer.tar. In this case pass any
-//     of 'sha256:<sha>' or '<sha>' or '<sha>.tar.gz' or '<sha>/layer.tar'
-func getArtifactPath(base string, shapat string) string {
-	var found string
-	var srch = ""
-	if shapat != "" {
-		srch = helpers.GetSHAfromPath(shapat)
+// getBlobPath extacts just the SHA from the passed 'shapat' arg and then
+// looks for the file matching <base>/blobs/SHA - if found, returns that path
+// else returns the empty string.
+func getBlobPath(base string, shapat string) string {
+	shapat = helpers.GetSHAfromPath(shapat)
+	blobFile := filepath.Join(base, globals.BlobsDir, shapat)
+	_, err := os.Stat(blobFile)
+	if err != nil {
+		return ""
 	}
-	filepath.WalkDir(base, func(path string, d fs.DirEntry, err error) error {
+	return blobFile
+}
+
+// getManifestPath searches the tree starting at 'imagesBase' for all files
+// with name "manifest.json". For each matching file, it the full path ends
+// with <manifestPath>/"manifest.json" then the file is returned. The supported
+// scenario is - a GET v2/{org}/{image}/manifests/{reference} request comes in like
+// GET v2/swaggerapi/swagger-editor/manifests/latest. The caller builds 'manifestPath'
+// like 'swaggerapi/swagger-editor/latest'. This function willmatch on the first file
+// whose path ends with 'swaggerapi/swagger-editor/latest/manifest.json'.
+func getManifestPath(imagesBase string, manifestPath string) string {
+	accept := filepath.Join(manifestPath, "manifest.json")
+	var found string = ""
+	filepath.WalkDir(imagesBase, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		//if srch != "" && strings.Contains(path, srch) {
-		if srch != "" && filepath.Base(path) == srch {
-			found = path
-			// TODO DOCKER THE IMPORTER SHOULD ALREADY HAVE HANDLED THIS
-			// handles the case of a tarball produced by 'docker save'
-			if _, err := os.Stat(filepath.Join(path, "layer.tar")); err == nil {
-				found = filepath.Join(path, "layer.tar")
-			}
-			return io.EOF
-		} else if srch == "" && path == base {
+		if strings.HasSuffix(path, filepath.Join(imagesBase, globals.BlobsDir)) && d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, accept) {
 			found = path
 			return io.EOF
 		}
@@ -83,10 +79,12 @@ func getArtifactPath(base string, shapat string) string {
 	return found
 }
 
-// saveManifestDigest creates a file in the manifest_map path whose name is a sha
+// saveManifestDigest creates a file in the 'manifest_map' path whose name is a sha
 // and whose content is a tag. Enables retrieval of a manifest for a ref like
-// "latest" or "v1.2.3" using "sha256:zzz". This is the companion function to
-// xlatManifestDigest
+// "sha256:zzz" where "sha256:zzz" is the sha of the a manifest with tag "latest".
+// This is the companion function to xlatManifestDigest. Some clients (containerd) get
+// the image manifest using a SHA rather than a tag. E.g. you'll see traffic like
+// GET v2/swaggerapi/swagger-editor/manifests/sha256:3eaf5ca0004...
 func saveManifestDigest(image_path string, reference string, manifest_sha string) {
 	map_path := filepath.Join(image_path, "manifest_map")
 	if _, err := os.Stat(map_path); os.IsNotExist(err) {
@@ -101,8 +99,8 @@ func saveManifestDigest(image_path string, reference string, manifest_sha string
 }
 
 // xlatManifestDigest reads <image_path>/manifest_map/<manifest_sha> if it exists
-// and returns the contents. Basically it maps a SHA to a ref (like "latest" or
-// "v1.0.0"). This is the companion function to saveManifestDigest
+// and returns the contents. Basically it xlats a SHA to a ref like "latest" or
+// "v1.0.0". This is the companion function to saveManifestDigest.
 func xlatManifestDigest(image_path string, manifest_sha string) string {
 	map_path := filepath.Join(image_path, "manifest_map")
 	if _, err := os.Stat(map_path); os.IsNotExist(err) {

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	. "ociregistry/api/models"
 	"ociregistry/helpers"
+	"ociregistry/pullsync"
+	"ociregistry/types"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -25,7 +27,7 @@ import (
 func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
 	ctx.Logger().Info(fmt.Sprintf("get auth - scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization))
 	logRequestHeaders(ctx)
-	body := &Token{Token: "FROBOZZ"}
+	body := &types.Token{Token: "FROBOZZ"}
 	ctx.Response().Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
 	ctx.Response().Header().Add("Vary", "Cookie")
 	ctx.Response().Header().Add("Strict-Transport-Security", "max-age=63072000; preload")
@@ -109,15 +111,16 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 
 	var manifest_path string = ""
 
-	// TODO PULL LOGIC COMMENTED OUT FOR NOW TILL PULL THRU DONE
-
 	iterations := 1
-	for i := 0; i < iterations; i++ {
+	for i := 0; i <= iterations; i++ {
 		manifest_path = getManifestPath(image_path, filepath.Join(org, image, reference))
-		//if manifest_path == "" {
-		//	// TODO X-REMOTE header in front of org/image: [docker.io]/org/image/reference
-		//	pullsync.PullImage(fmt.Sprintf("%s/%s:%s", org, image, reference), 60000, ctx.Logger())
-		//}
+		if manifest_path == "" {
+			var remote = ctx.Request().Header["X-Registry"]
+			if len(remote) != 1 {
+				break
+			}
+			pullsync.PullImage(fmt.Sprintf("%s/%s/%s:%s", remote[0], org, image, reference), image_path, 60000, ctx.Logger())
+		}
 	}
 	if manifest_path == "" {
 		return ctx.JSON(http.StatusNotFound, "")
@@ -128,7 +131,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	}
 	ctx.Logger().Info(fmt.Sprintf("found manifest - %s", manifest_path))
 
-	var m []ManifestJson
+	var m []types.ManifestJson
 	jerr := json.Unmarshal(b, &m)
 	if jerr != nil {
 		return ctx.JSON(http.StatusInternalServerError, "")
@@ -144,10 +147,10 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	if tmpdgst == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	manifest := ImageManifest{
+	manifest := types.ImageManifest{
 		SchemaVersion: 2,
 		MediaType:     "application/vnd.oci.image.manifest.v1+json",
-		Config: ManifestConfig{
+		Config: types.ManifestConfig{
 			MediaType: "application/vnd.oci.image.config.v1+json",
 			Size:      int(fi.Size()),
 			Digest:    "sha256:" + tmpdgst,
@@ -165,7 +168,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 		if tmpdgst == "" {
 			return ctx.JSON(http.StatusNotFound, "")
 		}
-		new_layer := ManifestLayer{
+		new_layer := types.ManifestLayer{
 			MediaType: "application/vnd.oci.image.layer.v1.tar+gzip",
 			Size:      int(fi.Size()),
 			Digest:    "sha256:" + tmpdgst,

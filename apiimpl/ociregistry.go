@@ -12,6 +12,8 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type OciRegistry struct{}
+
 const library = "library"
 
 // where image tarballs are unarchived to

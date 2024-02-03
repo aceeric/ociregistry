@@ -1,4 +1,10 @@
 
+also take a look maybe at:
+- https://medium.com/@ifeanyiigili/how-to-setup-a-private-docker-registry-with-a-self-sign-certificate-43a7407a1613
+- https://devopsian.net/posts/docker-registry/docker-registry/
+
+
+MAIN >>>>
 
 https://learning-ocean.com/tutorials/docker/docker-docker-registry-basic-authentication
 ---------------------------------------------------------------------------------------

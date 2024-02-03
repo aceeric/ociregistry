@@ -8,9 +8,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"ociregistry/apiimpl"
 	"ociregistry/globals"
 	"ociregistry/helpers"
+	"ociregistry/types"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,7 +84,7 @@ func Extract(fileName string, tarfilePath string) error {
 			}
 		}
 	}
-	var m []apiimpl.ManifestJson
+	var m []types.ManifestJson
 	jerr := json.Unmarshal(nonBlobs["manifest.json"].Bytes(), &m)
 	if jerr != nil {
 		return jerr

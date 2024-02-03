@@ -2,15 +2,18 @@ package pullsync
 
 import (
 	"ociregistry/importer"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo"
 )
 
-func PullImage(image string, waitMillis int, logger echo.Logger) {
-	if isPulled(image) {
-		return
-	}
+func PullImage(image string, image_path string, waitMillis int, logger echo.Logger) {
+	// if isPulled(image) {
+	// 	return
+	// }
 	ch := make(chan bool)
 	var result bool = false
 	go func(image string, ch chan bool) {
@@ -19,7 +22,7 @@ func PullImage(image string, waitMillis int, logger echo.Logger) {
 			return
 		}
 		logger.Info("doPull - newly enqueued - calling crane pull: %s", image)
-		callCranePull()
+		callCranePull(image, image_path)
 		logger.Info("doPull - back from crane pull: %s", image)
 		pullComplete(image, logger)
 
@@ -35,9 +38,17 @@ func PullImage(image string, waitMillis int, logger echo.Logger) {
 	logger.Info("pullImage - return from pullImage. image: %s, result: %t", image, result)
 }
 
-// stub for now
-func callCranePull() {
-	src := "/home/eace/projects/desktop-kubernetes/images/docker.io+infoblox+dnstools+latest.tar"
-	dest := "/home/eace/projects/ociregistry/images"
-	importer.Extract(src, dest)
+func callCranePull(image string, image_path string) error {
+	var imageTar = filepath.Join(image_path, "pulls")
+	if _, err := os.Stat(imageTar); err != nil {
+		if err := os.MkdirAll(imageTar, 0755); err != nil {
+			return err
+		}
+	}
+	imageTar = filepath.Join(imageTar, uuid.New().String()+".tar")
+	err := cranePull(image, imageTar)
+	if err != nil {
+		return err
+	}
+	return importer.Extract(imageTar, image_path)
 }

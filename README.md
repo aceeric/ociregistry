@@ -272,3 +272,23 @@ curl http://localhost:8080/v2/library/hello-world/manifests/latest | jq
 rane > GET index.docker.io/v2/library/hello-world/manifests/sha256:e2fc4e5012d16e7fe466f5291c476431beaa1f9b90a5c2125b493ed28e2aba57
 crane > GET index.docker.io/v2/library/hello-world/blobs/sha256:d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a
 ```
+
+
+
+## Nginx Docker
+
+WORKS:
+
+docker run -it --rm --name curl --network host curlimages/curl:latest sh
+
+curl -H "X-Registry: docker.io"  http://localhost:8080/v2/kubernetesui/dashboard/manifests/v2.7.0
+
+{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"mediaType":"application/vnd.oci.image.config.v1+json","digest":"sha256:07655ddf2eebe5d250f7a72c25f638b27126805d61779741b4e62e69ba080558","size":1555},"layers":[{"mediaType":"application/vnd.oci.image.layer.v1.tar+gzip","digest":"sha256:ee3247c7e545df975ba3826979c7a8d73f1373cbb3ac47def3b734631cef2965","size":75784467},{"mediaType":"application/vnd.oci.image.layer.v1.tar+gzip","digest":"sha256:8e052fd7e2d0aec4ef51e4505d006158414775ad5f0ea3e479ac0ba92f90dfff","size":508}]}
+
+goal - validate that registry can connect to upstream:
+- one-way tls insecure
+- one-way tls secure
+- two-way tls insecure
+- two-way tls secure
+
+curl > ociregistry (desktop) > nginx revproxy (docker) > registry (docker)

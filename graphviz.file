@@ -1,0 +1,14 @@
+digraph G {
+  "main" -> "api"
+  "main" -> "apiimpl"
+  "main" -> "importer"
+  "api" -> "api/models"
+  "apiimpl" -> "api/models"
+  "apiimpl" -> "helpers"
+  "apiimpl" -> "pullsync"
+  "apiimpl" -> "types"
+  "importer" -> "helpers"
+  "importer" -> "globals"
+  "importer" -> "types"
+  "pullsync" -> "importer"
+}

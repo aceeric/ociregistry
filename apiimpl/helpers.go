@@ -21,7 +21,7 @@ func logRequestHeaders(ctx echo.Context) {
 	hdrs := ctx.Request().Header
 	for h := range hdrs {
 		v := strings.Join(hdrs[h], ",")
-		ctx.Logger().Debugf("HDR: %s, VALUES: %s", h, v)
+		ctx.Logger().Debugf("HDR: %s=%s", h, v)
 	}
 }
 

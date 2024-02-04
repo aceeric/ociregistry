@@ -2,6 +2,10 @@
 also take a look maybe at:
 - https://medium.com/@ifeanyiigili/how-to-setup-a-private-docker-registry-with-a-self-sign-certificate-43a7407a1613
 - https://devopsian.net/posts/docker-registry/docker-registry/
+- https://medium.com/@ManagedKube/docker-registry-2-setup-with-tls-basic-auth-and-persistent-data-8b98a2a73eec
+- https://docs.nginx.com/nginx/admin-guide/security-controls/terminating-ssl-tcp/
+- https://www.ssltrust.com/help/setup-guides/client-certificate-authentication
+- https://dev.to/darshitpp/how-to-implement-two-way-ssl-with-nginx-2g39
 
 
 MAIN >>>>

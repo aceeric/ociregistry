@@ -45,7 +45,7 @@ func Importer(tarfilePath string, logger echo.Logger) error {
 	} else if !fi.Mode().IsDir() {
 		return errors.New("path exists and is not a directory: " + tarfilePath)
 	}
-	logger.Info("initializing watcher for " + tarfilePath)
+	logger.Debug("initializing watcher for " + tarfilePath)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic("fsnotify NewWatched failed")
@@ -74,7 +74,7 @@ func Importer(tarfilePath string, logger echo.Logger) error {
 					continue
 				}
 				// ignore directories
-				if fi, err := os.Stat(tarfilePath); err != nil && fi.Mode().IsDir() {
+				if fi, err := os.Stat(event.Name); err == nil && fi.Mode().IsDir() {
 					continue
 				}
 				// ensure supported archive extensions
@@ -113,7 +113,7 @@ func Importer(tarfilePath string, logger echo.Logger) error {
 		panic("fsnotify watcher.Add failed")
 	}
 	<-done
-	logger.Info("terminating watcher")
+	logger.Debug("terminating watcher")
 	return nil
 }
 
@@ -126,13 +126,15 @@ func handleArchive(tarfilePath string, e fsnotify.Event, logger echo.Logger) {
 	mu.Unlock()
 	if _, err := os.Stat(e.Name); err == nil {
 		if err := Extract(e.Name, tarfilePath); err == nil {
-			logger.Info("removing: " + e.Name)
+			logger.Debug("removing: " + e.Name)
 			err := os.Remove(e.Name)
 			if err != nil {
 				logger.Error(fmt.Sprintf("error attempting to remove file %s. Error: %s", e.Name, err))
 			}
+		} else {
+			logger.Error(fmt.Sprintf("error extracting archive: %s. Error: %s", e.Name, err))
 		}
 	} else {
-		logger.Info("file not found (already processed): " + e.Name)
+		logger.Debug("file not found (already processed): " + e.Name)
 	}
 }

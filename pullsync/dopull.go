@@ -1,6 +1,7 @@
 package pullsync
 
 import (
+	"ociregistry/globals"
 	"ociregistry/importer"
 	"os"
 	"path/filepath"
@@ -18,28 +19,33 @@ func PullImage(image string, image_path string, waitMillis int, logger echo.Logg
 	var result bool = false
 	go func(image string, ch chan bool) {
 		if enqueue(image, ch, logger) {
-			logger.Info("doPull - already enqueued: %s, added chan %v", image, ch)
+			logger.Debug("already enqueued: %s, added chan %v", image, ch)
 			return
 		}
-		logger.Info("doPull - newly enqueued - calling crane pull: %s", image)
+		logger.Debug("newly enqueued - calling crane pull: %s", image)
 		callCranePull(image, image_path)
-		logger.Info("doPull - back from crane pull: %s", image)
+		logger.Debug("back from crane pull: %s", image)
 		pullComplete(image, logger)
 
 	}(image, ch)
 	select {
 	case result = <-ch:
-		logger.Info("pullImage - successful pull: %s", image)
+		logger.Debug("successful pull: %s", image)
 	case <-time.After(time.Duration(waitMillis) * time.Millisecond):
-		logger.Info("pullImage - error: time out waiting for pull: %s", image)
+		logger.Debug("error: time out waiting for pull: %s", image)
 		result = false
 	}
 	close(ch)
-	logger.Info("pullImage - return from pullImage. image: %s, result: %t", image, result)
+	logger.Debug("image: %s, result: %t", image, result)
 }
 
+// callCranePull pulls the image specified by the 'image' arg to the file system
+// path specified by the `image_path` arg. The function creates a subdirectory under
+// that path, then generates a UUID-based name for the downwload file. After downloading
+// the images is extracted into the images directory to be subsequently served, and then
+// the downloaded archive file is deleted.
 func callCranePull(image string, image_path string) error {
-	var imageTar = filepath.Join(image_path, "pulls")
+	var imageTar = filepath.Join(image_path, globals.PullsDir)
 	if _, err := os.Stat(imageTar); err != nil {
 		if err := os.MkdirAll(imageTar, 0755); err != nil {
 			return err
@@ -50,5 +56,9 @@ func callCranePull(image string, image_path string) error {
 	if err != nil {
 		return err
 	}
-	return importer.Extract(imageTar, image_path)
+	err = importer.Extract(imageTar, image_path)
+	if err == nil {
+		return err
+	}
+	return os.Remove(imageTar)
 }

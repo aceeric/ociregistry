@@ -6,25 +6,38 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"ociregistry/api"
 	"ociregistry/apiimpl"
 	"ociregistry/importer"
+	"ociregistry/pullsync"
 
+	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 
 	"github.com/labstack/echo/v4"
-	echomiddleware "github.com/labstack/echo/v4/middleware"
 	middleware "github.com/oapi-codegen/echo-middleware"
 )
 
 func main() {
 	// parse args
-	var logLevel, imagePath, port string
+	var logLevel, imagePath, port, configPath string
+
 	flag.StringVar(&logLevel, "log-level", string(log.ERROR), "Log level")
 	flag.StringVar(&imagePath, "image-path", "", "Image path")
+	flag.StringVar(&configPath, "config-path", "", "Image path")
 	flag.StringVar(&port, "port", "8080", "Port for server")
 	flag.Parse()
+
+	if configPath == "" {
+		ex, err := os.Executable()
+		if err != nil {
+			panic(err)
+		}
+		configPath = filepath.Dir(ex)
+	}
+	go pullsync.ConfigLoader(configPath)
 
 	swagger, err := api.GetSwagger()
 	if err != nil {
@@ -55,11 +68,17 @@ func main() {
 	// this is how you set up a basic Echo router
 	e := echo.New()
 
-	// log all requests
-	e.Use(echomiddleware.Logger())
+	// API calls are logged somehow with a different logger than e.Logger ??
+	apiLogging := echomiddleware.LoggerConfig{
+		Skipper: echomiddleware.DefaultSkipper,
+		Format: `${time_rfc3339} REST echo-server -- IP:${remote_ip} ` +
+			`HOST:${host} ${method}:${uri} UA:${user_agent} ${status}` + "\n",
+	}
+	e.Use(echomiddleware.LoggerWithConfig(apiLogging))
 	e.Logger.SetLevel(xlatLogLevel(logLevel))
+	e.Logger.SetHeader("${time_rfc3339} ${level} ${short_file}:${line} --")
 
-	// use our validation middleware to check all requests against the OpenAPI schema.
+	// use Open API middleware to check all requests against the OpenAPI schema
 	e.Use(middleware.OapiRequestValidator(swagger))
 
 	// register our OCI Registry above as the handler for the interface
@@ -68,15 +87,12 @@ func main() {
 	// set up the ability to handle image tarballs placed in the images dir
 	go importer.Importer(imagePath, e.Logger)
 
-	// serve HTTP until the world ends
+	// start the server
 	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", port)))
-
-	// TODO TLS
-	//e.Logger.Fatal(e.StartTLS(net.JoinHostPort("0.0.0.0", *port), "ca.pem", "ca-key.pem"))
 }
 
 func xlatLogLevel(level string) log.Lvl {
-	switch level {
+	switch strings.ToUpper(level) {
 	case "DEBUG":
 		return log.DEBUG
 	case "INFO":

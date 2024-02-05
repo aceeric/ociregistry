@@ -10,7 +10,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/labstack/echo/v4"
 	"gopkg.in/yaml.v2"
 )
 
@@ -41,7 +40,7 @@ var (
 )
 
 // TODO start a goroutine to periodically reload
-func ConfigLoader(configPath string, logger echo.Logger) error {
+func ConfigLoader(configPath string) error {
 	b, err := os.ReadFile(configPath)
 	if err != nil {
 		return err

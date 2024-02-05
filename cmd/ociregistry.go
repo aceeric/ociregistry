@@ -6,14 +6,13 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"ociregistry/api"
 	"ociregistry/apiimpl"
+	"ociregistry/globals"
 	"ociregistry/importer"
 	"ociregistry/pullsync"
 
-	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/labstack/gommon/log"
 
 	"github.com/labstack/echo/v4"
@@ -26,7 +25,7 @@ func main() {
 
 	flag.StringVar(&logLevel, "log-level", string(log.ERROR), "Log level")
 	flag.StringVar(&imagePath, "image-path", "", "Image path")
-	flag.StringVar(&configPath, "config-path", "", "Image path")
+	flag.StringVar(&configPath, "config-path", "", "Configuration file fqpn")
 	flag.StringVar(&port, "port", "8080", "Port for server")
 	flag.Parse()
 
@@ -66,17 +65,13 @@ func main() {
 	// this is how you set up a basic Echo router
 	e := echo.New()
 
-	// API calls are logged somehow with a different logger than e.Logger ??
-	apiLogging := echomiddleware.LoggerConfig{
-		Skipper: echomiddleware.DefaultSkipper,
-		Format: `${time_rfc3339} REST echo-server -- IP:${remote_ip} ` +
-			`HOST:${host} ${method}:${uri} UA:${user_agent} ${status}` + "\n",
-	}
-	e.Use(echomiddleware.LoggerWithConfig(apiLogging))
-	e.Logger.SetLevel(xlatLogLevel(logLevel))
-	e.Logger.SetHeader("${time_rfc3339} ${level} ${short_file}:${line} --")
+	globals.InitLogging(logLevel, false, "console")
+	defer globals.Logger().Sync()
 
-	pullsync.ConfigLoader(configPath, e.Logger)
+	// have echo server use the global logging
+	e.Use(globals.EchoMiddleware(globals.Logger()))
+
+	pullsync.ConfigLoader(configPath)
 
 	// use Open API middleware to check all requests against the OpenAPI schema
 	e.Use(middleware.OapiRequestValidator(swagger))
@@ -85,24 +80,11 @@ func main() {
 	api.RegisterHandlers(e, ociRegistry)
 
 	// set up the ability to handle image tarballs placed in the images dir
-	go importer.Importer(imagePath, e.Logger)
+	go importer.Importer(imagePath)
 
 	// start the server
-	e.Logger.Fatal(e.Start(net.JoinHostPort("0.0.0.0", port)))
-}
-
-func xlatLogLevel(level string) log.Lvl {
-	switch strings.ToUpper(level) {
-	case "DEBUG":
-		return log.DEBUG
-	case "INFO":
-		return log.INFO
-	case "WARN":
-		return log.WARN
-	case "OFF":
-		return log.OFF
-	case "ERROR":
-		return log.ERROR
+	err = e.Start(net.JoinHostPort("0.0.0.0", port))
+	if err != nil {
+		globals.Logger().Error(err.Error())
 	}
-	return log.ERROR
 }

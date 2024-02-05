@@ -1,6 +1,7 @@
 package pullsync
 
 import (
+	"fmt"
 	"ociregistry/globals"
 	"ociregistry/importer"
 	"os"
@@ -8,35 +9,34 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/labstack/echo"
 )
 
-func PullImage(image string, image_path string, waitMillis int, logger echo.Logger) {
+func PullImage(image string, image_path string, waitMillis int) {
 	// if isPulled(image) {
 	// 	return
 	// }
 	ch := make(chan bool)
 	var result bool = false
 	go func(image string, ch chan bool) {
-		if enqueue(image, ch, logger) {
-			logger.Debug("already enqueued: %s, added chan %v", image, ch)
+		if enqueue(image, ch) {
+			globals.Logger().Debug(fmt.Sprintf("already enqueued: %s, added chan %v", image, ch))
 			return
 		}
-		logger.Debug("newly enqueued - calling crane pull: %s", image)
+		globals.Logger().Debug(fmt.Sprintf("newly enqueued - calling crane pull: %s", image))
 		callCranePull(image, image_path)
-		logger.Debug("back from crane pull: %s", image)
-		pullComplete(image, logger)
+		globals.Logger().Debug(fmt.Sprintf("back from crane pull: %s", image))
+		pullComplete(image)
 
 	}(image, ch)
 	select {
 	case result = <-ch:
-		logger.Debug("successful pull: %s", image)
+		globals.Logger().Debug(fmt.Sprintf("successful pull: %s", image))
 	case <-time.After(time.Duration(waitMillis) * time.Millisecond):
-		logger.Debug("error: time out waiting for pull: %s", image)
+		globals.Logger().Debug(fmt.Sprintf("error: time out waiting for pull: %s", image))
 		result = false
 	}
 	close(ch)
-	logger.Debug("image: %s, result: %t", image, result)
+	globals.Logger().Debug(fmt.Sprintf("image: %s, result: %t", image, result))
 }
 
 // callCranePull pulls the image specified by the 'image' arg to the file system

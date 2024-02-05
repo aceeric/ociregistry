@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"ociregistry/globals"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
-	"github.com/labstack/echo"
 )
 
 var (
@@ -37,7 +37,7 @@ var (
 // archive so - if two events to unarchive the same file are enqueued then when the process
 // dequeues the second one, the handler does not treat a amissing file as an error, it simply
 // ignores the event, assuming it was a dup.
-func Importer(tarfilePath string, logger echo.Logger) error {
+func Importer(tarfilePath string) error {
 	if fi, err := os.Stat(tarfilePath); err != nil {
 		if err := os.MkdirAll(tarfilePath, 0755); err != nil {
 			return err
@@ -45,7 +45,7 @@ func Importer(tarfilePath string, logger echo.Logger) error {
 	} else if !fi.Mode().IsDir() {
 		return errors.New("path exists and is not a directory: " + tarfilePath)
 	}
-	logger.Debug("initializing watcher for " + tarfilePath)
+	globals.Logger().Debug("initializing watcher for " + tarfilePath)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic("fsnotify NewWatched failed")
@@ -86,7 +86,7 @@ func Importer(tarfilePath string, logger echo.Logger) error {
 					}
 				}
 				if !supportedExt {
-					logger.Warn("file has unsupported extension. Ignoring: " + event.Name)
+					globals.Logger().Warn("file has unsupported extension. Ignoring: " + event.Name)
 					continue
 				}
 
@@ -97,7 +97,7 @@ func Importer(tarfilePath string, logger echo.Logger) error {
 				// No timer yet, so create one.
 				if !ok {
 					t = time.AfterFunc(math.MaxInt64, func() {
-						handleArchive(tarfilePath, event, logger)
+						handleArchive(tarfilePath, event)
 					})
 					t.Stop()
 					mu.Lock()
@@ -113,28 +113,28 @@ func Importer(tarfilePath string, logger echo.Logger) error {
 		panic("fsnotify watcher.Add failed")
 	}
 	<-done
-	logger.Debug("terminating watcher")
+	globals.Logger().Debug("terminating watcher")
 	return nil
 }
 
 // handleArchive extracts the passed archive and then removes it. If the file
 // in the passed event doesnt exist then the function assumes it was a dup event
 // and just ignores it.
-func handleArchive(tarfilePath string, e fsnotify.Event, logger echo.Logger) {
+func handleArchive(tarfilePath string, e fsnotify.Event) {
 	mu.Lock()
 	delete(timers, e.Name)
 	mu.Unlock()
 	if _, err := os.Stat(e.Name); err == nil {
 		if err := Extract(e.Name, tarfilePath); err == nil {
-			logger.Debug("removing: " + e.Name)
+			globals.Logger().Debug("removing: " + e.Name)
 			err := os.Remove(e.Name)
 			if err != nil {
-				logger.Error(fmt.Sprintf("error attempting to remove file %s. Error: %s", e.Name, err))
+				globals.Logger().Error(fmt.Sprintf("error attempting to remove file %s. Error: %s", e.Name, err))
 			}
 		} else {
-			logger.Error(fmt.Sprintf("error extracting archive: %s. Error: %s", e.Name, err))
+			globals.Logger().Error(fmt.Sprintf("error extracting archive: %s. Error: %s", e.Name, err))
 		}
 	} else {
-		logger.Debug("file not found (already processed): " + e.Name)
+		globals.Logger().Debug("file not found (already processed): " + e.Name)
 	}
 }

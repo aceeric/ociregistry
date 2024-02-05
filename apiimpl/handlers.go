@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	. "ociregistry/api/models"
+	"ociregistry/globals"
 	"ociregistry/helpers"
 	"ociregistry/pullsync"
 	"ociregistry/types"
@@ -25,7 +26,7 @@ import (
 // everyone authenticates successfully and gets the same token which is
 // subsequently ignored by the server
 func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
-	ctx.Logger().Info(fmt.Sprintf("get auth - scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization))
+	globals.Logger().Info(fmt.Sprintf("get auth - scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization))
 	logRequestHeaders(ctx)
 	body := &types.Token{Token: "FROBOZZ"}
 	ctx.Response().Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -38,7 +39,7 @@ func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
 // does not require authentication (would return 401 with Www-Authenticate hdr
 // to force authentication)
 func handleV2Default(r *OciRegistry, ctx echo.Context) error {
-	ctx.Logger().Info("get /v2/")
+	globals.Logger().Info("get /v2/")
 	logRequestHeaders(ctx)
 	return ctx.JSON(http.StatusOK, "true")
 }
@@ -48,7 +49,7 @@ func handleV2Default(r *OciRegistry, ctx echo.Context) error {
 // provided by a prior call to the /manifests/reference endpoint
 func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string, image string, digest string) error {
 	logRequestHeaders(ctx)
-	ctx.Logger().Debug(fmt.Sprintf("get blob - org: %s, image: %s, digest: %s", org, image, digest))
+	globals.Logger().Debug(fmt.Sprintf("get blob - org: %s, image: %s, digest: %s", org, image, digest))
 
 	if strings.HasPrefix(digest, "sha256:") {
 		manifest_ref := xlatManifestDigest(image_path, digest)
@@ -65,7 +66,7 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 	if err != nil {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	ctx.Logger().Debug(fmt.Sprintf("found blob - %s", blob_file))
+	globals.Logger().Debug(fmt.Sprintf("found blob - %s", blob_file))
 	fi, _ := os.Stat(blob_file)
 
 	now := time.Now()
@@ -88,7 +89,7 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 // GET or HEAD /v2/{image}/manifests/{reference} or /v2/{org}/{image}/manifests/{reference}
 func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org string, image string, reference string, verb string) error {
 	logRequestHeaders(ctx)
-	ctx.Logger().Info(fmt.Sprintf("%s manifest - org: %s, image: %s, ref: %s", verb, org, image, reference))
+	globals.Logger().Info(fmt.Sprintf("%s manifest - org: %s, image: %s, ref: %s", verb, org, image, reference))
 
 	if strings.HasPrefix(reference, "sha256:") {
 		reference = xlatManifestDigest(image_path, reference)
@@ -99,15 +100,15 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 
 	var manifest_path string = ""
 
-	iterations := 1
-	for i := 0; i <= iterations; i++ {
+	iterations := 2
+	for i := 0; i < iterations; i++ {
 		manifest_path = getManifestPath(image_path, filepath.Join(org, image, reference))
 		if manifest_path == "" {
 			var remote = ctx.Request().Header["X-Registry"]
 			if len(remote) != 1 {
 				break
 			}
-			pullsync.PullImage(fmt.Sprintf("%s/%s/%s:%s", remote[0], org, image, reference), image_path, 60000, ctx.Logger())
+			pullsync.PullImage(fmt.Sprintf("%s/%s/%s:%s", remote[0], org, image, reference), image_path, 60000)
 		}
 	}
 	if manifest_path == "" {
@@ -117,7 +118,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	if err != nil {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	ctx.Logger().Debug(fmt.Sprintf("found manifest - %s", manifest_path))
+	globals.Logger().Debug(fmt.Sprintf("found manifest - %s", manifest_path))
 
 	var m []types.ManifestJson
 	jerr := json.Unmarshal(b, &m)
@@ -145,12 +146,12 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 		},
 	}
 	for i := 0; i < len(m[0].Layers); i++ {
-		ctx.Logger().Debug(fmt.Sprintf("get layer - %s", m[0].Layers[i]))
+		globals.Logger().Debug(fmt.Sprintf("get layer - %s", m[0].Layers[i]))
 		layer_path := getBlobPath(image_path, m[0].Layers[i])
 		if layer_path == "" {
 			return ctx.JSON(http.StatusNotFound, "")
 		}
-		ctx.Logger().Debug(fmt.Sprintf("found layer - %s", layer_path))
+		globals.Logger().Debug(fmt.Sprintf("found layer - %s", layer_path))
 		fi, _ := os.Stat(layer_path)
 		tmpdgst = helpers.GetSHAfromPath(m[0].Layers[i])
 		if tmpdgst == "" {
@@ -174,7 +175,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	mblen := len(mb)
 	cnt, _ := digester.Hash().Write(mb)
 	dgst := digester.Digest()
-	ctx.Logger().Debug(fmt.Sprintf("computed digest for ref %s = sha256:%s (cnt: %d / mblen:%d)", reference, dgst.Hex(), cnt, mblen))
+	globals.Logger().Debug(fmt.Sprintf("computed digest for ref %s = sha256:%s (cnt: %d / mblen:%d)", reference, dgst.Hex(), cnt, mblen))
 
 	saveManifestDigest(image_path, reference, dgst.Hex())
 

@@ -1,12 +1,104 @@
 package pullsync
 
-// ConfigLoader TODO
-func ConfigLoader(configPath string) {
+import (
+	"crypto/tls"
+	"errors"
+	"net/http"
+	"os"
+	"sync"
 
+	"github.com/google/go-containerregistry/pkg/authn"
+	"github.com/google/go-containerregistry/pkg/crane"
+	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/labstack/echo/v4"
+	"gopkg.in/yaml.v2"
+)
+
+type authCfg struct {
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
 }
 
-// TODO get configuration (e.g. basic auth, TLS) for
-// a registry like docker.io, etc.
-func configFor(registry string) {
-	// will be called by pullsync/cranepull.go
+type tlsCfg struct {
+	Cert     string `yaml:"cert"`
+	Key      string `yaml:"key"`
+	CA       string `yaml:"ca"`
+	Insecure bool   `yaml:"insecure_skip_verify"`
+}
+
+type cfgEntry struct {
+	Name        string  `yaml:"name"`
+	Description string  `yaml:"description"`
+	Auth        authCfg `yaml:"auth"`
+	Tls         tlsCfg  `yaml:"tls"`
+}
+
+var (
+	config    map[string]cfgEntry = make(map[string]cfgEntry)
+	mu        sync.Mutex
+	emptyAuth = authCfg{User: "", Password: ""}
+	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", Insecure: false}
+)
+
+// TODO start a goroutine to periodically reload
+func ConfigLoader(configPath string, logger echo.Logger) error {
+	b, err := os.ReadFile(configPath)
+	if err != nil {
+		return err
+	}
+	return parseConfig(b)
+}
+
+// parseConfig parses the configuration in the passed 'configBytes' arg
+func parseConfig(configBytes []byte) error {
+	var entries []cfgEntry
+	err := yaml.Unmarshal(configBytes, &entries)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		_, exists := config[entry.Name]
+		if !exists {
+			config[entry.Name] = entry
+		}
+	}
+	return nil
+}
+
+// configFor looks for a configuration entry keyed by the passed 'registry' arg
+// (e.g. 'index.docker.io') and returns an array of options to configure the Crane
+// image puller that are built from the config. If no matching config is found,
+// then an empty array is returned with an error. An empty array can be returned
+// without an error - which means that the registry existed in the configuration
+// but it didn't supply any options that would be used to configure Crane. Bottom line,
+// the caller can always use the options returned by the function, but may wish to
+// log or record the fact that a registry was provided for lookup that was not
+// configured.
+func configFor(registry string) ([]crane.Option, error) {
+	opts := []crane.Option{}
+	mu.Lock()
+	regCfg, exists := config[registry]
+	mu.Unlock()
+	if !exists {
+		return opts, errors.New("no entry in configuration for registry: " + registry)
+	}
+	if regCfg.Auth != emptyAuth {
+		basic := &authn.Basic{Username: regCfg.Auth.User, Password: regCfg.Auth.Password}
+		ba := func(o *crane.Options) {
+			o.Remote[0] = remote.WithAuth(basic)
+		}
+		opts = append(opts, ba)
+	}
+	if regCfg.Tls != emptyTls {
+		tls := func(o *crane.Options) {
+			transport := remote.DefaultTransport.(*http.Transport).Clone()
+			transport.TLSClientConfig = &tls.Config{
+				// TODO cert, key, ca
+				InsecureSkipVerify: regCfg.Tls.Insecure,
+			}
+			o.Transport = transport
+		}
+		opts = append(opts, tls)
+	}
+	return opts, nil
 }

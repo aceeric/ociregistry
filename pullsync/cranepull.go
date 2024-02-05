@@ -10,11 +10,15 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
 
+// cranePull uses the 'crane pull' functionality from
+// github.com/google/go-containerregistry to pull an image from an
+// upstream registry. The image is in the 'image' arg, which must contain
+// a registry server ref. For example: docker.io/hello-world:latest. The
+// image is pulled saved to a tarball at the fqpn specified in the 'path' arg,
+// e.g. /var/ociregistry/images/<uuid>.tar
 func cranePull(image string, path string) error {
-	var (
-		cachePath string              = "/tmp"
-		imageMap  map[string]v1.Image = map[string]v1.Image{}
-	)
+	// TODO make configurable
+	var cachePath string = "/tmp"
 	ref, err := name.ParseReference(image, make([]name.Option, 0)...)
 	if err != nil {
 		return err
@@ -35,7 +39,12 @@ func cranePull(image string, path string) error {
 	////	o.Transport = transport
 	////}
 	////o := crane.GetOptions(ba, tls)
-	o := crane.GetOptions()
+	opts, err := configFor(ref.Context().Registry.Name())
+	if err != nil {
+		// TODO configurable if return or try anyway
+		return err
+	}
+	o := crane.GetOptions(opts...)
 	rmt, err := remote.Get(ref, o.Remote...)
 	if err != nil {
 		return err
@@ -47,9 +56,8 @@ func cranePull(image string, path string) error {
 	if cachePath != "" {
 		img = cache.Image(img, cache.NewFilesystemCache(cachePath))
 	}
-	imageMap[image] = img
-	if err := crane.MultiSave(imageMap, path); err != nil {
-		return fmt.Errorf("saving tarball %s: %w", path, err)
+	if err := crane.MultiSave(map[string]v1.Image{image: img}, path); err != nil {
+		return fmt.Errorf("error saving tarball %s: %w", path, err)
 	}
 	return nil
 }

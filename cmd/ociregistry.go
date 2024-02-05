@@ -37,8 +37,6 @@ func main() {
 		}
 		configPath = filepath.Dir(ex)
 	}
-	go pullsync.ConfigLoader(configPath)
-
 	swagger, err := api.GetSwagger()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading swagger spec\n: %s", err)
@@ -77,6 +75,8 @@ func main() {
 	e.Use(echomiddleware.LoggerWithConfig(apiLogging))
 	e.Logger.SetLevel(xlatLogLevel(logLevel))
 	e.Logger.SetHeader("${time_rfc3339} ${level} ${short_file}:${line} --")
+
+	pullsync.ConfigLoader(configPath, e.Logger)
 
 	// use Open API middleware to check all requests against the OpenAPI schema
 	e.Use(middleware.OapiRequestValidator(swagger))

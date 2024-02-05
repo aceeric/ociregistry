@@ -1,24 +1,22 @@
-registries:
-
-- name: localhost:5000
+- name: index.docker.io
   description: No auth, TLS if required by the server using OS trust store
   auth: {}
   tls: {}
 
-- name: localhost:5000
+- name: a-localhost:5000
   description: basic auth, TLS if required by the server using OS trust store
   auth:
     user: foobar
     password: frobozz
   tls: {}
 
-- name: localhost:5000
+- name: b-localhost:5000
   description: no auth, insecure TLS (no verify server) if TLS required by the server
   auth: {}
   tls:
     insecure_skip_verify: true
 
-- name: localhost:5000
+- name: c-localhost:5000
   description: no auth, insecure two-way TLS (no verify server) if TLS required by the server
   auth: {}
   tls:
@@ -26,14 +24,14 @@ registries:
     cert: /path/to/cert
     key: /path/to/key
 
-- name: localhost:5000
+- name: d-localhost:5000
   description: no auth, secure two-way TLS, verify server using OS trust store
   auth: {}
   tls:
     cert: /path/to/cert
     key: /path/to/key
 
-- name: localhost:5000
+- name: e-localhost:5000
   description: no auth, secure two-way TLS, verify server using explicit CA
   auth: {}
   tls:

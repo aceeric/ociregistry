@@ -35,7 +35,8 @@ func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
 }
 
 // GET /v2/
-// does not require authentication
+// does not require authentication (would return 401 with Www-Authenticate hdr
+// to force authentication)
 func handleV2Default(r *OciRegistry, ctx echo.Context) error {
 	ctx.Logger().Info("get /v2/")
 	logRequestHeaders(ctx)

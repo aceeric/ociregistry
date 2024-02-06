@@ -2,8 +2,11 @@ package pullsync
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
+	"fmt"
 	"net/http"
+	"ociregistry/globals"
 	"os"
 	"sync"
 
@@ -84,18 +87,32 @@ func configFor(registry string) ([]crane.Option, error) {
 	if regCfg.Auth != emptyAuth {
 		basic := &authn.Basic{Username: regCfg.Auth.User, Password: regCfg.Auth.Password}
 		ba := func(o *crane.Options) {
-			o.Remote[0] = remote.WithAuth(basic)
+			o.Remote = append(o.Remote, remote.WithAuth(basic))
 		}
 		opts = append(opts, ba)
 	}
 	if regCfg.Tls != emptyTls {
 		tls := func(o *crane.Options) {
+			var cp *x509.CertPool
+			if regCfg.Tls.CA != "" {
+				cp = x509.NewCertPool()
+				caCert, err := os.ReadFile(regCfg.Tls.CA)
+				if err == nil {
+					cp.AppendCertsFromPEM(caCert)
+				} else {
+					globals.Logger().Error(fmt.Sprintf("unable to load CA cert for config entry %s from file: %s", registry, regCfg.Tls.CA))
+				}
+			}
 			transport := remote.DefaultTransport.(*http.Transport).Clone()
 			transport.TLSClientConfig = &tls.Config{
 				// TODO cert, key, ca
 				InsecureSkipVerify: regCfg.Tls.Insecure,
+				RootCAs:            cp,
 			}
 			o.Transport = transport
+			// since o.Remote is what is passed to crane 'remote.Get(ref, o.Remote...)' it
+			// has to be appended here...
+			o.Remote = append(o.Remote, remote.WithTransport(transport))
 		}
 		opts = append(opts, tls)
 	}

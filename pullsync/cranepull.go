@@ -2,6 +2,7 @@ package pullsync
 
 import (
 	"fmt"
+	"ociregistry/globals"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -23,26 +24,9 @@ func cranePull(image string, path string) error {
 	if err != nil {
 		return err
 	}
-	// BASIC AUTH WORKS!!
-	////basic := &authn.Basic{Username: "ericace", Password: "ericace"}
-	////ba := func(o *crane.Options) {
-	////	// only one is allowed
-	////	o.Remote[0] = remote.WithAuth(basic)
-	////}
-	////// TODO TEST TLS
-	////// TODO https://gist.github.com/ncw/9253562
-	////tls := func(o *crane.Options) {
-	////	transport := remote.DefaultTransport.(*http.Transport).Clone()
-	////	transport.TLSClientConfig = &tls.Config{
-	////		InsecureSkipVerify: true,
-	////	}
-	////	o.Transport = transport
-	////}
-	////o := crane.GetOptions(ba, tls)
 	opts, err := configFor(ref.Context().Registry.Name())
 	if err != nil {
-		// TODO configurable if return or try anyway
-		return err
+		globals.Logger().Warn(err.Error())
 	}
 	o := crane.GetOptions(opts...)
 	rmt, err := remote.Get(ref, o.Remote...)

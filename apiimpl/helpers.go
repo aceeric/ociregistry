@@ -15,8 +15,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// logRequestHeaders logs the request headers at the DEBUG level to
-// the echo logger in teh `ctx` arg.
+// logRequestHeaders logs the request headers at the DEBUG level
 func logRequestHeaders(ctx echo.Context) {
 	hdrs := ctx.Request().Header
 	for h := range hdrs {

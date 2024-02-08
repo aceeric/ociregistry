@@ -11,15 +11,19 @@ import (
 	"github.com/google/uuid"
 )
 
+// PullImage pulls an image from a remote. The image is specified in the
+// 'image' arg and the resulting tarball will be placed in the 'image_path' arg.
+// The call blocks for the number of milliseconds specified in the 'waitMillis' arg.
+// To handle cases where multiple callers concurrently ask for the same image, the
+// function uses a queue in which the first caller does the pull and all other
+// concurrent callers wait until the first caller finishes. Once the first caller
+// finishes (or times out) then all other callers return at the same time.
 func PullImage(image string, image_path string, waitMillis int) {
-	// if isPulled(image) {
-	// 	return
-	// }
 	ch := make(chan bool)
 	var result bool = false
 	go func(image string, ch chan bool) {
 		if enqueue(image, ch) {
-			globals.Logger().Debug(fmt.Sprintf("already enqueued: %s, added chan %v", image, ch))
+			globals.Logger().Debug(fmt.Sprintf("already enqueued: %s, added waiter on chan %v", image, ch))
 			return
 		}
 		globals.Logger().Debug(fmt.Sprintf("newly enqueued - calling crane pull: %s", image))
@@ -41,8 +45,8 @@ func PullImage(image string, image_path string, waitMillis int) {
 
 // callCranePull pulls the image specified by the 'image' arg to the file system
 // path specified by the `image_path` arg. The function creates a subdirectory under
-// that path, then generates a UUID-based name for the downwload file. After downloading
-// the images is extracted into the images directory to be subsequently served, and then
+// that path, then generates a UUID-based name for the download file. After downloading,
+// the image is extracted into the images directory to be subsequently served, and then
 // the downloaded archive file is deleted.
 func callCranePull(image string, image_path string) error {
 	var imageTar = filepath.Join(image_path, globals.PullsDir)

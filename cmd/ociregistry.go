@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 
 	"ociregistry/api"
 	"ociregistry/apiimpl"
@@ -13,29 +12,20 @@ import (
 	"ociregistry/importer"
 	"ociregistry/pullsync"
 
-	"github.com/labstack/gommon/log"
-
 	"github.com/labstack/echo/v4"
 	middleware "github.com/oapi-codegen/echo-middleware"
 )
 
+type cmdLine struct {
+	logLevel   string
+	imagePath  string
+	port       string
+	configPath string
+}
+
 func main() {
-	// parse args
-	var logLevel, imagePath, port, configPath string
+	args := parseCmdline()
 
-	flag.StringVar(&logLevel, "log-level", string(log.ERROR), "Log level")
-	flag.StringVar(&imagePath, "image-path", "", "Image path")
-	flag.StringVar(&configPath, "config-path", "", "Configuration file fqpn")
-	flag.StringVar(&port, "port", "8080", "Port for server")
-	flag.Parse()
-
-	if configPath == "" {
-		ex, err := os.Executable()
-		if err != nil {
-			panic(err)
-		}
-		configPath = filepath.Dir(ex)
-	}
 	swagger, err := api.GetSwagger()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading swagger spec\n: %s", err)
@@ -46,18 +36,8 @@ func main() {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
-	// if --image-path arg not supplied then use ""../images" (expecting that
-	// this binary is running in <project root>/bin)
-	if imagePath == "" {
-		ex, err := os.Executable()
-		if err != nil {
-			panic(err)
-		}
-		imagePath = filepath.Join(filepath.Dir(ex), "..", "images")
-	}
-
 	// set the path where all image metadata and blobs are stored
-	apiimpl.SetImagePath(imagePath)
+	apiimpl.SetImagePath(args.imagePath)
 
 	// create an instance of our handler which implements the generated interface
 	ociRegistry := apiimpl.NewOciRegistry()
@@ -65,13 +45,13 @@ func main() {
 	// this is how you set up a basic Echo router
 	e := echo.New()
 
-	globals.InitLogging(logLevel, false, "console")
+	globals.LogLevel(args.logLevel)
 	defer globals.Logger().Sync()
 
-	// have echo server use the global logging
+	// have Echo use the global logging
 	e.Use(globals.EchoMiddleware(globals.Logger()))
 
-	pullsync.ConfigLoader(configPath)
+	pullsync.ConfigLoader(args.configPath)
 
 	// use Open API middleware to check all requests against the OpenAPI schema
 	e.Use(middleware.OapiRequestValidator(swagger))
@@ -80,11 +60,23 @@ func main() {
 	api.RegisterHandlers(e, ociRegistry)
 
 	// set up the ability to handle image tarballs placed in the images dir
-	go importer.Importer(imagePath)
+	go importer.Importer(args.imagePath)
 
 	// start the server
-	err = e.Start(net.JoinHostPort("0.0.0.0", port))
+	err = e.Start(net.JoinHostPort("0.0.0.0", args.port))
 	if err != nil {
 		globals.Logger().Error(err.Error())
 	}
+}
+
+// parseCmdline defines configuration defaults, parses the command line to
+// potentially override defaults and returns the resulting program configuration.
+func parseCmdline() cmdLine {
+	args := cmdLine{}
+	flag.StringVar(&args.logLevel, "log-level", "error", "Log level. Defaults to 'error'")
+	flag.StringVar(&args.imagePath, "image-path", "/var/lib/ociregistry", "Path for the image store. Defaults to '/var/lib/ociregistry'")
+	flag.StringVar(&args.configPath, "config-path", "", "Remote registry configuration file. Defaults to empty string (all remotes anonymous)")
+	flag.StringVar(&args.port, "port", "8080", "Port for server. Defaults to 8080")
+	flag.Parse()
+	return args
 }

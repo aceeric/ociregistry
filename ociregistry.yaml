@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: OCI Registry - OpenAPI 3.0
-  description: Pull-through caching registry
+  description: Pull-only pull-through caching registry
   termsOfService: ""
   contact:
     email:

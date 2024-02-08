@@ -20,9 +20,10 @@ var (
 )
 
 // Importer creates a file system notifier, watching for archive files to appear
-// in the pased "tarfilePath" directory. When such a file appears, it is inflated into
+// in the passed 'tarfilePath' directory. When such a file appears, it is inflated into
 // a directory structure that the registry server understands and can map to an
-// image pull request.
+// image pull request. The use case for this is to load up a registry from staged
+// tarballs exported from an OCI registry, or the containerd cache, etc.
 //
 // This function uses the Go fsnotify library which can emanate many messages during
 // creation of a single file. The approach implemented in the code to address that uses
@@ -35,7 +36,7 @@ var (
 // which effectively sequences the _mostly_ deduplicated events. This handles the case where
 // depdup doesn't catch all the dups. The last thing the importer does is delete the incoming
 // archive so - if two events to unarchive the same file are enqueued then when the process
-// dequeues the second one, the handler does not treat a amissing file as an error, it simply
+// dequeues the second one, the handler does not treat a missing file as an error, it simply
 // ignores the event, assuming it was a dup.
 func Importer(tarfilePath string) error {
 	if fi, err := os.Stat(tarfilePath); err != nil {
@@ -118,7 +119,7 @@ func Importer(tarfilePath string) error {
 }
 
 // handleArchive extracts the passed archive and then removes it. If the file
-// in the passed event doesnt exist then the function assumes it was a dup event
+// in the passed event doesn't exist then the function assumes it was a dup event
 // and just ignores it.
 func handleArchive(tarfilePath string, e fsnotify.Event) {
 	mu.Lock()

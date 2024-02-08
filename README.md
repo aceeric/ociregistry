@@ -1,5 +1,8 @@
 # Experiments with creating a light-weight "pull-only" OCI Registry
 
+
+TODO NEEDS CLEANUP
+
 Approach:
 
 ## Review the Open Container Distribution Spec

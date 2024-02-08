@@ -1,14 +1,5 @@
+Containerd config:
 
-crane pull  - ?
-docker save - ?
-ctr export  - tested
-
-from those:
-
-1) docker run
-2) run workload in the cluster
-
-STEPS: (requires "HDR: X-Registry, VALUES: docker.io")
 
 /etc/containerd/certs.d/docker.io/hosts.toml:
 =============================================

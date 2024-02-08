@@ -1,71 +1,135 @@
 package pullsync
 
-import "testing"
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+	"testing"
+)
 
-var testConfigNoAuth = `
----
-- name: localhost:5001
-  description: No auth, TLS if required by the server using OS trust store
-  auth: {}
-  tls: {}`
+func TestOptParse(t *testing.T) {
+	var cfg = `
+    ---
+    - name: foobar
+      description: frobozz
+      auth:
+        user: foobar
+        password: frobozz`
 
-func TestCranePullNoAuth(t *testing.T) {
-	parseConfig([]byte(testConfigNoAuth))
-	cranePull("localhost:5001/infoblox/dnstools:latest", "/tmp/deleteme.tar")
+	parseConfig([]byte(sl(cfg)))
+	_, err := configFor("foobar")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	// just have to visually confirm entry was re-used
+	configFor("foobar")
 }
 
-var testlocalBasic = `
----
-- name: localhost:5001
-  description:
-  auth:
-    user: ericace
-    password: ericace`
+func TestNoAuthHttp(t *testing.T) {
+	var cfg = `
+    ---
+    - name: localhost:5000
+      description: No auth (anonymous), HTTP
+      auth: {}
+      tls: {}`
 
-func TestCranePullBasicAuthLocalReg(t *testing.T) {
-	parseConfig([]byte(testlocalBasic))
-	cranePull("localhost:5001/infoblox/dnstools:latest", "/tmp/deleteme.tar")
+	parseConfig([]byte(sl(cfg)))
+	os.Remove("/tmp/deleteme.tar")
+	err := cranePull("localhost:5000/hello-world:latest", "/tmp/deleteme.tar")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 }
 
-var testTlsNoAuthNoTlsConfig = `
----
-- name: localhost:8443
-  description: Nginx 8443, Docker 5001, No Auth, TLS, No TLS Config`
+func TestBasicAuthHttp(t *testing.T) {
+	var cfg = `
+    ---
+    - name: localhost:5001
+      description: Basic auth, HTTP
+      auth:
+        user: ericace
+        password: ericace`
 
-func TestCraneTlsNoAuthNoTlsConfig(t *testing.T) {
-	parseConfig([]byte(testTlsNoAuthNoTlsConfig))
+	parseConfig([]byte(sl(cfg)))
+	os.Remove("/tmp/deleteme.tar")
+	err := cranePull("localhost:5001/hello-world:latest", "/tmp/deleteme.tar")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+}
+
+func TestNoAuthHttps1WayNoTlsConfig(t *testing.T) {
+	var cfg = `
+    ---
+    - name: localhost:8443
+      description: No auth, HTTPS, no TLS config`
+
+	parseConfig([]byte(sl(cfg)))
 	err := cranePull("localhost:8443/hello-world:latest", "/tmp/deleteme.tar")
 	if err == nil {
-		t.Errorf("Expected TLS error because insecure not specified")
+		t.Errorf("Expected TLS error because insecure not specified and server cert not in trust store")
 	}
 }
 
-var testTlsNoAuthTlsConfigInsecure = `
----
-- name: localhost:8443
-  description: Nginx 8443, Docker 5001, No Auth, TLS, Insecure
-  tls:
-    insecure_skip_verify: true`
+func TestNoAuthHttps1WayInsecure(t *testing.T) {
+	var cfg = `
+    ---
+    - name: localhost:8443
+      description: No auth, HTTPS, 1-way, insecure
+      tls:
+        insecure_skip_verify: true`
 
-func TestTlsNoAuthTlsConfigInsecure(t *testing.T) {
-	parseConfig([]byte(testTlsNoAuthTlsConfigInsecure))
+	parseConfig([]byte(sl(cfg)))
+	os.Remove("/tmp/deleteme.tar")
 	err := cranePull("localhost:8443/hello-world:latest", "/tmp/deleteme.tar")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 }
 
-var testTlsNoAuthTlsConfigSecure = `
----
-- name: localhost:8443
-  description: Nginx 8443, Docker 5001, No Auth, TLS, Insecure
-  tls:
-    ca: /home/eace/projects/ociregistry/test-tegistry-servers/no-auth-one-way-tls/certs/ca.crt`
+func TestNoAuthHttps1WaySecure(t *testing.T) {
+	var cfg = `
+    ---
+    - name: localhost:8443
+      description: No auth, HTTPS, 1-way, verify server cert
+      tls:
+        ca: /home/eace/projects/ociregistry/test-tegistry-servers/no-auth-one-way-tls/certs/ca.crt`
 
-func TestTlsNoAuthTlsConfigSecure(t *testing.T) {
-	parseConfig([]byte(testTlsNoAuthTlsConfigSecure))
+	parseConfig([]byte(sl(cfg)))
+	os.Remove("/tmp/deleteme.tar")
 	err := cranePull("localhost:8443/hello-world:latest", "/tmp/deleteme.tar")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
+}
+
+func TestNoAuthHttps2Way(t *testing.T) {
+	var cfg = `
+    ---
+    - name: localhost:8444
+      description: No auth, HTTPS, 2-way
+      tls:
+        ca: /home/eace/projects/ociregistry/test-tegistry-servers/no-auth-one-way-tls/certs/ca.crt
+        cert: /home/eace/projects/ociregistry/test-tegistry-servers/no-auth-one-way-tls/certs/localhost.crt
+        key: /home/eace/projects/ociregistry/test-tegistry-servers/no-auth-one-way-tls/certs/localhost.key`
+
+	parseConfig([]byte(sl(cfg)))
+	os.Remove("/tmp/deleteme.tar")
+	err := cranePull("localhost:8444/hello-world:latest", "/tmp/deleteme.tar")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+}
+
+// sl Strips Leading spaces from each line so the inlined config yaml
+// can be enclosed within each testing function and the indentation doesn't
+// cause yaml parse errors.
+func sl(s string) string {
+	var ret = ""
+	scanner := bufio.NewScanner(strings.NewReader(s))
+	for scanner.Scan() {
+		ret = fmt.Sprintf("%s%s\n", ret, strings.TrimPrefix(scanner.Text(), "    "))
+	}
+	return ret
 }

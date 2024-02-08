@@ -25,7 +25,7 @@ type ManifestConfig struct {
 	Size      int    `json:"size"`
 }
 
-// ImageManifest is the entier manifest returned by a call like
+// ImageManifest is the entire manifest returned by a call like
 // GET http://localhost:8080/v2/appzygy/smallmain/manifests/v1.0.0
 type ImageManifest struct {
 	SchemaVersion int             `json:"schemaVersion"`
@@ -41,7 +41,7 @@ type ManifestLayer struct {
 	Size      int    `json:"size"`
 }
 
-// ManifestJson is the 'manifest.json' file in saved image tarball
+// ManifestJson is the 'manifest.json' file in a saved image tarball
 type ManifestJson struct {
 	Config   string   `json:"Config"`
 	RepoTags []string `json:"RepoTags"`

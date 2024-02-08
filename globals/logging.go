@@ -11,9 +11,18 @@ import (
 )
 
 var logger *zap.Logger
+var atom = zap.NewAtomicLevel()
+
+func init() {
+	InitLogging("info", false, "console")
+}
 
 func Logger() *zap.Logger {
 	return logger
+}
+
+func LogLevel(level string) {
+	atom.SetLevel(xlatLogLevel(level))
 }
 
 func InitLogging(level string, disabled bool, encoding string) {

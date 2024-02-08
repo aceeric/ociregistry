@@ -15,11 +15,13 @@ import (
 // github.com/google/go-containerregistry to pull an image from an
 // upstream registry. The image is in the 'image' arg, which must contain
 // a registry server ref. For example: docker.io/hello-world:latest. The
-// image is pulled saved to a tarball at the fqpn specified in the 'path' arg,
+// image is saved to a tarball at the fqpn specified in the 'path' arg,
 // e.g. /var/ociregistry/images/<uuid>.tar
 func cranePull(image string, path string) error {
-	// TODO make configurable
-	var cachePath string = "/tmp"
+	// TODO crane caches blobs like "sha256:..." so can't use our blob
+	// cache for that unless I rename the blobs stored by this registry
+	// with the same prefix...
+	var cachePath string = ""
 	ref, err := name.ParseReference(image, make([]name.Option, 0)...)
 	if err != nil {
 		return err
@@ -28,8 +30,7 @@ func cranePull(image string, path string) error {
 	if err != nil {
 		globals.Logger().Warn(err.Error())
 	}
-	o := crane.GetOptions(opts...)
-	rmt, err := remote.Get(ref, o.Remote...)
+	rmt, err := remote.Get(ref, opts...)
 	if err != nil {
 		return err
 	}

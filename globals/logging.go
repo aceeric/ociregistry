@@ -14,7 +14,7 @@ var logger *zap.Logger
 var atom = zap.NewAtomicLevel()
 
 func init() {
-	InitLogging("info", false, "console")
+	InitLogging("info", false, "json")
 }
 
 func Logger() *zap.Logger {

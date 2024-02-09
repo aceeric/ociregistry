@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	"ociregistry/api"
 	"ociregistry/apiimpl"
@@ -23,12 +24,20 @@ type cmdLine struct {
 	configPath string
 }
 
+const startup = `
+-------------------------------------------------------------------
+OCI Registry pull-through caching pull-only OCI Distribution Server
+Started: %s
+-------------------------------------------------------------------
+`
+
+// main runs the registry server
 func main() {
 	args := parseCmdline()
 
 	swagger, err := api.GetSwagger()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading swagger spec\n: %s", err)
+		fmt.Fprintf(os.Stderr, "Error loading swagger spec: %s\n", err)
 		os.Exit(1)
 	}
 
@@ -37,12 +46,15 @@ func main() {
 	swagger.Servers = nil
 
 	// set the path where all image metadata and blobs are stored
-	apiimpl.SetImagePath(args.imagePath)
+	if apiimpl.SetImagePath(args.imagePath) != nil {
+		fmt.Fprintf(os.Stderr, "Error setting image path: %s\n", err)
+		os.Exit(1)
+	}
 
-	// create an instance of our handler which implements the generated interface
+	// create an instance of our API handler which implements the generated interface
 	ociRegistry := apiimpl.NewOciRegistry()
 
-	// this is how you set up a basic Echo router
+	// set up a basic Echo router
 	e := echo.New()
 
 	globals.LogLevel(args.logLevel)
@@ -63,6 +75,8 @@ func main() {
 	go importer.Importer(args.imagePath)
 
 	// start the server
+	fmt.Fprintf(os.Stderr, startup, time.Unix(0, time.Now().UnixNano()))
+	e.HideBanner = true
 	err = e.Start(net.JoinHostPort("0.0.0.0", args.port))
 	if err != nil {
 		globals.Logger().Error(err.Error())

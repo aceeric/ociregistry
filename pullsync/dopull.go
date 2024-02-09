@@ -61,7 +61,7 @@ func callCranePull(image string, image_path string) error {
 		return err
 	}
 	err = importer.Extract(imageTar, image_path)
-	if err == nil {
+	if err != nil {
 		return err
 	}
 	return os.Remove(imageTar)

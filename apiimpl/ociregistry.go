@@ -5,6 +5,7 @@ package apiimpl
 import (
 	"net/http"
 	. "ociregistry/api/models"
+	"os"
 
 	_ "crypto/sha256"
 	_ "crypto/sha512"
@@ -17,10 +18,11 @@ type OciRegistry struct{}
 const library = "library"
 
 // where image tarballs are unarchived to
-var image_path string
+var imagePath string
 
-func SetImagePath(image_path_arg string) {
-	image_path = image_path_arg
+func SetImagePath(imagePathArg string) error {
+	imagePath = imagePathArg
+	return os.MkdirAll(imagePath, 0755)
 }
 
 func NewOciRegistry() *OciRegistry {

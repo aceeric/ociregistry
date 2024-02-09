@@ -53,13 +53,13 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 		// handle client requesting manifest using the /blobs/ endpoint using the
 		// Docker-Content-Digest value provided by a prior call to the
 		// manifests/reference endpoint
-		manifest_ref := xlatManifestDigest(image_path, digest)
+		manifest_ref := xlatManifestDigest(imagePath, digest)
 		if manifest_ref != "" {
 			return handleOrgImageManifestsReference(r, ctx, org, image, manifest_ref, http.MethodGet)
 		}
 	}
 
-	blob_file := getBlobPath(image_path, digest)
+	blob_file := getBlobPath(imagePath, digest)
 	if blob_file == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
@@ -93,7 +93,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	globals.Logger().Info(fmt.Sprintf("%s manifest - org: %s, image: %s, ref: %s", verb, org, image, reference))
 
 	if strings.HasPrefix(reference, "sha256:") {
-		reference = xlatManifestDigest(image_path, reference)
+		reference = xlatManifestDigest(imagePath, reference)
 		if reference == "" {
 			return ctx.JSON(http.StatusNotFound, "")
 		}
@@ -103,14 +103,14 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 
 	iterations := 2
 	for i := 0; i < iterations; i++ {
-		manifest_path = getManifestPath(image_path, filepath.Join(org, image, reference))
+		manifest_path = getManifestPath(imagePath, filepath.Join(org, image, reference))
 		if manifest_path == "" {
 			var remote = ctx.Request().Header["X-Registry"]
 			if len(remote) != 1 {
 				break
 			}
 			// pull through from the remote registry specified by the X-Registry header
-			pullsync.PullImage(fmt.Sprintf("%s/%s/%s:%s", remote[0], org, image, reference), image_path, 60000)
+			pullsync.PullImage(fmt.Sprintf("%s/%s/%s:%s", remote[0], org, image, reference), imagePath, 60000)
 		}
 	}
 	if manifest_path == "" {
@@ -127,7 +127,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	if jerr != nil {
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}
-	config_path := getBlobPath(image_path, mjson[0].Config)
+	config_path := getBlobPath(imagePath, mjson[0].Config)
 	if config_path == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
@@ -149,7 +149,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	}
 	for i := 0; i < len(mjson[0].Layers); i++ {
 		globals.Logger().Debug(fmt.Sprintf("get layer - %s", mjson[0].Layers[i]))
-		layer_path := getBlobPath(image_path, mjson[0].Layers[i])
+		layer_path := getBlobPath(imagePath, mjson[0].Layers[i])
 		if layer_path == "" {
 			return ctx.JSON(http.StatusNotFound, "")
 		}
@@ -179,7 +179,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	dgst := digester.Digest()
 	globals.Logger().Debug(fmt.Sprintf("computed digest for ref %s = sha256:%s (cnt: %d / mblen:%d)", reference, dgst.Hex(), cnt, mblen))
 
-	saveManifestDigest(image_path, reference, dgst.Hex())
+	saveManifestDigest(imagePath, reference, dgst.Hex())
 
 	ctx.Response().Header().Add("Content-Length", strconv.Itoa(mblen))
 	ctx.Response().Header().Add("Docker-Content-Digest", fmt.Sprintf("sha256:%s", dgst.Hex()))

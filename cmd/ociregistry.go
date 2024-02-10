@@ -25,11 +25,10 @@ type cmdLine struct {
 	configPath string
 }
 
-const startup = `
--------------------------------------------------------------------
-OCI Registry pull-through caching pull-only OCI Distribution Server
-Started: %s
--------------------------------------------------------------------
+const startupBanner = `----------------------------------------------------------------------
+OCI Registry: pull-only, pull-through, caching OCI Distribution Server
+Started: %s (port %s)
+----------------------------------------------------------------------
 `
 
 // main runs the registry server
@@ -75,8 +74,9 @@ func main() {
 	go importer.Importer(args.imagePath)
 
 	// start the server
-	fmt.Fprintf(os.Stderr, startup, time.Unix(0, time.Now().UnixNano()))
+	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
 	e.HideBanner = true
+	e.HidePort = true
 	err = e.Start(net.JoinHostPort("0.0.0.0", args.port))
 	if err != nil {
 		log.Error(err.Error())

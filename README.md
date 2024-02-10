@@ -3,11 +3,11 @@
 This project is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 
 1. It exclusively provides _pull_ capability. You can't push images to it, it doesn't support the `/v2/_catalog` endpoint, etc.
-2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public - supporting the following types of access: anonymous, basic auth, HTTP/HTTPS, 1-way TLS, and mTLS.
+2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public - supporting the following types of access: anonymous, basic auth, HTTP/HTTPS, one-way TLS, and mTLS.
 
 This distribution server is intended to satisfy **one** use case: the need for an in-cluster Kubernetes caching pull-through registry that enables the cluster to run reliably in a network context with no-, intermittent-, or low latency connectivity to upstream registries - or - an environment where the upstream registries serving the k8s cluster have less than 5 nines availability.
 
-As a secondary capability the server can be loaded from image tarballs. This supports a scenario where the registry is loaded in one location, disconnected, transported elsewhere, and then runs air-gapped: you load the registry from image tarballs before shipment.
+As a secondary capability the server can be loaded from image tarballs. This supports a scenario where the registry is loaded in one location, disconnected, transported, and then runs air-gapped at its remote home: you load the registry from image tarballs before shipment.
 
 The goals of the project are:
 
@@ -26,30 +26,30 @@ To achieve this - the server simply uses the file system as the sum total of it'
 
 The basic usage scenario is:
 
-1. A client (containerd) pulls an image. The Echo server handles the API calls.
+1. A client (containerd) pulls an image. The embedded [Echo](https://echo.labstack.com/) server handles the API calls.
 2. The Echo server delegates to the OCI Registry API handlers to implement the application logic.
 3. If the image is cached on the file system it is provided to the caller.
-4. Otherwise, the API handlers delegate to Google Crane code embedded in the server. To support this, containerd is configured to pass the upstream registry in the `X-Registry` header in step 1.
+4. Otherwise, the API handlers delegate to the embedded [Google Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md) code. To support this, containerd is configured to pass the upstream registry in the `X-Registry` header in step 1. (More on this below.)
 5. The Google Crane code builds the upstream registry URL using the `X-Registry` header value and pulls the image from the upstream as a tarball, returning it to the handler which unpacks it and saves it to the image store.
-6. Concurrently, a tarball loader runs as a goroutine watching a staging directory on the file system. Whenever a tarball appears there it is unpacked and moved to the image store, and then the tarball is deleted.
+6. Independently, a tarball loader runs as a goroutine watching a staging directory on the file system. Whenever a tarball appears there it is unpacked and moved to the image store, and then the tarball is deleted. This supports initial and incremental manual population of the image cache.
 
 ## API Implementation
 
-The OCI Distribution API is built by creating an Open API spec using Swagger: `ociregistry.yaml` in the project root. Then the `oapi-codegen` tool is used to generate the API and models using configuration in the `api` directory. This approach was modeled on the OAPI-Codegen _Petstore_ example: https://github.com/deepmap/oapi-codegen/tree/master/examples/petstore-expanded/echo.
+The OCI Distribution API is built by first creating an Open API spec using Swagger. See `ociregistry.yaml` in the project root. Then the [oapi-codegen](https://github.com/deepmap/oapi-codegen) tool is used to generate the API and models using configuration in the `api` directory. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/deepmap/oapi-codegen/tree/master/examples/petstore-expanded/echo) example.
 
-The key components of the API scaffolding are shown below:
+The key components of the API scaffolding supported by OAPI-Codegen are shown below:
 
 ```shell
 ​```
 ├── api
 │   ├── models
 │   │   └──models.gen.go (generated)
-│   ├── models.cfg.yaml
+│   ├── models.cfg.yaml (modeled from pet store)
 │   ├── ociregistry.gen.go (generated)
-│   └── server.cfg.yaml
+│   └── server.cfg.yaml (modeled from pet store)
 ├── cmd
 │   └── ociregistry.go (this is the server - which embeds the Echo server)
-└── ociregistry.yaml (the openapi spec)
+└── ociregistry.yaml (the openapi spec built with swagger)
 ​```
 ```
 
@@ -80,7 +80,7 @@ server = "http://192.168.0.49:8080"
 
 ## Configuring the Server
 
-The server may need configuration information to connect to upstreams. By default, it will attempt anonymous plain HTTP access. Many servers will reject HTTP and fail over to HTTPS. Then you're in the realm of PKI. Some servers require auth. To address all of these concerns the server accepts a command line parameter `--config-path` which identifies a configuration file in the following format:
+The server may need configuration information to connect to upstreams. By default, it will attempt anonymous plain HTTP access. Many OCI Distribution servers will reject HTTP and fail over to HTTPS. Then you're in the realm of PKI. Some servers require auth as well. To address all of these concerns the server accepts a command line parameter `--config-path` which identifies a configuration file in the following format:
 
 ```
 - name: upstream one
@@ -98,7 +98,7 @@ The configuration file is a yaml list of upstream registry entries. Each entry s
 
 ```
 - name: my-upstream (or my-upstream:PORT)
-  description: Something that makes sense to you
+  description: Something that makes sense to (or omitted - its just for you)
   auth:
     user: theuser
     password: thepass
@@ -109,23 +109,25 @@ The configuration file is a yaml list of upstream registry entries. Each entry s
     insecure_skip_verify: true/false
 ```
 
-The `auth` section implements basic auth. The `tls` section can implement the following scenarios:
+The `auth` section implements basic auth, just like your `~/.docker/config.json` file.
 
-1. 1-way insecure TLS in which client certs are not provided to the remote, and the remote server cert is not validated:
+The `tls` section can implement multiple scenarios:
+
+1. One-way insecure TLS in which client certs are not provided to the remote, and the remote server cert is not validated:
 
    ```
    tls:
      insecure_skip_verify: true
    ```
 
-2. 1-way **secure** TLS in which client certs are not provided to the remote, and the remote server cert **is** validated using the OS trust store:
+2. One-way **secure** TLS in which client certs are not provided to the remote, and the remote server cert **is** validated using the OS trust store:
 
    ```
    tls:
      insecure_skip_verify: false (or simply omit this - which defaults to false)
    ```
 
-3. 1-way **secure** TLS in which client certs are not provided to the remote, and the remote server cert is validate using a **provided** CA cert
+3. One-way **secure** TLS in which client certs are not provided to the remote, and the remote server cert is validate using a **provided** CA cert
 
    ```
    tls:
@@ -139,7 +141,29 @@ The `auth` section implements basic auth. The `tls` section can implement the fo
      cert: "/fully/qualified/path/to/client.cert
      key: ".../client.key
    ```
-   2-way TLS can be implemented with and without remote server cert validation as described in the 1-way TLS scenarios above.
+2-way TLS can be implemented **with and without** remote server cert validation as described above in the various one-way TLS scenarios. Examples:
+
+   ```
+   - name foo.bar.1.io
+     description: mTLS, don't verify server cert
+     tls:
+       cert: /my/client.cert
+       key: /my/client.key
+       insecure_skip_verify: true
+   - name foo.bar.2.io
+     description: mTLS, verify server cert from OS trust store
+     tls:
+       cert: /my/client.cert
+       key: /my/client.key
+       insecure_skip_verify: false
+   - name foo.bar.3.io
+     description: mTLS, verify server cert from provided CA
+     tls:
+       cert: /my/client.cert
+       key: /my/client.key
+       ca: /remote/ca.crt
+       insecure_skip_verify: false
+   ```
 
 ## Command line options
 
@@ -149,6 +173,6 @@ The following options are supported:
 | ------------- | -------------------- | ------------------------------------------------------------ |
 | --log-level   | error                | Valid values: debug, info, warn, error                       |
 | --image-path  | /var/lib/ociregistry | The root directory of the image store                        |
-| --config-path | Empty                | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to HTTP using the OS Trust store to validate the remote registry. |
+| --config-path | Empty                | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to HTTPS using the OS Trust store to validate the remote registry. |
 | --port        | 8080                 | Server port. E.g. `crane pull localhost:8080 foo.tar`        |
 

@@ -17,7 +17,13 @@ import (
 )
 
 // Extract inflates the archive at the path specified by the 'fileName' arg
-// into the directory specified by the 'destPath' arg.
+// into the directory specified by the 'destPath' arg. The blobs are inflated
+// first, and then non-blobs are handled last. The reason for this is that
+// other threads of execution in the server use the presence of the 'manifest.json'
+// file to determine whether the image is present. So - we want to create the
+// manifest last - otherwise other threads might believe the image is cached
+// and try to get image blobs which would not be present if the tarball was
+// inflated in a random order.
 func Extract(fileName string, tarfilePath string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
@@ -124,8 +130,8 @@ func createAllDirs(filePath string) error {
 // path under 'tarfilePath'. E.g. if 'tarfilePath' is /var/frobozz and 'repoTag'
 // is foo/bar:v1.2.3, then a path /var/frobozz/foo/bar/v1.2.3 is created and
 // returned to the caller. As a nuance: if no "organization" is present in the
-// repotag, then 'library' is assigned as the organization. So for example 'repoTag'
-// "bar:v1.2.3" becomes path <tarfilePath>/library/bar/v1.2.3
+// repotag, then 'library' is assigned by this function as the organization. So
+// for example 'repoTag' "bar:v1.2.3" becomes path <tarfilePath>/library/bar/v1.2.3
 func createAllDirs2(repoTag string, tarfilePath string) (string, error) {
 	var filePath = repoTag
 	if strings.Count(repoTag, "/") == 0 {

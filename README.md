@@ -3,11 +3,11 @@
 This project is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 
 1. It exclusively provides _pull_ capability. You can't push images to it, it doesn't support the `/v2/_catalog` endpoint, etc.
-2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public - supporting the following types of access: anonymous, basic auth, HTTP/HTTPS, one-way TLS, and mTLS.
+2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public; supporting the following types of access: anonymous, basic auth, HTTP, HTTPS, one-way TLS, and mTLS.
 
-This distribution server is intended to satisfy **one** use case: the need for an in-cluster Kubernetes caching pull-through registry that enables the cluster to run reliably in a network context with no-, intermittent-, or low latency connectivity to upstream registries - or - an environment where the upstream registries serving the k8s cluster have less than 5 nines availability.
+This distribution server is intended to satisfy **one** use case: the need for an in-cluster Kubernetes caching pull-through registry that enables the k8s cluster to run reliably in a network context with no-, intermittent-, or low latency connectivity to upstream registries - or - an environment where the upstream registries serving the k8s cluster have less than 5 nines availability.
 
-As a secondary capability the server can be loaded from image tarballs. This supports a scenario where the registry is loaded in one location, disconnected, transported, and then runs air-gapped at its remote home: you load the registry from image tarballs before shipment.
+As a secondary capability the server can be loaded from image tarballs. This supports a scenario where the registry is loaded in one location, disconnected, transported, and then runs air-gapped at its remote home.
 
 The goals of the project are:
 
@@ -27,7 +27,7 @@ To achieve this - the server simply uses the file system as the sum total of it'
 The basic usage scenario is:
 
 1. A client (containerd) pulls an image. The embedded [Echo](https://echo.labstack.com/) server handles the API calls.
-2. The Echo server delegates to the OCI Registry API handlers to implement the application logic.
+2. The Echo server delegates to the OCI Registry API handlers to implement the OCI Registry server logic.
 3. If the image is cached on the file system it is provided to the caller.
 4. Otherwise, the API handlers delegate to the embedded [Google Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md) code. To support this, containerd is configured to pass the upstream registry in the `X-Registry` header in step 1. (More on this below.)
 5. The Google Crane code builds the upstream registry URL using the `X-Registry` header value and pulls the image from the upstream as a tarball, returning it to the handler which unpacks it and saves it to the image store.
@@ -66,7 +66,7 @@ Add a `config_path` entry to `/etc/containerd/config.toml` to tell `containerd` 
    ...
 ```
 
-Then create a configuration directory and file for each upstream that will pull through the caching pull-through registry server. This is an example for `docker.io`. The file is `/etc/containerd/certs.d/docker.io/hosts.toml`. In this hypothetical example, the caching pull-through registry server is running on `192.168.0.49:8080`:
+Then create a configuration directory and file for each upstream that will pull from the caching pull-through registry server. This is an example for `docker.io`. The file is `/etc/containerd/certs.d/docker.io/hosts.toml`. In this hypothetical example, the caching pull-through registry server is running on `192.168.0.49:8080`:
 
 ```shell
 server = "http://192.168.0.49:8080"
@@ -80,7 +80,7 @@ server = "http://192.168.0.49:8080"
 
 ## Configuring the Server
 
-The server may need configuration information to connect to upstreams. By default, it will attempt anonymous plain HTTP access. Many OCI Distribution servers will reject HTTP and fail over to HTTPS. Then you're in the realm of PKI. Some servers require auth as well. To address all of these concerns the server accepts a command line parameter `--config-path` which identifies a configuration file in the following format:
+The OCI Registry server may need configuration information to connect to upstream registries. By default, it will attempt anonymous plain HTTP access. Many OCI Distribution servers will reject HTTP and fail over to HTTPS. Then you're in the realm of TLS and PKI. Some servers require auth as well. To address all of these concerns the OCI Registry server accepts an optional command line parameter `--config-path` which identifies a configuration file in the following format:
 
 ```
 - name: upstream one
@@ -98,14 +98,14 @@ The configuration file is a yaml list of upstream registry entries. Each entry s
 
 ```
 - name: my-upstream (or my-upstream:PORT)
-  description: Something that makes sense to (or omitted - its just for you)
+  description: Something that makes sense to you (or omit it - its optional)
   auth:
     user: theuser
     password: thepass
   tls:
-    ca: /fully/qualified/path/to/ca.crt
-    cert: ".../client.cert
-    key: ".../client.key
+    ca: /my/ca.crt
+    cert: /my/client.cert
+    key: /my/client.key
     insecure_skip_verify: true/false
 ```
 
@@ -113,35 +113,35 @@ The `auth` section implements basic auth, just like your `~/.docker/config.json`
 
 The `tls` section can implement multiple scenarios:
 
-1. One-way insecure TLS in which client certs are not provided to the remote, and the remote server cert is not validated:
+1. One-way insecure TLS, in which client certs are not provided to the remote, and the remote server cert is not validated:
 
    ```
    tls:
      insecure_skip_verify: true
    ```
 
-2. One-way **secure** TLS in which client certs are not provided to the remote, and the remote server cert **is** validated using the OS trust store:
+2. One-way **secure** TLS, in which client certs are not provided to the remote, and the remote server cert **is** validated using the OS trust store:
 
    ```
    tls:
-     insecure_skip_verify: false (or simply omit this - which defaults to false)
+     insecure_skip_verify: false (or simply omit since it defaults to false)
    ```
 
-3. One-way **secure** TLS in which client certs are not provided to the remote, and the remote server cert is validate using a **provided** CA cert
-
-   ```
-   tls:
-     ca: /fully/qualified/path/to/ca.crt
-   ```
-
-4. 2-way TLS (client certs are provided to the remote):
+3. One-way **secure** TLS, in which client certs are not provided to the remote, and the remote server cert is validate using a **provided** CA cert
 
    ```
    tls:
-     cert: "/fully/qualified/path/to/client.cert
-     key: ".../client.key
+     ca: /my/ca.crt
    ```
-2-way TLS can be implemented **with and without** remote server cert validation as described above in the various one-way TLS scenarios. Examples:
+
+4. mTLS (client certs are provided to the remote):
+
+   ```
+   tls:
+     cert: /my/client.cert
+     key: /my/client.key
+   ```
+mTLS can be implemented **with** and **without** remote server cert validation as described above in the various one-way TLS scenarios. Examples:
 
    ```
    - name foo.bar.1.io

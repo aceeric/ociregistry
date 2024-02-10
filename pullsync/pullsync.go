@@ -1,9 +1,9 @@
 package pullsync
 
 import (
-	"fmt"
-	"ociregistry/globals"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var ps *pullSyncer = newPullSyncer()
@@ -44,14 +44,14 @@ func newPullSyncer() *pullSyncer {
 // 'pullComplete' function uses the list of channels to notify all waiting
 // pullers.
 func enqueue(image string, ch chan bool) bool {
-	globals.Logger().Debug(fmt.Sprintf("enqueue image: %s, chan: %v", image, ch))
+	log.Debugf("enqueue image: %s, chan: %v", image, ch)
 	ps.mu.Lock()
 	chans, exists := ps.pullMap[image]
 	if exists {
-		globals.Logger().Debug(fmt.Sprintf("image already enqueued: %s - append chan %v", image, ch))
+		log.Debugf("image already enqueued: %s append chan %v", image, ch)
 		ps.pullMap[image] = append(chans, ch)
 	} else {
-		globals.Logger().Debug(fmt.Sprintf("image not enqueued: %s - enqueing with chan: %v", image, ch))
+		log.Debugf("image not enqueued: %s enqueing with chan: %v", image, ch)
 		ps.pullMap[image] = []chan bool{ch}
 	}
 	ps.mu.Unlock()
@@ -62,24 +62,24 @@ func enqueue(image string, ch chan bool) bool {
 // complete, and then deletes the image key from the queue co-managed by this function
 // and the enqueue function.
 func pullComplete(image string) {
-	globals.Logger().Debug(fmt.Sprintf("pull image: %s", image))
+	log.Debugf("pull image: %s", image)
 	ps.mu.Lock()
 	chans, exists := ps.pullMap[image]
 	if exists {
-		globals.Logger().Debug(fmt.Sprintf("signaling waiters for image: %s", image))
+		log.Debugf("signaling waiters for image: %s", image)
 		for _, ch := range chans {
 			defer func() {
 				if err := recover(); err != nil {
-					globals.Logger().Debug(fmt.Sprintf("write to closed channel for image: %s - ignore", image))
+					log.Debugf("write to closed channel for image: %s ignore", image)
 				}
 			}()
-			globals.Logger().Debug(fmt.Sprintf("signal done for chan: %v", ch))
+			log.Debugf("signal done for chan: %v", ch)
 			ch <- true
 		}
-		globals.Logger().Debug(fmt.Sprintf("remove image %s from map", image))
+		log.Debugf("remove image %s from map", image)
 		delete(ps.pullMap, image)
 	} else {
-		globals.Logger().Debug(fmt.Sprintf("not found image: %s", image))
+		log.Debugf("not found image: %s", image)
 	}
 	//ps.imageCache[image] = true
 	ps.mu.Unlock()

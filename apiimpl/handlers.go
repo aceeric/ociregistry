@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	. "ociregistry/api/models"
-	"ociregistry/globals"
 	"ociregistry/helpers"
 	"ociregistry/pullsync"
 	"ociregistry/types"
@@ -13,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	_ "crypto/sha256"
@@ -20,13 +20,28 @@ import (
 
 	"github.com/labstack/echo/v4"
 	digest "github.com/opencontainers/go-digest"
+	log "github.com/sirupsen/logrus"
+)
+
+// manifestWithDigest pairs a manifest with its digest
+type manifestWithDigest struct {
+	mb   []byte
+	dgst digest.Digest
+}
+
+// in-mem cache of manifests becaues calculating a manifest digest takes
+// CPU cycles and we can avoid repetitively doing it by saving it the
+// first time and re-using it
+var (
+	mu          sync.Mutex
+	manifestMap = make(map[string]manifestWithDigest)
 )
 
 // GET /v2/auth
 // everyone authenticates successfully and gets the same token which is
 // subsequently ignored by the server
 func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
-	globals.Logger().Info(fmt.Sprintf("get auth - scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization))
+	log.Infof("get auth scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization)
 	logRequestHeaders(ctx)
 	body := &types.Token{Token: "FROBOZZ"}
 	ctx.Response().Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
@@ -39,15 +54,15 @@ func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
 // does not require authentication (would return 401 with Www-Authenticate hdr
 // to force authentication)
 func handleV2Default(r *OciRegistry, ctx echo.Context) error {
-	globals.Logger().Info("get /v2/")
+	log.Info("get /v2/")
 	logRequestHeaders(ctx)
 	return ctx.JSON(http.StatusOK, "true")
 }
 
 // GET /v2/{org}/{image}/blobs/{digest}
 func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string, image string, digest string) error {
+	log.Debugf("get blob org: %s, image: %s, digest: %s", org, image, digest)
 	logRequestHeaders(ctx)
-	globals.Logger().Debug(fmt.Sprintf("get blob - org: %s, image: %s, digest: %s", org, image, digest))
 
 	if strings.HasPrefix(digest, "sha256:") {
 		// handle client requesting manifest using the /blobs/ endpoint using the
@@ -67,7 +82,7 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 	if err != nil {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	globals.Logger().Debug(fmt.Sprintf("found blob - %s", blob_file))
+	log.Debugf("found blob %s", blob_file)
 	fi, _ := os.Stat(blob_file)
 
 	now := time.Now()
@@ -89,8 +104,8 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 
 // GET or HEAD /v2/{image}/manifests/{reference} or /v2/{org}/{image}/manifests/{reference}
 func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org string, image string, reference string, verb string) error {
+	log.Infof("%s manifest org: %s, image: %s, ref: %s", verb, org, image, reference)
 	logRequestHeaders(ctx)
-	globals.Logger().Info(fmt.Sprintf("%s manifest - org: %s, image: %s, ref: %s", verb, org, image, reference))
 
 	if strings.HasPrefix(reference, "sha256:") {
 		reference = xlatManifestDigest(imagePath, reference)
@@ -98,12 +113,20 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 			return ctx.JSON(http.StatusNotFound, "")
 		}
 	}
+	manifestRef := filepath.Join(org, image, reference)
+
+	mu.Lock()
+	mfst, exists := manifestMap[manifestRef]
+	mu.Unlock()
+	if exists {
+		return sendManifest(ctx, mfst.mb, mfst.dgst, verb)
+	}
 
 	var manifest_path string = ""
 
 	iterations := 2
 	for i := 0; i < iterations; i++ {
-		manifest_path = getManifestPath(imagePath, filepath.Join(org, image, reference))
+		manifest_path = getManifestPath(imagePath, manifestRef)
 		if manifest_path == "" {
 			var remote = ctx.Request().Header["X-Registry"]
 			if len(remote) != 1 {
@@ -120,7 +143,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	if err != nil {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	globals.Logger().Debug(fmt.Sprintf("found manifest - %s", manifest_path))
+	log.Debugf("found manifest %s", manifest_path)
 
 	var mjson []types.ManifestJson
 	jerr := json.Unmarshal(b, &mjson)
@@ -148,12 +171,12 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 		},
 	}
 	for i := 0; i < len(mjson[0].Layers); i++ {
-		globals.Logger().Debug(fmt.Sprintf("get layer - %s", mjson[0].Layers[i]))
+		log.Debugf("get layer %s", mjson[0].Layers[i])
 		layer_path := getBlobPath(imagePath, mjson[0].Layers[i])
 		if layer_path == "" {
 			return ctx.JSON(http.StatusNotFound, "")
 		}
-		globals.Logger().Debug(fmt.Sprintf("found layer - %s", layer_path))
+		log.Debugf("found layer %s", layer_path)
 		fi, _ := os.Stat(layer_path)
 		tmpdgst = helpers.GetSHAfromPath(mjson[0].Layers[i])
 		if tmpdgst == "" {
@@ -177,12 +200,24 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	mblen := len(mb)
 	cnt, _ := digester.Hash().Write(mb)
 	dgst := digester.Digest()
-	globals.Logger().Debug(fmt.Sprintf("computed digest for ref %s = sha256:%s (cnt: %d / mblen:%d)", reference, dgst.Hex(), cnt, mblen))
+	log.Debugf("computed digest for ref %s = sha256:%s (cnt: %d / mblen:%d)", reference, dgst.Hex(), cnt, mblen)
 
+	// in case a client asks for the manifest in the future by "sha256:..."
 	saveManifestDigest(imagePath, reference, dgst.Hex())
 
-	ctx.Response().Header().Add("Content-Length", strconv.Itoa(mblen))
-	ctx.Response().Header().Add("Docker-Content-Digest", fmt.Sprintf("sha256:%s", dgst.Hex()))
+	// in-mem cache for faster lookup next time through
+	mu.Lock()
+	manifestMap[manifestRef] = manifestWithDigest{mb, dgst}
+	mu.Unlock()
+
+	return sendManifest(ctx, mb, dgst, verb)
+}
+
+// sendManifest returns an image manifest to the caller with headers for a GET, and
+// just returns HTTP 200 for a HEAD.
+func sendManifest(ctx echo.Context, mb []byte, dgst digest.Digest, verb string) error {
+	ctx.Response().Header().Add("Content-Length", strconv.Itoa(len(mb)))
+	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+dgst.Hex())
 	ctx.Response().Header().Add("Vary", "Cookie")
 	ctx.Response().Header().Add("Strict-Transport-Security", "max-age=63072000; preload")
 	ctx.Response().Header().Add("X-Frame-Options", "DENY")

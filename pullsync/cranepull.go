@@ -2,7 +2,8 @@ package pullsync
 
 import (
 	"fmt"
-	"ociregistry/globals"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/name"
@@ -28,7 +29,7 @@ func cranePull(image string, path string) error {
 	}
 	opts, err := configFor(ref.Context().Registry.Name())
 	if err != nil {
-		globals.Logger().Warn(err.Error())
+		log.Warn(err.Error())
 	}
 	rmt, err := remote.Get(ref, opts...)
 	if err != nil {

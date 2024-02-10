@@ -15,6 +15,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	middleware "github.com/oapi-codegen/echo-middleware"
+	log "github.com/sirupsen/logrus"
 )
 
 type cmdLine struct {
@@ -57,11 +58,10 @@ func main() {
 	// set up a basic Echo router
 	e := echo.New()
 
-	globals.LogLevel(args.logLevel)
-	defer globals.Logger().Sync()
+	globals.SetLogLevel(args.logLevel)
 
 	// have Echo use the global logging
-	e.Use(globals.EchoMiddleware(globals.Logger()))
+	e.Use(globals.GetEchoLoggingFunc())
 
 	pullsync.ConfigLoader(args.configPath)
 
@@ -79,7 +79,7 @@ func main() {
 	e.HideBanner = true
 	err = e.Start(net.JoinHostPort("0.0.0.0", args.port))
 	if err != nil {
-		globals.Logger().Error(err.Error())
+		log.Error(err.Error())
 	}
 }
 

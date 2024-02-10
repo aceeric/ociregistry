@@ -2,13 +2,13 @@ package importer
 
 import (
 	"errors"
-	"fmt"
 	"math"
-	"ociregistry/globals"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -46,7 +46,7 @@ func Importer(tarfilePath string) error {
 	} else if !fi.Mode().IsDir() {
 		return errors.New("path exists and is not a directory: " + tarfilePath)
 	}
-	globals.Logger().Debug("initializing watcher for " + tarfilePath)
+	log.Debug("initializing watcher for " + tarfilePath)
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		panic("fsnotify NewWatched failed")
@@ -87,7 +87,7 @@ func Importer(tarfilePath string) error {
 					}
 				}
 				if !supportedExt {
-					globals.Logger().Warn("file has unsupported extension. Ignoring: " + event.Name)
+					log.Warn("file has unsupported extension. Ignoring: " + event.Name)
 					continue
 				}
 
@@ -114,7 +114,7 @@ func Importer(tarfilePath string) error {
 		panic("fsnotify watcher.Add failed")
 	}
 	<-done
-	globals.Logger().Debug("terminating watcher")
+	log.Debug("terminating watcher")
 	return nil
 }
 
@@ -127,15 +127,15 @@ func handleArchive(tarfilePath string, e fsnotify.Event) {
 	mu.Unlock()
 	if _, err := os.Stat(e.Name); err == nil {
 		if err := Extract(e.Name, tarfilePath); err == nil {
-			globals.Logger().Debug("removing: " + e.Name)
+			log.Debug("removing: " + e.Name)
 			err := os.Remove(e.Name)
 			if err != nil {
-				globals.Logger().Error(fmt.Sprintf("error attempting to remove file %s. Error: %s", e.Name, err))
+				log.Errorf("error attempting to remove file %s. Error: %s", e.Name, err)
 			}
 		} else {
-			globals.Logger().Error(fmt.Sprintf("error extracting archive: %s. Error: %s", e.Name, err))
+			log.Errorf("error extracting archive: %s. Error: %s", e.Name, err)
 		}
 	} else {
-		globals.Logger().Debug("file not found (already processed): " + e.Name)
+		log.Debug("file not found (already processed): " + e.Name)
 	}
 }

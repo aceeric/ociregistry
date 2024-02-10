@@ -12,15 +12,20 @@ import (
 	"path/filepath"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/labstack/echo/v4"
 )
 
 // logRequestHeaders logs the request headers at the DEBUG level
 func logRequestHeaders(ctx echo.Context) {
+	if !log.IsLevelEnabled(log.DebugLevel) {
+		return
+	}
 	hdrs := ctx.Request().Header
 	for h := range hdrs {
 		v := strings.Join(hdrs[h], ",")
-		globals.Logger().Debug(fmt.Sprintf("HDR: %s=%s", h, v))
+		log.Debugf("HDR: %s=%s", h, v)
 	}
 }
 
@@ -78,18 +83,18 @@ func getManifestPath(imagesBase string, manifestPath string) string {
 	return found
 }
 
-// saveManifestDigest creates a file in the 'manifest_map' path whose name is a sha
-// and whose content is a tag. Enables retrieval of a manifest for a ref like
-// "sha256:zzz" where "sha256:zzz" is the sha of the a manifest with tag "latest".
-// This is the companion function to xlatManifestDigest. Some clients (containerd) get
-// the image manifest using a SHA rather than a tag. E.g. you'll see traffic like
+// saveManifestDigest creates a file <imagePath>/manifest_map/<SHA> whose content is a
+// tag. Enables retrieval of a manifest for a ref like "sha256:zzz" where "sha256:zzz"
+// is the sha of the a manifest with tag "latest". This is the companion function to
+// xlatManifestDigest. Some clients (containerd) get the image manifest using a SHA
+// rather than a tag. E.g. you'll see traffic like:
 // GET v2/swaggerapi/swagger-editor/manifests/sha256:3eaf5ca0004...
-func saveManifestDigest(image_path string, reference string, manifest_sha string) {
-	map_path := filepath.Join(image_path, "manifest_map")
+func saveManifestDigest(imagePath string, reference string, SHA string) {
+	map_path := filepath.Join(imagePath, "manifest_map")
 	if _, err := os.Stat(map_path); os.IsNotExist(err) {
 		os.Mkdir(map_path, 0775)
 	}
-	map_file := filepath.Join(map_path, "sha256:"+manifest_sha)
+	map_file := filepath.Join(map_path, "sha256:"+SHA)
 	if _, err := os.Stat(map_file); err != nil {
 		f, _ := os.Create(map_file)
 		defer f.Close()
@@ -97,15 +102,16 @@ func saveManifestDigest(image_path string, reference string, manifest_sha string
 	}
 }
 
-// xlatManifestDigest reads <image_path>/manifest_map/<manifest_sha> if it exists
-// and returns the contents. Basically it xlats a SHA to a ref like "latest" or
-// "v1.0.0". This is the companion function to saveManifestDigest.
-func xlatManifestDigest(image_path string, manifest_sha string) string {
-	map_path := filepath.Join(image_path, "manifest_map")
+// xlatManifestDigest reads <imagePath>/manifest_map/<reference> if it exists
+// and returns the contents. In other words it uses a file on the file system
+// to translate a SHA to a ref like "latest" or "v1.0.0". This is the companion
+// function to saveManifestDigest.
+func xlatManifestDigest(imagePath string, reference string) string {
+	map_path := filepath.Join(imagePath, "manifest_map")
 	if _, err := os.Stat(map_path); os.IsNotExist(err) {
 		return ""
 	}
-	map_file := filepath.Join(map_path, manifest_sha)
+	map_file := filepath.Join(map_path, reference)
 	if _, err := os.Stat(map_file); err == nil {
 		b, _ := os.ReadFile(map_file)
 		return string(b)

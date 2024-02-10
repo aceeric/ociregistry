@@ -4,11 +4,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"fmt"
 	"net/http"
-	"ociregistry/globals"
 	"os"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -118,7 +118,7 @@ func configFor(registry string) ([]remote.Option, error) {
 			if err == nil {
 				cp.AppendCertsFromPEM(caCert)
 			} else {
-				globals.Logger().Error(fmt.Sprintf("unable to load CA for config entry %s from file: %s", registry, regCfg.Tls.CA))
+				log.Errorf("unable to load CA for config entry %s from file: %s", registry, regCfg.Tls.CA)
 			}
 		}
 		if regCfg.Tls.Cert != "" && regCfg.Tls.Key != "" {
@@ -126,7 +126,7 @@ func configFor(registry string) ([]remote.Option, error) {
 			if err == nil {
 				clientCerts = []tls.Certificate{cert}
 			} else {
-				globals.Logger().Error(fmt.Sprintf("unable to load client cert and/or key for config entry %s from files: cert: %s, key: %s", registry, regCfg.Tls.Cert, regCfg.Tls.Key))
+				log.Errorf("unable to load client cert and/or key for config entry %s from files: cert: %s, key: %s", registry, regCfg.Tls.Cert, regCfg.Tls.Key)
 			}
 		}
 		transport := remote.DefaultTransport.(*http.Transport).Clone()

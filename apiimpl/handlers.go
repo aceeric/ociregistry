@@ -65,12 +65,12 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 	logRequestHeaders(ctx)
 
 	if strings.HasPrefix(digest, "sha256:") {
-		// handle client requesting manifest using the /blobs/ endpoint using the
-		// Docker-Content-Digest value provided by a prior call to the
-		// manifests/reference endpoint
-		manifest_ref := xlatManifestDigest(imagePath, digest)
+		_, manifest_ref := manifestIsUnderDigest(imagePath, org, image, digest)
+		if manifest_ref == "" {
+			_, manifest_ref = xlatManifestDigest(imagePath, digest)
+		}
 		if manifest_ref != "" {
-			return handleOrgImageManifestsReference(r, ctx, org, image, manifest_ref, http.MethodGet)
+			return handleOrgImageManifestsReference(r, ctx, org, image, manifest_ref, http.MethodGet, nil)
 		}
 	}
 
@@ -103,14 +103,19 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 }
 
 // GET or HEAD /v2/{image}/manifests/{reference} or /v2/{org}/{image}/manifests/{reference}
-func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org string, image string, reference string, verb string) error {
+func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org string, image string, reference string, verb string, namespace *string) error {
 	log.Infof("%s manifest org: %s, image: %s, ref: %s", verb, org, image, reference)
 	logRequestHeaders(ctx)
+	var isShaRef = false
 
 	if strings.HasPrefix(reference, "sha256:") {
-		reference = xlatManifestDigest(imagePath, reference)
-		if reference == "" {
-			return ctx.JSON(http.StatusNotFound, "")
+		isShaRef = true
+		_, ref := manifestIsUnderDigest(imagePath, org, image, reference)
+		if ref == "" {
+			_, ref = xlatManifestDigest(imagePath, reference)
+		}
+		if ref != "" {
+			reference = ref
 		}
 	}
 	manifestRef := filepath.Join(org, image, reference)
@@ -122,28 +127,35 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 		return sendManifest(ctx, mfst.mb, mfst.dgst, verb)
 	}
 
-	var manifest_path string = ""
+	var manifestPath string = ""
+	remote := parseRemoteNamespace(ctx, namespace)
 
-	iterations := 2
-	for i := 0; i < iterations; i++ {
-		manifest_path = getManifestPath(imagePath, manifestRef)
-		if manifest_path == "" {
-			var remote = ctx.Request().Header["X-Registry"]
-			if len(remote) != 1 {
+	// try once to get the manifest from cache and - failing that - once from the remote
+	// if the remote is defined
+	for i := 0; i <= 1; i++ {
+		manifestPath = getManifestPath(imagePath, manifestRef)
+		if manifestPath == "" {
+			if remote == "" {
 				break
 			}
 			// pull through from the remote registry specified by the X-Registry header
-			pullsync.PullImage(fmt.Sprintf("%s/%s/%s:%s", remote[0], org, image, reference), imagePath, 60000)
+			var separator = ":"
+			if isShaRef {
+				separator = "@"
+			}
+			pullsync.PullImage(fmt.Sprintf("%s/%s/%s%s%s", remote, org, image, separator, reference), imagePath, 60000)
+			manifestRef = filepath.Join(org, image, stripPrefix(reference))
+			manifestPath = getManifestPath(imagePath, manifestRef)
 		}
 	}
-	if manifest_path == "" {
+	if manifestPath == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	b, err := os.ReadFile(manifest_path)
+	b, err := os.ReadFile(manifestPath)
 	if err != nil {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	log.Debugf("found manifest %s", manifest_path)
+	log.Debugf("found manifest %s", manifestPath)
 
 	var mjson []types.ManifestJson
 	jerr := json.Unmarshal(b, &mjson)
@@ -229,4 +241,26 @@ func sendManifest(ctx echo.Context, mb []byte, dgst digest.Digest, verb string) 
 	} else {
 		return ctx.NoContent(http.StatusOK)
 	}
+}
+
+// parseRemoteNamespace accepts the remote registry to pull from in either the X-Registry header,
+// or a query param 'ns' - such as is passed by containerd. E.g. if containerd is configured
+// to mirror, then when it pull from the mirror is passes the regstry being mirrored like so:
+// https://mymirror.io/v2/image_name/manifests/tag_name?ns=myregistry.io:5000.
+func parseRemoteNamespace(ctx echo.Context, namespace *string) string {
+	hdr, exists := ctx.Request().Header["X-Registry"]
+	if exists && len(hdr) == 1 {
+		return hdr[0]
+	}
+	if namespace != nil {
+		return *namespace
+	}
+	return ""
+}
+
+func stripPrefix(reference string) string {
+	if strings.HasPrefix(reference, "sha256:") {
+		return strings.Split(reference, ":")[1]
+	}
+	return reference
 }

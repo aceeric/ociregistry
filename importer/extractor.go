@@ -7,24 +7,26 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"ociregistry/globals"
 	"ociregistry/helpers"
 	"ociregistry/types"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
 // Extract inflates the archive at the path specified by the 'fileName' arg
-// into the directory specified by the 'destPath' arg. The blobs are inflated
+// into the directory specified by the 'tarfilePath' arg. The blobs are inflated
 // first, and then non-blobs are handled last. The reason for this is that
 // other threads of execution in the server use the presence of the 'manifest.json'
-// file to determine whether the image is present. So - we want to create the
+// file to determine whether the image is cached. So - we want to create the
 // manifest last - otherwise other threads might believe the image is cached
 // and try to get image blobs which would not be present if the tarball was
 // inflated in a random order.
-func Extract(fileName string, tarfilePath string) error {
+func Extract(fileName string, tarfilePath string, image string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return err
@@ -95,7 +97,36 @@ func Extract(fileName string, tarfilePath string) error {
 	if jerr != nil {
 		return jerr
 	}
-	manifestPath, err := createAllDirs2(m[0].RepoTags[0], tarfilePath)
+	var imageTag = ""
+	if m[0].RepoTags != nil {
+		imageTag = m[0].RepoTags[0]
+	}
+
+	if strings.Contains(image, "@sha256:") {
+		// image was pulled by digest rather than tag so build path
+		// from image and ensure repotags looks like `"RepoTags": null,`
+		// because crane pull stuffs 'i-was-a-digest' in there
+		expr := "(.*)@sha256:([a-f0-9]{64}).*"
+		re := regexp.MustCompile(expr)
+		matches := re.FindStringSubmatch(image)
+		if len(matches) == 3 {
+			imageTag = filepath.Join(matches[1], matches[2])
+		} else {
+			return fmt.Errorf("unable to parse image: %s", image)
+		}
+		m[0].RepoTags = nil
+		m, err := json.Marshal(m)
+		if err != nil {
+			return err
+		}
+		z := new(bytes.Buffer)
+		z.Write(m)
+		nonBlobs["manifest.json"] = z
+	}
+	if imageTag == "" || strings.Contains(imageTag, "i--was-a-digest") {
+		return fmt.Errorf("unable to parse image. tag: %s, image: %s", imageTag, image)
+	}
+	manifestPath, err := createAllDirs2(imageTag, tarfilePath)
 	if err != nil {
 		return err
 	}

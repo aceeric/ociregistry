@@ -45,10 +45,10 @@ type ServerInterface interface {
 	V2DeleteImageManifestsReference(ctx echo.Context, image string, reference string) error
 
 	// (GET /v2/{image}/manifests/{reference})
-	V2GetImageManifestsReference(ctx echo.Context, image string, reference string) error
+	V2GetImageManifestsReference(ctx echo.Context, image string, reference string, params V2GetImageManifestsReferenceParams) error
 
 	// (HEAD /v2/{image}/manifests/{reference})
-	V2HeadImageManifestsReference(ctx echo.Context, image string, reference string) error
+	V2HeadImageManifestsReference(ctx echo.Context, image string, reference string, params V2HeadImageManifestsReferenceParams) error
 
 	// (PUT /v2/{image}/manifests/{reference})
 	V2PutImageManifestsReference(ctx echo.Context, image string, reference string) error
@@ -84,10 +84,10 @@ type ServerInterface interface {
 	V2DeleteOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error
 
 	// (GET /v2/{org}/{image}/manifests/{reference})
-	V2GetOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error
+	V2GetOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2GetOrgImageManifestsReferenceParams) error
 
 	// (HEAD /v2/{org}/{image}/manifests/{reference})
-	V2HeadOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error
+	V2HeadOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2HeadOrgImageManifestsReferenceParams) error
 
 	// (PUT /v2/{org}/{image}/manifests/{reference})
 	V2PutOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error
@@ -275,8 +275,17 @@ func (w *ServerInterfaceWrapper) V2GetImageManifestsReference(ctx echo.Context) 
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params V2GetImageManifestsReferenceParams
+	// ------------- Optional query parameter "ns" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "ns", ctx.QueryParams(), &params.Ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2GetImageManifestsReference(ctx, image, reference)
+	err = w.Handler.V2GetImageManifestsReference(ctx, image, reference, params)
 	return err
 }
 
@@ -299,8 +308,17 @@ func (w *ServerInterfaceWrapper) V2HeadImageManifestsReference(ctx echo.Context)
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params V2HeadImageManifestsReferenceParams
+	// ------------- Optional query parameter "ns" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "ns", ctx.QueryParams(), &params.Ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2HeadImageManifestsReference(ctx, image, reference)
+	err = w.Handler.V2HeadImageManifestsReference(ctx, image, reference, params)
 	return err
 }
 
@@ -668,8 +686,17 @@ func (w *ServerInterfaceWrapper) V2GetOrgImageManifestsReference(ctx echo.Contex
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params V2GetOrgImageManifestsReferenceParams
+	// ------------- Optional query parameter "ns" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "ns", ctx.QueryParams(), &params.Ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2GetOrgImageManifestsReference(ctx, org, image, reference)
+	err = w.Handler.V2GetOrgImageManifestsReference(ctx, org, image, reference, params)
 	return err
 }
 
@@ -700,8 +727,17 @@ func (w *ServerInterfaceWrapper) V2HeadOrgImageManifestsReference(ctx echo.Conte
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params V2HeadOrgImageManifestsReferenceParams
+	// ------------- Optional query parameter "ns" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "ns", ctx.QueryParams(), &params.Ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2HeadOrgImageManifestsReference(ctx, org, image, reference)
+	err = w.Handler.V2HeadOrgImageManifestsReference(ctx, org, image, reference, params)
 	return err
 }
 
@@ -794,20 +830,20 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+yZQVPbOhDHv4pnz8Z2Au8dfOMB85oZCgylvXQ4CHlja0aWhCSHphl/946cuDQhdhM1",
-	"dCCTUzyR/yvtT7trrT0D/GZRC8LPJTWQzuoQmBhLSGdApbCE2vmfGRqqmbJMCkjhpuL8SAo+DZS7soWW",
-	"VV4ElNCCiTzQmDNj9RRC4IyiMOjsCVIipHCqCC0wGEYJhFBpDikU1qo0jp+eniLSjEZS5/FCauLL0dnF",
-	"1aeLo2GURIUtOdQhWGa5s3Z9NgpuF9MFR8G1QnF6MwqOG+sT1Ga+4EGURInTSYWCKAYpHEdJdAwhKGIL",
-	"5znEC6cFNk67WzVxDo8ySOFsMRCCRqOkW5i7aZgkDlBd1yHEk2FjI8c1+i/DcxyTindZCOHk+WKwZJNU",
-	"tuixe+qGnR+alGhRG0i/zoA5twskGWoIW/bOktTseyNvFvJYMY0ZpFZXGIKhBZbETWKnygmM1UzkUNfh",
-	"wuJjhc2+LgwaKhWCjxD1hNF+6X03qWVAM1aSHOv4gcsHE88ylqOxtZNkyNHi+t1wIyMn/M/JzhtRB0cX",
-	"I89rb2bzordsJ2un3NzQSyTDFslJe/HPnE3YFS//o33/bidLbjtvXayvc/cDkmz//F2J/JIINkZjTTzT",
-	"OEaNguLmCfCxVd+22r8KSP8y605SIfHOiT0h4ZEde+u5qtbu+E21Vzs+6KgPbpr2wVgpLknWCJQ066lI",
-	"Y69IOa+Vnxf3b8Kj+dnBgeJnsdxaWcpKeAnHWpbgRbuz5PTyXy3R3SVpdSe2C1HvLXmdCD15mZnE0mJt",
-	"FLqBvXL+xSlt8O/v69M7JuCf3T2lrT/HmoVq1MsNQH9y3baaLY6FO+LqcSrsgEq0ZWNC7d1UefdT/Wgt",
-	"yU3M2fyR0U/0juTmkr02yhUCwqfsc7J1JHZRkjqv/6AJvda5V4Midb6DQHz/3eyBn+fB/wBuu9T27rJb",
-	"0J7Nxtvi/Tba9QPSnaX/AaHnC4QDwE3eRNRh87a/BfH8ycekcSwpa78WxUSxeDKE+r7+EQAA//9mNkBT",
-	"lxoAAA==",
+	"H4sIAAAAAAAC/+yZUU/bMBDHv0p0zyFJC9tD3higrRIDxNheJh6Mc00sJbaxnbKuynefnCZjLU3WemVQ",
+	"1KdGdf5n3893l5wzA/xhUHGSnwqqIZ5VPjA+FhDPgApuCDXzPxPUVDFpmOAQw1WZ5weC51NP2iuTKVGm",
+	"mUcJzRhPPYUp00ZNwYecUeQarT1OCoQYjiWhGXrDIAIfSpVDDJkxMg7Dh4eHgNSjgVBp2Eh1eD46Obv4",
+	"cnYwDKIgM0UOlQ+GmdxauzwZedfNdN6BdymRH1+NvMPa+gSVni94EERBZHVCIieSQQyHQRQcgg+SmMx6",
+	"DmHjNMfaaXurItbhUQIxnDQDPijUUtiF2ZuGUWQBVVXlQzgZ1jZSXKH/NjzFMSnzLgs+HD1eDBZsktJk",
+	"PXaP7bD1Q5ECDSoN8fcZMOt2hiRBBX7L3loSiv2s5fVC7kumMIHYqBJ90DTDgthJzFRagTaK8RSqym8s",
+	"3pdY72tjUFMhEVyEqCaM9ktvu0ktApqxgqRYhXe5uNPhLGEpalNZSYI5Gly9G3ZkZIUfrOy0FnVwtDHy",
+	"uPZ6Nid6i3aSdsr1DT1FMmyRHLUX7+Zs/K54+Yhm992OFty23tpYX+XuJyTJ2/N3KfILwtkYtdHhTOEY",
+	"FXKK6yfA51Z93Wr/KyD1x6xbSYXIOSd2kkRHieUanj2n9rwWeMlyZXRdleYt5dmgoxbZadqHcClzQZJa",
+	"IIVeTUVoc0GKeV3+2ty/Do/6Zwsb/rswb6wsRMmdhGMlCnCi3VneevkvPw66y9/yTmwWos5b8jwRevQ0",
+	"M4mh2cootANvyvknb4SD93+vTztMwD27e0pbf47VC1WoFpuN/uS6bjUbvIJuiavDG2gHVKIMGxNqbqbS",
+	"uXfrR2tIqsOczR8Z/URvSKrP2XOjXH5LcCn7Odk4ErsoCZVW/9DwXqrUqRkSKt1CIO5+57zn59gu7MFt",
+	"ltrOHX0L2rHZeF28X8fRwB7pC50x7MG/yGHFHvs6px6VX3/FaEE8fsrScRgKytqvYCGRLJwMobqtfgUA",
+	"AP//Q+EbG28bAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

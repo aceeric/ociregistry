@@ -69,7 +69,11 @@ func getManifestPath(imagesBase string, manifestPath string) string {
 	var found string = ""
 	filepath.WalkDir(imagesBase, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return err
+			// ignore errors
+			return nil
+		}
+		if strings.HasPrefix(d.Name(), ".") || strings.HasPrefix(path, imagesBase+"/.") {
+			return nil
 		}
 		if strings.HasSuffix(path, filepath.Join(imagesBase, globals.BlobsDir)) && d.IsDir() {
 			return nil
@@ -106,15 +110,28 @@ func saveManifestDigest(imagePath string, reference string, SHA string) {
 // and returns the contents. In other words it uses a file on the file system
 // to translate a SHA to a ref like "latest" or "v1.0.0". This is the companion
 // function to saveManifestDigest.
-func xlatManifestDigest(imagePath string, reference string) string {
+func xlatManifestDigest(imagePath string, reference string) (bool, string) {
 	map_path := filepath.Join(imagePath, "manifest_map")
 	if _, err := os.Stat(map_path); os.IsNotExist(err) {
-		return ""
+		return false, ""
 	}
 	map_file := filepath.Join(map_path, reference)
 	if _, err := os.Stat(map_file); err == nil {
 		b, _ := os.ReadFile(map_file)
-		return string(b)
+		return false, string(b)
 	}
-	return ""
+	return false, ""
+}
+
+// manifestIsUnderDigest finds a manifest that was pulled by digest - in this case
+// there's no image tag so we store it under it's digest.
+func manifestIsUnderDigest(imagesBase, org, image, digest string) (bool, string) {
+	if strings.Contains(digest, "sha256:") {
+		digest = strings.Split(digest, ":")[1]
+	}
+	manifestPath := filepath.Join(org, image, digest)
+	if getManifestPath(imagesBase, manifestPath) != "" {
+		return true, digest
+	}
+	return false, ""
 }

@@ -44,14 +44,13 @@ func newPullSyncer() *pullSyncer {
 // 'pullComplete' function uses the list of channels to notify all waiting
 // pullers.
 func enqueue(image string, ch chan bool) bool {
-	log.Debugf("enqueue image: %s, chan: %v", image, ch)
 	ps.mu.Lock()
 	chans, exists := ps.pullMap[image]
 	if exists {
-		log.Debugf("image already enqueued: %s append chan %v", image, ch)
+		log.Debugf("image %s already enqueued, append chan %v to waiters list", image, ch)
 		ps.pullMap[image] = append(chans, ch)
 	} else {
-		log.Debugf("image not enqueued: %s enqueing with chan: %v", image, ch)
+		log.Debugf("enqueueing image %s with chan: %v", image, ch)
 		ps.pullMap[image] = []chan bool{ch}
 	}
 	ps.mu.Unlock()

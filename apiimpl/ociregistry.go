@@ -55,23 +55,23 @@ func (r *OciRegistry) V2GetOrgImageBlobsDigest(ctx echo.Context, org string, ima
 }
 
 // HEAD /v2/{image}/manifests/{reference}
-func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image string, reference string) error {
-	return handleOrgImageManifestsReference(r, ctx, library, image, reference, http.MethodHead)
+func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image string, reference string, params V2HeadImageManifestsReferenceParams) error {
+	return handleOrgImageManifestsReference(r, ctx, library, image, reference, http.MethodHead, params.Ns)
 }
 
 // HEAD /v2/{org}/{image}/manifests/{reference}
-func (r *OciRegistry) V2HeadOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
-	return handleOrgImageManifestsReference(r, ctx, org, image, reference, http.MethodHead)
+func (r *OciRegistry) V2HeadOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2HeadOrgImageManifestsReferenceParams) error {
+	return handleOrgImageManifestsReference(r, ctx, org, image, reference, http.MethodHead, params.Ns)
 }
 
 // GET /v2/{image}/manifests/{reference}
-func (r *OciRegistry) V2GetImageManifestsReference(ctx echo.Context, image string, reference string) error {
-	return handleOrgImageManifestsReference(r, ctx, library, image, reference, http.MethodGet)
+func (r *OciRegistry) V2GetImageManifestsReference(ctx echo.Context, image string, reference string, params V2GetImageManifestsReferenceParams) error {
+	return handleOrgImageManifestsReference(r, ctx, library, image, reference, http.MethodGet, params.Ns)
 }
 
 // GET /v2/{org}/{image}/manifests/{reference}
-func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
-	return handleOrgImageManifestsReference(r, ctx, org, image, reference, http.MethodGet)
+func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2GetOrgImageManifestsReferenceParams) error {
+	return handleOrgImageManifestsReference(r, ctx, org, image, reference, http.MethodGet, params.Ns)
 }
 
 // unimplemented methods of the OCI distribution spec

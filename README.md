@@ -1,4 +1,4 @@
-# Pull-only Pull-through Caching OCI Distribution Server
+# EXPERIMENTAL Pull-only Pull-through Caching OCI Distribution Server
 
 This project is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 

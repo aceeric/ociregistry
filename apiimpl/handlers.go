@@ -26,7 +26,7 @@ import (
 // manifestWithDigest pairs a manifest with its digest
 type manifestWithDigest struct {
 	mb   []byte
-	dgst digest.Digest
+	dgst string
 }
 
 // in-mem cache of manifests becaues calculating a manifest digest takes
@@ -45,7 +45,7 @@ func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
 	logRequestHeaders(ctx)
 	body := &types.Token{Token: "FROBOZZ"}
 	ctx.Response().Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
-	ctx.Response().Header().Add("Vary", "Cookie")
+	//ctx.Response().Header().Add("Vary", "Cookie")
 	ctx.Response().Header().Add("Strict-Transport-Security", "max-age=63072000; preload")
 	return ctx.JSON(http.StatusOK, body)
 }
@@ -107,8 +107,10 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	log.Infof("%s manifest org: %s, image: %s, ref: %s", verb, org, image, reference)
 	logRequestHeaders(ctx)
 	var isShaRef = false
+	var shaRef = ""
 
 	if strings.HasPrefix(reference, "sha256:") {
+		shaRef = strings.Split(reference, ":")[1]
 		isShaRef = true
 		_, ref := manifestIsUnderDigest(imagePath, org, image, reference)
 		if ref == "" {
@@ -202,20 +204,24 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 		manifest.Layers = append(manifest.Layers, new_layer)
 	}
 
-	// compute manifest digest
 	mb, err := json.Marshal(manifest)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}
 
-	var digester = digest.Canonical.Digester()
-	mblen := len(mb)
-	cnt, _ := digester.Hash().Write(mb)
-	dgst := digester.Digest()
-	log.Debugf("computed digest for ref %s = sha256:%s (cnt: %d / mblen:%d)", reference, dgst.Hex(), cnt, mblen)
-
+	// compute manifest digest
+	var dgst string
+	if !isShaRef {
+		var digester = digest.Canonical.Digester()
+		mblen := len(mb)
+		cnt, _ := digester.Hash().Write(mb)
+		dgst = digester.Digest().Hex()
+		log.Debugf("computed digest for ref %s = sha256:%s (cnt: %d / mblen:%d)", reference, dgst, cnt, mblen)
+	} else {
+		dgst = shaRef
+	}
 	// in case a client asks for the manifest in the future by "sha256:..."
-	saveManifestDigest(imagePath, reference, dgst.Hex())
+	saveManifestDigest(imagePath, reference, dgst)
 
 	// in-mem cache for faster lookup next time through
 	mu.Lock()
@@ -227,10 +233,10 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 
 // sendManifest returns an image manifest to the caller with headers for a GET, and
 // just returns HTTP 200 for a HEAD.
-func sendManifest(ctx echo.Context, mb []byte, dgst digest.Digest, verb string) error {
+func sendManifest(ctx echo.Context, mb []byte, dgst string, verb string) error {
 	ctx.Response().Header().Add("Content-Length", strconv.Itoa(len(mb)))
-	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+dgst.Hex())
-	ctx.Response().Header().Add("Vary", "Cookie")
+	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+dgst)
+	//ctx.Response().Header().Add("Vary", "Cookie")
 	ctx.Response().Header().Add("Strict-Transport-Security", "max-age=63072000; preload")
 	ctx.Response().Header().Add("X-Frame-Options", "DENY")
 	ctx.Response().Header().Add("Docker-Distribution-Api-Version", "registry/2.0")

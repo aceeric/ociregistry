@@ -11,25 +11,27 @@ import (
 )
 
 func TestGetManifest(t *testing.T) {
+	r := OciRegistry{}
 	SetImagePath("/home/eace/projects/ociregistry/images")
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
 	ref := "58cd8f6547b4f438f36a1cd7030985f153eca22d78d86dc9cd6f0fe4f32d01bf"
-	handleOrgImageManifestsReference(nil, ctx, "calico", "node", ref, http.MethodGet, nil)
-	handleOrgImageManifestsReference(nil, ctx, "calico", "node", ref, http.MethodGet, nil)
+	r.handleV2OrgImageManifestsReference(ctx, "calico", "node", ref, http.MethodGet, nil)
+	r.handleV2OrgImageManifestsReference(ctx, "calico", "node", ref, http.MethodGet, nil)
 }
 
 func TestGetManifestByDigest(t *testing.T) {
+	r := OciRegistry{}
 	SetImagePath("/home/eace/projects/ociregistry/images")
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
 	ref := "58cd8f6547b4f438f36a1cd7030985f153eca22d78d86dc9cd6f0fe4f32d01bf"
-	handleOrgImageManifestsReference(nil, ctx, "calico", "node", ref, http.MethodGet, nil)
-	handleOrgImageManifestsReference(nil, ctx, "calico", "node", ref, http.MethodGet, nil)
+	r.handleV2OrgImageManifestsReference(ctx, "calico", "node", ref, http.MethodGet, nil)
+	r.handleV2OrgImageManifestsReference(ctx, "calico", "node", ref, http.MethodGet, nil)
 }
 
 func TestDigest(t *testing.T) {

@@ -5,6 +5,8 @@ This project is a **pull-only**, **pull-through**, **caching** OCI Distribution 
 1. It exclusively provides _pull_ capability. You can't push images to it, it doesn't support the `/v2/_catalog` endpoint, etc.
 2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public; supporting the following types of access: anonymous, basic auth, HTTP, HTTPS, one-way TLS, and mTLS.
 
+> This is a POC. As such it is very rough. I'll be cleaning it up over time. (See the TODO file)
+
 This distribution server is intended to satisfy **one** use case: the need for an in-cluster Kubernetes caching pull-through registry that enables the k8s cluster to run reliably in a network context with no-, intermittent-, or low latency connectivity to upstream registries - or - an environment where the upstream registries serving the k8s cluster have less than 5 nines availability.
 
 As a secondary capability the server can be loaded from image tarballs. This supports a scenario where the registry is loaded in one location, disconnected, transported, and then runs air-gapped at its remote home.
@@ -51,9 +53,9 @@ The key components of the API scaffolding supported by OAPI-Codegen are shown be
 
 ## Configuring `containerd`
 
-The following snippet shows how to configure `containerd` to pass the `X-Registry` header to support pull-through:
+The following snippet shows how to configure `containerd` to mirror **all** image pulls to the pull-through registry:
 
-Add a `config_path` entry to `/etc/containerd/config.toml` to tell `containerd` to load all registry mirror configuration from that directory:
+Add a `config_path` entry to `/etc/containerd/config.toml` to tell `containerd` to load all registry mirror configurations from that directory:
 
 ```shell
    ...
@@ -62,13 +64,15 @@ Add a `config_path` entry to `/etc/containerd/config.toml` to tell `containerd` 
    ...
 ```
 
-Then create a configuration directory and file for each upstream that will pull from the caching pull-through registry server. This is an example for `_default_` which indicates that **all** images should be mirrored. The file is `/etc/containerd/certs.d/_default/hosts.toml`. In this hypothetical example, the caching pull-through registry server is running on `192.168.0.49:8080`:
+Then create a configuration directory and file that will tell containerd to pull from the caching pull-through registry server. This is an example for `_default_` which indicates that **all** images should be mirrored. The file is `/etc/containerd/certs.d/_default/hosts.toml`. In this hypothetical example, the caching pull-through registry server is running on `192.168.0.49:8080`:
 
 ```shell
 [host."http://192.168.0.49:8080"]
   capabilities = ["pull", "resolve"]
   skip_verify = true
 ```
+
+The _resolve_ capability tells containerd that a HEAD request to the server with a manifest will return a manifest digest. The _pull_ capability indicates to containerd that the image can be pulled.
 
 ## Configuring the OCI Registry Server
 

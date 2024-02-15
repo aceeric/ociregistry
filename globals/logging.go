@@ -10,7 +10,8 @@ import (
 
 func SetLogLevel(level string) {
 	log.SetLevel(xlatLogLevel(level))
-	log.SetFormatter(&log.JSONFormatter{})
+	//log.SetFormatter(&log.JSONFormatter{})
+	log.SetFormatter(&log.TextFormatter{})
 }
 
 func xlatLogLevel(level string) log.Level {

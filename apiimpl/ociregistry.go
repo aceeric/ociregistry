@@ -1,5 +1,6 @@
 // implements the "pull-only" registry server. Provides implementations for methods
-// required to pull an image.
+// required to pull an image. This file is lean to simplify handling any changes to
+// the API
 package apiimpl
 
 import (
@@ -14,8 +15,6 @@ import (
 )
 
 type OciRegistry struct{}
-
-const library = "library"
 
 // where image tarballs are unarchived to
 var imagePath string
@@ -36,42 +35,42 @@ func (r *OciRegistry) Connect(ctx echo.Context) error {
 
 // GET /v2/auth
 func (r *OciRegistry) V2Auth(ctx echo.Context, params V2AuthParams) error {
-	return handleV2Auth(r, ctx, params)
+	return r.handleV2Auth(ctx, params)
 }
 
 // GET /v2/
 func (r *OciRegistry) V2Default(ctx echo.Context) error {
-	return handleV2Default(r, ctx)
+	return r.handleV2Default(ctx)
 }
 
 // GET /v2/{image}/blobs/{digest}
 func (r *OciRegistry) V2GetImageBlobsDigest(ctx echo.Context, image string, digest string) error {
-	return handleV2GetOrgImageBlobsDigest(r, ctx, "", image, digest)
+	return r.handleV2GetOrgImageBlobsDigest(ctx, "", image, digest)
 }
 
 // GET /v2/{org}/{image}/blobs/{digest}
 func (r *OciRegistry) V2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
-	return handleV2GetOrgImageBlobsDigest(r, ctx, org, image, digest)
+	return r.handleV2GetOrgImageBlobsDigest(ctx, org, image, digest)
 }
 
 // HEAD /v2/{image}/manifests/{reference}
 func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image string, reference string, params V2HeadImageManifestsReferenceParams) error {
-	return handleOrgImageManifestsReference(r, ctx, "", image, reference, http.MethodHead, params.Ns)
+	return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodHead, params.Ns)
 }
 
 // HEAD /v2/{org}/{image}/manifests/{reference}
 func (r *OciRegistry) V2HeadOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2HeadOrgImageManifestsReferenceParams) error {
-	return handleOrgImageManifestsReference(r, ctx, org, image, reference, http.MethodHead, params.Ns)
+	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodHead, params.Ns)
 }
 
 // GET /v2/{image}/manifests/{reference}
 func (r *OciRegistry) V2GetImageManifestsReference(ctx echo.Context, image string, reference string, params V2GetImageManifestsReferenceParams) error {
-	return handleOrgImageManifestsReference(r, ctx, "", image, reference, http.MethodGet, params.Ns)
+	return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodGet, params.Ns)
 }
 
 // GET /v2/{org}/{image}/manifests/{reference}
 func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2GetOrgImageManifestsReferenceParams) error {
-	return handleOrgImageManifestsReference(r, ctx, org, image, reference, http.MethodGet, params.Ns)
+	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodGet, params.Ns)
 }
 
 // unimplemented methods of the OCI distribution spec

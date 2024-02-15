@@ -40,7 +40,7 @@ var (
 // GET /v2/auth
 // everyone authenticates successfully and gets the same token which is
 // subsequently ignored by the server
-func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
+func (r *OciRegistry) handleV2Auth(ctx echo.Context, params V2AuthParams) error {
 	log.Infof("get auth scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization)
 	logRequestHeaders(ctx)
 	body := &types.Token{Token: "FROBOZZ"}
@@ -53,21 +53,21 @@ func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
 // GET /v2/
 // does not require authentication (would return 401 with Www-Authenticate hdr
 // to force authentication)
-func handleV2Default(r *OciRegistry, ctx echo.Context) error {
+func (r *OciRegistry) handleV2Default(ctx echo.Context) error {
 	log.Info("get /v2/")
 	logRequestHeaders(ctx)
 	return ctx.JSON(http.StatusOK, "true")
 }
 
 // GET /v2/{org}/{image}/blobs/{digest}
-func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string, image string, digest string) error {
+func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
 	log.Debugf("get blob org: %s, image: %s, digest: %s", org, image, digest)
 	logRequestHeaders(ctx)
 
 	if strings.HasPrefix(digest, "sha256:") {
 		_, manifest_ref := xlatManifestDigest(imagePath, digest)
 		if manifest_ref != "" {
-			return handleOrgImageManifestsReference(r, ctx, org, image, manifest_ref, http.MethodGet, nil)
+			return r.handleV2OrgImageManifestsReference(ctx, org, image, manifest_ref, http.MethodGet, nil)
 		}
 	}
 
@@ -75,10 +75,10 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 	if blob_file == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	SHA, err := computeMd5Sum(blob_file)
-	if err != nil {
-		return ctx.JSON(http.StatusNotFound, "")
-	}
+	//SHA, err := computeMd5Sum(blob_file)
+	//if err != nil {
+	//	return ctx.JSON(http.StatusNotFound, "")
+	//}
 	log.Debugf("found blob %s", blob_file)
 	fi, _ := os.Stat(blob_file)
 
@@ -87,7 +87,7 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 	ctx.Response().Header().Add("Accept-Ranges", "bytes")
 	ctx.Response().Header().Add("Access-Control-Allow-Origin", "*")
 	ctx.Response().Header().Add("Cache-Control", "max-age=1500")
-	ctx.Response().Header().Add("Etag", SHA)
+	//ctx.Response().Header().Add("Etag", SHA)
 	ctx.Response().Header().Add("Expires", now.Add(time.Hour*24).Format(time.RFC1123))
 	ctx.Response().Header().Add("Last-Modified", now.Format(time.RFC1123))
 	ctx.Response().Header().Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
@@ -101,11 +101,12 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 
 // GET or HEAD /v2/{image}/manifests/{reference} or /v2/{org}/{image}/manifests/{reference}
 // {org} can be empty string (like pull hello-world:latest)
-func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org string, image string, reference string, verb string, namespace *string) error {
+func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, verb string, namespace *string) error {
 	log.Infof("%s manifest org: %s, image: %s, ref: %s", verb, org, image, reference)
 	logRequestHeaders(ctx)
 
 	if strings.HasPrefix(reference, "sha256:") {
+		// supports get manifest by digest rather than tag
 		_, reference = xlatManifestDigest(imagePath, reference)
 		if reference == "" {
 			return ctx.JSON(http.StatusNotFound, "")
@@ -117,6 +118,7 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	mfst, exists := manifestMap[manifestRef]
 	mu.Unlock()
 	if exists {
+		log.Debugf("return manifest from mem cache: %s, digest: %s", manifestRef, mfst.dgst.Hex())
 		return sendManifest(ctx, mfst.mb, mfst.dgst, verb)
 	}
 

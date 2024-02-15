@@ -126,7 +126,7 @@ func handleArchive(tarfilePath string, e fsnotify.Event) {
 	delete(timers, e.Name)
 	mu.Unlock()
 	if _, err := os.Stat(e.Name); err == nil {
-		if err := Extract(e.Name, tarfilePath, ""); err == nil {
+		if err := Extract(e.Name, tarfilePath); err == nil {
 			log.Debug("removing: " + e.Name)
 			err := os.Remove(e.Name)
 			if err != nil {

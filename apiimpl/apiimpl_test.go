@@ -4,28 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/labstack/echo/v4"
 	digest "github.com/opencontainers/go-digest"
 )
-
-func Test(t *testing.T) {
-	digest := "c505b92c0b63dffe1f09ce64ae9d99cddefb01aafbb2a51d8531f44b0998f248"
-	dir := filepath.Join("/tmp/docker.io/calico/node", digest)
-	os.MkdirAll(dir, 0755)
-	manifest := filepath.Join(dir, "manifest.json")
-	os.Create(manifest)
-
-	exists, sha := manifestIsUnderDigest("/tmp", "calico", "node", "sha256:c505b92c0b63dffe1f09ce64ae9d99cddefb01aafbb2a51d8531f44b0998f248")
-	if exists {
-		fmt.Println(sha)
-	} else {
-		t.Fail()
-	}
-}
 
 func TestGetManifest(t *testing.T) {
 	SetImagePath("/home/eace/projects/ociregistry/images")

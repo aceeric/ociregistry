@@ -118,20 +118,7 @@ func xlatManifestDigest(imagePath string, reference string) (bool, string) {
 	map_file := filepath.Join(map_path, reference)
 	if _, err := os.Stat(map_file); err == nil {
 		b, _ := os.ReadFile(map_file)
-		return false, string(b)
-	}
-	return false, ""
-}
-
-// manifestIsUnderDigest finds a manifest that was pulled by digest - in this case
-// there's no image tag so we store it under it's digest.
-func manifestIsUnderDigest(imagesBase, org, image, digest string) (bool, string) {
-	if strings.Contains(digest, "sha256:") {
-		digest = strings.Split(digest, ":")[1]
-	}
-	manifestPath := filepath.Join(org, image, digest)
-	if getManifestPath(imagesBase, manifestPath) != "" {
-		return true, digest
+		return true, string(b)
 	}
 	return false, ""
 }

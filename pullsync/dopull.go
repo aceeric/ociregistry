@@ -28,8 +28,8 @@ func PullImage(image string, image_path string, waitMillis int) {
 			return
 		}
 		log.Debugf("newly enqueued calling crane pull: %s", image)
-		callCranePull(image, image_path)
-		log.Debugf("back from crane pull: %s", image)
+		err := callCranePull(image, image_path)
+		log.Debugf("back from crane pull. image: %s, result: %s", image, err)
 		pullComplete(image)
 
 	}(image, ch)
@@ -57,11 +57,13 @@ func callCranePull(image string, image_path string) error {
 		}
 	}
 	imageTar = filepath.Join(imageTar, uuid.New().String()+".tar")
+	log.Debugf("pulling to file: %s", imageTar)
 	err := cranePull(image, imageTar)
 	if err != nil {
 		return err
 	}
-	err = importer.Extract(imageTar, image_path, image)
+	log.Debugf("extract downloaded tar: %s", imageTar)
+	err = importer.Extract(imageTar, image_path)
 	if err != nil {
 		return err
 	}

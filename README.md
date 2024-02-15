@@ -66,16 +66,15 @@ Add a `config_path` entry to `/etc/containerd/config.toml` to tell `containerd` 
    ...
 ```
 
-Then create a configuration directory and file for each upstream that will pull from the caching pull-through registry server. This is an example for `docker.io`. The file is `/etc/containerd/certs.d/docker.io/hosts.toml`. In this hypothetical example, the caching pull-through registry server is running on `192.168.0.49:8080`:
+Then create a configuration directory and file for each upstream that will pull from the caching pull-through registry server. This is an example for `_default_` which indicates that **all** images should be mirrored. The file is `/etc/containerd/certs.d/_default/hosts.toml`. In this hypothetical example, the caching pull-through registry server is running on `192.168.0.49:8080`:
 
 ```shell
 server = "http://192.168.0.49:8080"
 
 [host."http://192.168.0.49:8080"]
-  capabilities = ["pull"]
+  capabilities = ["pull", "resolve"]
   skip_verify = true
   [host."http://192.168.0.49:8080".header]
-    X-Registry = ["docker.io"]
 ```
 
 ## Configuring the Server

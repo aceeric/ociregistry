@@ -26,7 +26,7 @@ import (
 // manifestWithDigest pairs a manifest with its digest
 type manifestWithDigest struct {
 	mb   []byte
-	dgst string
+	dgst digest.Digest
 }
 
 // in-mem cache of manifests becaues calculating a manifest digest takes
@@ -45,7 +45,7 @@ func handleV2Auth(r *OciRegistry, ctx echo.Context, params V2AuthParams) error {
 	logRequestHeaders(ctx)
 	body := &types.Token{Token: "FROBOZZ"}
 	ctx.Response().Header().Add("Cache-Control", "no-cache, no-store, must-revalidate")
-	//ctx.Response().Header().Add("Vary", "Cookie")
+	ctx.Response().Header().Add("Vary", "Cookie")
 	ctx.Response().Header().Add("Strict-Transport-Security", "max-age=63072000; preload")
 	return ctx.JSON(http.StatusOK, body)
 }
@@ -65,10 +65,7 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 	logRequestHeaders(ctx)
 
 	if strings.HasPrefix(digest, "sha256:") {
-		_, manifest_ref := manifestIsUnderDigest(imagePath, org, image, digest)
-		if manifest_ref == "" {
-			_, manifest_ref = xlatManifestDigest(imagePath, digest)
-		}
+		_, manifest_ref := xlatManifestDigest(imagePath, digest)
 		if manifest_ref != "" {
 			return handleOrgImageManifestsReference(r, ctx, org, image, manifest_ref, http.MethodGet, nil)
 		}
@@ -106,18 +103,11 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org string, image string, reference string, verb string, namespace *string) error {
 	log.Infof("%s manifest org: %s, image: %s, ref: %s", verb, org, image, reference)
 	logRequestHeaders(ctx)
-	var isShaRef = false
-	var shaRef = ""
 
 	if strings.HasPrefix(reference, "sha256:") {
-		shaRef = strings.Split(reference, ":")[1]
-		isShaRef = true
-		_, ref := manifestIsUnderDigest(imagePath, org, image, reference)
-		if ref == "" {
-			_, ref = xlatManifestDigest(imagePath, reference)
-		}
-		if ref != "" {
-			reference = ref
+		_, reference = xlatManifestDigest(imagePath, reference)
+		if reference == "" {
+			return ctx.JSON(http.StatusNotFound, "")
 		}
 	}
 	manifestRef := filepath.Join(org, image, reference)
@@ -133,22 +123,11 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	remote := parseRemoteNamespace(ctx, namespace)
 
 	// try once to get the manifest from cache and - failing that - once from the remote
-	// if the remote is defined
-	for i := 0; i <= 1; i++ {
+	manifestPath = getManifestPath(imagePath, manifestRef)
+	if manifestPath == "" && remote != "" {
+		pullsync.PullImage(fmt.Sprintf("%s/%s/%s:%s", remote, org, image, reference), imagePath, 60000)
+		//manifestRef = filepath.Join(org, image, stripPrefix(reference))
 		manifestPath = getManifestPath(imagePath, manifestRef)
-		if manifestPath == "" {
-			if remote == "" {
-				break
-			}
-			// pull through from the remote registry specified by the X-Registry header
-			var separator = ":"
-			if isShaRef {
-				separator = "@"
-			}
-			pullsync.PullImage(fmt.Sprintf("%s/%s/%s%s%s", remote, org, image, separator, reference), imagePath, 60000)
-			manifestRef = filepath.Join(org, image, stripPrefix(reference))
-			manifestPath = getManifestPath(imagePath, manifestRef)
-		}
 	}
 	if manifestPath == "" {
 		return ctx.JSON(http.StatusNotFound, "")
@@ -204,24 +183,20 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 		manifest.Layers = append(manifest.Layers, new_layer)
 	}
 
+	// compute manifest digest
 	mb, err := json.Marshal(manifest)
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}
 
-	// compute manifest digest
-	var dgst string
-	if !isShaRef {
-		var digester = digest.Canonical.Digester()
-		mblen := len(mb)
-		cnt, _ := digester.Hash().Write(mb)
-		dgst = digester.Digest().Hex()
-		log.Debugf("computed digest for ref %s = sha256:%s (cnt: %d / mblen:%d)", reference, dgst, cnt, mblen)
-	} else {
-		dgst = shaRef
-	}
+	var digester = digest.Canonical.Digester()
+	mblen := len(mb)
+	cnt, _ := digester.Hash().Write(mb)
+	dgst := digester.Digest()
+	log.Debugf("computed digest for ref %s = sha256:%s (cnt: %d / mblen:%d)", reference, dgst.Hex(), cnt, mblen)
+
 	// in case a client asks for the manifest in the future by "sha256:..."
-	saveManifestDigest(imagePath, reference, dgst)
+	saveManifestDigest(imagePath, reference, dgst.Hex())
 
 	// in-mem cache for faster lookup next time through
 	mu.Lock()
@@ -233,10 +208,10 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 
 // sendManifest returns an image manifest to the caller with headers for a GET, and
 // just returns HTTP 200 for a HEAD.
-func sendManifest(ctx echo.Context, mb []byte, dgst string, verb string) error {
+func sendManifest(ctx echo.Context, mb []byte, dgst digest.Digest, verb string) error {
 	ctx.Response().Header().Add("Content-Length", strconv.Itoa(len(mb)))
-	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+dgst)
-	//ctx.Response().Header().Add("Vary", "Cookie")
+	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+dgst.Hex())
+	ctx.Response().Header().Add("Vary", "Cookie")
 	ctx.Response().Header().Add("Strict-Transport-Security", "max-age=63072000; preload")
 	ctx.Response().Header().Add("X-Frame-Options", "DENY")
 	ctx.Response().Header().Add("Docker-Distribution-Api-Version", "registry/2.0")
@@ -262,11 +237,4 @@ func parseRemoteNamespace(ctx echo.Context, namespace *string) string {
 		return *namespace
 	}
 	return ""
-}
-
-func stripPrefix(reference string) string {
-	if strings.HasPrefix(reference, "sha256:") {
-		return strings.Split(reference, ":")[1]
-	}
-	return reference
 }

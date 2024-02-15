@@ -46,7 +46,7 @@ func (r *OciRegistry) V2Default(ctx echo.Context) error {
 
 // GET /v2/{image}/blobs/{digest}
 func (r *OciRegistry) V2GetImageBlobsDigest(ctx echo.Context, image string, digest string) error {
-	return r.V2GetOrgImageBlobsDigest(ctx, library, image, digest)
+	return handleV2GetOrgImageBlobsDigest(r, ctx, "", image, digest)
 }
 
 // GET /v2/{org}/{image}/blobs/{digest}
@@ -56,7 +56,7 @@ func (r *OciRegistry) V2GetOrgImageBlobsDigest(ctx echo.Context, org string, ima
 
 // HEAD /v2/{image}/manifests/{reference}
 func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image string, reference string, params V2HeadImageManifestsReferenceParams) error {
-	return handleOrgImageManifestsReference(r, ctx, library, image, reference, http.MethodHead, params.Ns)
+	return handleOrgImageManifestsReference(r, ctx, "", image, reference, http.MethodHead, params.Ns)
 }
 
 // HEAD /v2/{org}/{image}/manifests/{reference}
@@ -66,7 +66,7 @@ func (r *OciRegistry) V2HeadOrgImageManifestsReference(ctx echo.Context, org str
 
 // GET /v2/{image}/manifests/{reference}
 func (r *OciRegistry) V2GetImageManifestsReference(ctx echo.Context, image string, reference string, params V2GetImageManifestsReferenceParams) error {
-	return handleOrgImageManifestsReference(r, ctx, library, image, reference, http.MethodGet, params.Ns)
+	return handleOrgImageManifestsReference(r, ctx, "", image, reference, http.MethodGet, params.Ns)
 }
 
 // GET /v2/{org}/{image}/manifests/{reference}

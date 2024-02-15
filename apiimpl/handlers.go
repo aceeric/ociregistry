@@ -100,6 +100,7 @@ func handleV2GetOrgImageBlobsDigest(r *OciRegistry, ctx echo.Context, org string
 }
 
 // GET or HEAD /v2/{image}/manifests/{reference} or /v2/{org}/{image}/manifests/{reference}
+// {org} can be empty string (like pull hello-world:latest)
 func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org string, image string, reference string, verb string, namespace *string) error {
 	log.Infof("%s manifest org: %s, image: %s, ref: %s", verb, org, image, reference)
 	logRequestHeaders(ctx)
@@ -125,8 +126,13 @@ func handleOrgImageManifestsReference(r *OciRegistry, ctx echo.Context, org stri
 	// try once to get the manifest from cache and - failing that - once from the remote
 	manifestPath = getManifestPath(imagePath, manifestRef)
 	if manifestPath == "" && remote != "" {
-		pullsync.PullImage(fmt.Sprintf("%s/%s/%s:%s", remote, org, image, reference), imagePath, 60000)
-		//manifestRef = filepath.Join(org, image, stripPrefix(reference))
+		var imageToPull = ""
+		if org == "" {
+			imageToPull = fmt.Sprintf("%s/%s:%s", remote, image, reference)
+		} else {
+			imageToPull = fmt.Sprintf("%s/%s/%s:%s", remote, org, image, reference)
+		}
+		pullsync.PullImage(imageToPull, imagePath, 60000)
 		manifestPath = getManifestPath(imagePath, manifestRef)
 	}
 	if manifestPath == "" {

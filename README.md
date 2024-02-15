@@ -16,21 +16,17 @@ The goals of the project are:
 
 To achieve this - the server simply uses the file system as the sum total of it's knowledge about the image cache. The belief is - this approach should result in high reliability: the registry should be able to sustain normal k8s disruptions like pod evictions of the registry container as long as the underlying persistent storage for the image cache is reliable.
 
-
-
 ## Design
 
 ![design](resources/design.png)
 
-
-
 The basic usage scenario is:
 
-1. A client (containerd) pulls an image. The embedded [Echo](https://echo.labstack.com/) server handles the API calls.
+1. A client (containerd, for example) pulls an image. The embedded [Echo](https://echo.labstack.com/) server handles the API calls.
 2. The Echo server delegates to the OCI Registry API handlers to implement the OCI Registry server logic.
-3. If the image is cached on the file system it is provided to the caller.
-4. Otherwise, the API handlers delegate to the embedded [Google Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md) code. To support this, containerd is configured to pass the upstream registry in the `X-Registry` header in step 1. (More on this below.)
-5. The Google Crane code builds the upstream registry URL using the `X-Registry` header value and pulls the image from the upstream as a tarball, returning it to the handler which unpacks it and saves it to the image store.
+3. If the image is already cached on the file system it is provided to the caller.
+4. Otherwise, the API handlers delegate to the embedded [Google Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md) code. To support this, containerd appends a query parameter indicating the requested namespace to all API calls. (More on this below.)
+5. The Google Crane code builds the upstream registry URL using the namespace value and pulls the image from the upstream as a tarball, returning it to the handler which unpacks it and saves it to the image store.
 6. Independently, a tarball loader runs as a goroutine watching a staging directory on the file system. Whenever a tarball appears there it is unpacked and moved to the image store, and then the tarball is deleted. This supports initial and incremental manual population of the image cache.
 
 ## API Implementation
@@ -69,15 +65,12 @@ Add a `config_path` entry to `/etc/containerd/config.toml` to tell `containerd` 
 Then create a configuration directory and file for each upstream that will pull from the caching pull-through registry server. This is an example for `_default_` which indicates that **all** images should be mirrored. The file is `/etc/containerd/certs.d/_default/hosts.toml`. In this hypothetical example, the caching pull-through registry server is running on `192.168.0.49:8080`:
 
 ```shell
-server = "http://192.168.0.49:8080"
-
 [host."http://192.168.0.49:8080"]
   capabilities = ["pull", "resolve"]
   skip_verify = true
-  [host."http://192.168.0.49:8080".header]
 ```
 
-## Configuring the Server
+## Configuring the OCI Registry Server
 
 The OCI Registry server may need configuration information to connect to upstream registries. By default, it will attempt anonymous plain HTTP access. Many OCI Distribution servers will reject HTTP and fail over to HTTPS. Then you're in the realm of TLS and PKI. Some servers require auth as well. To address all of these concerns the OCI Registry server accepts an optional command line parameter `--config-path` which identifies a configuration file in the following format:
 
@@ -126,7 +119,7 @@ The `tls` section can implement multiple scenarios:
      insecure_skip_verify: false (or simply omit since it defaults to false)
    ```
 
-3. One-way **secure** TLS, in which client certs are not provided to the remote, and the remote server cert is validate using a **provided** CA cert
+3. One-way **secure** TLS, in which client certs are not provided to the remote, and the remote server cert is validate using a **provided** CA cert:
 
    ```
    tls:

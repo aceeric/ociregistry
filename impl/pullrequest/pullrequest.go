@@ -1,4 +1,4 @@
-package impl
+package pullrequest
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ const (
 	byDigest
 )
 
-type pullRequest struct {
+type PullRequest struct {
 	pullType  int
 	org       string
 	image     string
@@ -18,8 +18,8 @@ type pullRequest struct {
 	remote    string
 }
 
-func NewPullRequest(org, image, reference, remote string) pullRequest {
-	return pullRequest{
+func NewPullRequest(org, image, reference, remote string) PullRequest {
+	return PullRequest{
 		pullType:  typeFromRef(reference),
 		org:       org,
 		image:     image,
@@ -28,15 +28,24 @@ func NewPullRequest(org, image, reference, remote string) pullRequest {
 	}
 }
 
-func (pr *pullRequest) isByTag() bool {
+func (pr *PullRequest) Url() string {
+	if pr.org == "" {
+		return fmt.Sprintf("%s/%s:%s", pr.remote, pr.image, pr.reference)
+	}
+	return fmt.Sprintf("%s/%s/%s:%s", pr.remote, pr.org, pr.image, pr.reference)
+}
+
+func (pr *PullRequest) isByTag() bool {
 	return pr.pullType == byTag
 }
 
-func (pr *pullRequest) isByDigest() bool {
+func (pr *PullRequest) isByDigest() bool {
 	return pr.pullType == byDigest
 }
 
-func (pr *pullRequest) id() string {
+// calico/node:v1.23.0 becomes "calico/node/v1.23.0 and"
+// hello-world:v1.0.0 becomes "/hello-world/v1.0.0"
+func (pr *PullRequest) Id() string {
 	return fmt.Sprintf("%s/%s/%s/", pr.org, pr.image, pr.reference)
 }
 

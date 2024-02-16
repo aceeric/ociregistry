@@ -10,12 +10,7 @@ import (
 )
 
 func Test1(t *testing.T) {
-	pr := NewPullRequest("", "hello-world", "latest", "docker.io")
-	fmt.Printf("%+v\n", pr)
-}
-
-func Test2(t *testing.T) {
-	r := OciRegistry{}
+	r := NewOciRegistry("/tmp")
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -25,7 +20,7 @@ func Test2(t *testing.T) {
 	fmt.Print(err)
 }
 
-func Test3(t *testing.T) {
+func Test2(t *testing.T) {
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -38,17 +33,6 @@ func Test3(t *testing.T) {
 	ctx.Request().Header.Add("X-Registry", "quay.io")
 	remote = parseRemote(ctx, nil)
 	if remote != "quay.io" {
-		t.Fail()
-	}
-}
-
-func Test4(t *testing.T) {
-	pr := NewPullRequest("", "hello-world", "latest", "docker.io")
-	if isCached(pr) {
-		t.Fail()
-	}
-	addToCache(pr)
-	if !isCached(pr) {
 		t.Fail()
 	}
 }

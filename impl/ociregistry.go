@@ -1,7 +1,7 @@
 // implements the "pull-only" registry server. Provides implementations for methods
 // required to pull an image. This file is lean to simplify handling any changes to
 // the API
-package apiimpl
+package impl
 
 import (
 	"net/http"
@@ -14,18 +14,23 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-type OciRegistry struct{}
-
 // where image tarballs are unarchived to
 var imagePath string
 
+type OciRegistry struct {
+	imagePath string
+}
+
+func NewOciRegistry(imagePath string) OciRegistry {
+	return OciRegistry{
+		imagePath: imagePath,
+	}
+}
+
+// TODO goes into OciRegistry
 func SetImagePath(imagePathArg string) error {
 	imagePath = imagePathArg
 	return os.MkdirAll(imagePath, 0755)
-}
-
-func NewOciRegistry() *OciRegistry {
-	return &OciRegistry{}
 }
 
 // CONNECT

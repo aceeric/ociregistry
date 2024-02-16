@@ -9,31 +9,14 @@ This project is a **pull-only**, **pull-through**, **caching** OCI Distribution 
 
 This distribution server is intended to satisfy **one** use case: the need for an in-cluster Kubernetes caching pull-through registry that enables the k8s cluster to run reliably in a network context with no-, intermittent-, or low latency connectivity to upstream registries - or - an environment where the upstream registries serving the k8s cluster have less than 5 nines availability.
 
-As a secondary capability the server can be loaded from image tarballs. This supports a scenario where the registry is loaded in one location, disconnected, transported, and then runs air-gapped at its remote home.
-
 The goals of the project are:
 
 1. Implement one use case
 2. Be simple
 
-To achieve this - the server simply uses the file system as the sum total of it's knowledge about the image cache. The belief is - this approach should result in high reliability: the registry should be able to sustain normal k8s disruptions like pod evictions of the registry container as long as the underlying persistent storage for the image cache is reliable.
-
-## Design
-
-![design](resources/design.png)
-
-The basic usage scenario is:
-
-1. A client (containerd, for example) pulls an image. The embedded [Echo](https://echo.labstack.com/) server handles the API calls.
-2. The Echo server delegates to the OCI Registry API handlers to implement the OCI Registry server logic.
-3. If the image is already cached on the file system it is provided to the caller.
-4. Otherwise, the API handlers delegate to the embedded [Google Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/README.md) code. To support this, containerd appends a query parameter indicating the requested namespace to all API calls. (More on this below.)
-5. The Google Crane code builds the upstream registry URL using the namespace value and pulls the image from the upstream as a tarball, returning it to the handler which unpacks it and saves it to the image store.
-6. Independently, a tarball loader runs as a goroutine watching a staging directory on the file system. Whenever a tarball appears there it is unpacked and moved to the image store, and then the tarball is deleted. This supports initial and incremental manual population of the image cache.
-
 ## API Implementation
 
-The OCI Distribution API is built by first creating an Open API spec using Swagger. See `ociregistry.yaml` in the project root. Then the [oapi-codegen](https://github.com/deepmap/oapi-codegen) tool is used to generate the API and models using configuration in the `api` directory. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/deepmap/oapi-codegen/tree/master/examples/petstore-expanded/echo) example.
+The OCI Distribution API is built by first creating an Open API spec using Swagger. See `ociregistry.yaml` in the project root. Then the [oapi-codegen](https://github.com/deepmap/oapi-codegen) tool is used to generate the API code and model code using configuration in the `api` directory. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/deepmap/oapi-codegen/tree/master/examples/petstore-expanded/echo) example.
 
 The key components of the API scaffolding supported by OAPI-Codegen are shown below:
 
@@ -53,7 +36,7 @@ The key components of the API scaffolding supported by OAPI-Codegen are shown be
 
 ## Configuring `containerd`
 
-The following snippet shows how to configure `containerd` to mirror **all** image pulls to the pull-through registry:
+The following snippet shows how to configure `containerd` in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry:
 
 Add a `config_path` entry to `/etc/containerd/config.toml` to tell `containerd` to load all registry mirror configurations from that directory:
 
@@ -64,7 +47,7 @@ Add a `config_path` entry to `/etc/containerd/config.toml` to tell `containerd` 
    ...
 ```
 
-Then create a configuration directory and file that will tell containerd to pull from the caching pull-through registry server. This is an example for `_default_` which indicates that **all** images should be mirrored. The file is `/etc/containerd/certs.d/_default/hosts.toml`. In this hypothetical example, the caching pull-through registry server is running on `192.168.0.49:8080`:
+Then create a configuration directory and file that tells containerd to pull from the caching pull-through registry server. This is an example for `_default_` which indicates that **all** images should be mirrored. The file is `/etc/containerd/certs.d/_default/hosts.toml`. In this example, the caching pull-through registry server is running on `192.168.0.49:8080`:
 
 ```shell
 [host."http://192.168.0.49:8080"]

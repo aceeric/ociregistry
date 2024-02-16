@@ -1,4 +1,4 @@
-package pullsync
+package upstream
 
 import (
 	"crypto/tls"

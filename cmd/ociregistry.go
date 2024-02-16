@@ -8,10 +8,9 @@ import (
 	"time"
 
 	"ociregistry/api"
-	"ociregistry/apiimpl"
 	"ociregistry/globals"
-	"ociregistry/importer"
-	"ociregistry/pullsync"
+	"ociregistry/impl"
+	"ociregistry/impl/upstream"
 
 	"github.com/labstack/echo/v4"
 	middleware "github.com/oapi-codegen/echo-middleware"
@@ -45,38 +44,32 @@ func main() {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
-	// set the path where all image metadata and blobs are stored
-	if apiimpl.SetImagePath(args.imagePath) != nil {
-		fmt.Fprintf(os.Stderr, "Error setting image path: %s\n", err)
-		os.Exit(1)
-	}
-
-	// create an instance of our API handler which implements the generated interface
-	ociRegistry := apiimpl.NewOciRegistry()
+	// create an instance of the API handler
+	ociRegistry := impl.NewOciRegistry(args.imagePath)
 
 	// set up a basic Echo router
 	e := echo.New()
+	e.HideBanner = true
+	e.HidePort = true
 
 	globals.SetLogLevel(args.logLevel)
 
 	// have Echo use the global logging
 	e.Use(globals.GetEchoLoggingFunc())
 
-	pullsync.ConfigLoader(args.configPath)
+	upstream.ConfigLoader(args.configPath)
 
 	// use Open API middleware to check all requests against the OpenAPI schema
 	e.Use(middleware.OapiRequestValidator(swagger))
 
 	// register our OCI Registry above as the handler for the interface
-	api.RegisterHandlers(e, ociRegistry)
+	api.RegisterHandlers(e, &ociRegistry)
 
 	// set up the ability to handle image tarballs placed in the images dir
-	go importer.Importer(args.imagePath)
+	// NEED TO REWORK THIS... go importer.Importer(args.imagePath)
 
 	// start the server
 	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
-	e.HideBanner = true
-	e.HidePort = true
 	err = e.Start(net.JoinHostPort("0.0.0.0", args.port))
 	if err != nil {
 		log.Error(err.Error())

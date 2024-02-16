@@ -35,6 +35,7 @@ func cranePull(image string, path string) error {
 	if err != nil {
 		return err
 	}
+	//fmt.Println(string(rmt.Manifest))
 	img, err := rmt.Image()
 	if err != nil {
 		return err

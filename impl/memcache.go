@@ -17,13 +17,13 @@ var (
 
 func isCached(pr pullrequest.PullRequest) (upstream.ManifestHolder, bool) {
 	prCache.Lock()
-	fb, exists := prCache.pullRequestCache[pr.Id()]
+	mh, exists := prCache.pullRequestCache[pr.Id()]
 	prCache.Unlock()
-	return fb, exists
+	return mh, exists
 }
 
-func addToCache(pr pullrequest.PullRequest, fb upstream.ManifestHolder) {
+func addToCache(pr pullrequest.PullRequest, mh upstream.ManifestHolder) {
 	prCache.Lock()
-	prCache.pullRequestCache[pr.Id()] = fb
+	prCache.pullRequestCache[pr.Id()] = mh
 	prCache.Unlock()
 }

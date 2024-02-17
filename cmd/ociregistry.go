@@ -10,6 +10,7 @@ import (
 	"ociregistry/api"
 	"ociregistry/apiimpl"
 	"ociregistry/globals"
+	"ociregistry/impl"
 	"ociregistry/importer"
 	"ociregistry/pullsync"
 
@@ -52,7 +53,7 @@ func main() {
 	}
 
 	// create an instance of our API handler which implements the generated interface
-	ociRegistry := apiimpl.NewOciRegistry()
+	ociRegistry := impl.NewOciRegistry(args.imagePath)
 
 	// set up a basic Echo router
 	e := echo.New()
@@ -68,7 +69,7 @@ func main() {
 	e.Use(middleware.OapiRequestValidator(swagger))
 
 	// register our OCI Registry above as the handler for the interface
-	api.RegisterHandlers(e, ociRegistry)
+	api.RegisterHandlers(e, &ociRegistry)
 
 	// set up the ability to handle image tarballs placed in the images dir
 	go importer.Importer(args.imagePath)

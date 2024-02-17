@@ -18,6 +18,8 @@ func Test1(t *testing.T) {
 	remote := "docker.io"
 	err := r.handleV2OrgImageManifestsReference(ctx, "", "hello-world", "latest", http.MethodGet, &remote)
 	fmt.Print(err)
+	r.handleV2OrgImageManifestsReference(ctx, "", "hello-world", "latest", http.MethodGet, &remote)
+	fmt.Print(err)
 }
 
 func Test2(t *testing.T) {

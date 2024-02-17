@@ -52,6 +52,10 @@ type ManifestList struct {
 }
 
 type ManifestHolder struct {
-	ml ManifestList
-	im ImageManifest
+	MediaType string
+	Digest    string
+	Size      int
+	Bytes     []byte
+	Ml        ManifestList
+	Im        ImageManifest
 }

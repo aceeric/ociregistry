@@ -41,7 +41,7 @@ func Get(imageUrl string, imagePath string, waitMillis int) (ManifestHolder, err
 		}
 		descriptor, ierr := cranePull(imageUrl)
 		if ierr == nil {
-			mh, ierr = manifestFromDescriptor(descriptor)
+			mh, ierr = manifestHolderFromDescriptor(descriptor)
 			if ierr == nil && isImageDescriptor(descriptor) {
 				ierr = craneDownloadImg(imageUrl, descriptor, imagePath)
 			}
@@ -60,21 +60,26 @@ func isImageDescriptor(d *remote.Descriptor) bool {
 	return d.Descriptor.MediaType == "application/vnd.docker.distribution.manifest.v2+json"
 }
 
-func manifestFromDescriptor(d *remote.Descriptor) (ManifestHolder, error) {
-	mh := ManifestHolder{}
+func manifestHolderFromDescriptor(d *remote.Descriptor) (ManifestHolder, error) {
+	mh := ManifestHolder{
+		MediaType: string(d.MediaType),
+		Digest:    d.Digest.Hex,
+		Size:      int(d.Size),
+		Bytes:     d.Manifest,
+	}
 	var err error
 	if isImageDescriptor(d) {
 		var m = ImageManifest{}
 		err = json.Unmarshal(d.Manifest, &m)
 		if err == nil {
-			mh.im = m
+			mh.Im = m
 		}
 	} else {
 		var m = ManifestList{}
 		fmt.Println(string(d.Manifest))
 		err = json.Unmarshal(d.Manifest, &m)
 		if err == nil {
-			mh.ml = m
+			mh.Ml = m
 		}
 	}
 	return mh, err

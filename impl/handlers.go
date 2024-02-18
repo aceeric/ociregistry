@@ -3,7 +3,7 @@ package impl
 import (
 	"net/http"
 	. "ociregistry/api/models"
-	"ociregistry/helpers"
+	"ociregistry/impl/helpers"
 	"ociregistry/impl/memcache"
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/serialize"

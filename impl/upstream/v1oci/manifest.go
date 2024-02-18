@@ -9,7 +9,6 @@ type Index struct {
 	Annotations   map[string]string `json:"annotations,omitempty"`
 }
 
-// Descriptor holds a reference from the manifest to one of its constituent elements.
 type Descriptor struct {
 	MediaType    string            `json:"mediaType"`
 	Digest       string            `json:"digest"`

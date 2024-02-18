@@ -1,0 +1,2 @@
+registry.k8s.io/metrics-server/metrics-server:v0.6.2
+registry.k8s.io/ingress-nginx/controller:v1.8.1

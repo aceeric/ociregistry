@@ -8,9 +8,10 @@ import (
 	"time"
 
 	"ociregistry/api"
-	"ociregistry/globals"
 	"ociregistry/impl"
+	"ociregistry/impl/globals"
 	"ociregistry/impl/memcache"
+	"ociregistry/impl/preload"
 	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
 
@@ -24,6 +25,9 @@ type cmdLine struct {
 	imagePath  string
 	port       string
 	configPath string
+	loadImages string
+	arch       string
+	os         string
 }
 
 const startupBanner = `----------------------------------------------------------------------
@@ -34,11 +38,22 @@ Started: %s (port %s)
 
 func main() {
 	args := parseCmdline()
+	globals.ConfigureLogging(args.logLevel)
+
+	if args.loadImages != "" {
+		err := preload.Preload(args.loadImages, args.imagePath, args.arch, args.os)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error loading images in file: %s. error %s\n", args.loadImages, err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
 
 	swagger, err := api.GetSwagger()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error loading swagger spec: %s\n", err)
+		fmt.Fprintf(os.Stderr, "error loading swagger spec: %s\n", err)
 		os.Exit(1)
 	}
 
@@ -53,8 +68,6 @@ func main() {
 	e.HideBanner = true
 	e.HidePort = true
 	api.RegisterHandlers(e, &ociRegistry)
-
-	globals.SetLogLevel(args.logLevel)
 
 	// have Echo use the global logging
 	e.Use(globals.GetEchoLoggingFunc())
@@ -85,6 +98,9 @@ func parseCmdline() cmdLine {
 	flag.StringVar(&args.imagePath, "image-path", "/var/lib/ociregistry", "Path for the image store. Defaults to '/var/lib/ociregistry'")
 	flag.StringVar(&args.configPath, "config-path", "", "Remote registry configuration file. Defaults to empty string (all remotes anonymous)")
 	flag.StringVar(&args.port, "port", "8080", "Port for server. Defaults to 8080")
+	flag.StringVar(&args.loadImages, "load-images", "", "load images in the specified file into cache and then exit")
+	flag.StringVar(&args.arch, "arch", "amd64", "architecture for the --load-images arg")
+	flag.StringVar(&args.os, "os", "linux", "os for the --load-images arg")
 	flag.Parse()
 	return args
 }

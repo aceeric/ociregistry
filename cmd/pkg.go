@@ -16,5 +16,7 @@ The flags are:
 	    Log level. Defaults to 'error'
 	--port string
 	    Port for server. Defaults to 8080
+	--load-images
+	    Loads the registry with images listed in the specified file by pulling and saving
 */
 package main

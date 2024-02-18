@@ -1,7 +1,7 @@
 package helpers
 
 import (
-	"ociregistry/globals"
+	"ociregistry/impl/globals"
 	"os"
 	"path/filepath"
 	"regexp"

@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func SetLogLevel(level string) {
+func ConfigureLogging(level string) {
 	log.SetLevel(xlatLogLevel(level))
 	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})

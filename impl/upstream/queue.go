@@ -3,8 +3,8 @@ package upstream
 import (
 	"encoding/json"
 	"fmt"
-	"ociregistry/globals"
 	"ociregistry/impl/extractor"
+	"ociregistry/impl/globals"
 	"ociregistry/impl/pullrequest"
 	"os"
 	"path/filepath"

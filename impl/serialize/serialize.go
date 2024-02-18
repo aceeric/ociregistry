@@ -6,6 +6,7 @@ import (
 	"ociregistry/impl/upstream"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -16,6 +17,20 @@ const (
 	imgPath = "img"
 )
 
+func IsOnFilesystem(digest string, isImageManifest bool, imagePath string) bool {
+	var subdir = fatPath
+	if isImageManifest {
+		subdir = imgPath
+	}
+	if strings.HasPrefix(digest, "sha256:") {
+		digest = strings.Split(digest, ":")[1]
+	}
+	fname := filepath.Join(imagePath, subdir, digest)
+	_, err := os.Stat(fname)
+	return err == nil
+}
+
+// todo return error
 func ToFilesystem(mh upstream.ManifestHolder, imagePath string) {
 	var subdir = fatPath
 	if mh.IsImageManifest() {
@@ -33,7 +48,7 @@ func ToFilesystem(mh upstream.ManifestHolder, imagePath string) {
 		}
 		return
 	} else {
-		log.Errorf("manifest already in cache %s", fname)
+		log.Infof("manifest already in cache %s", fname)
 	}
 }
 

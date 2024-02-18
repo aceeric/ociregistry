@@ -6,11 +6,13 @@ import (
 	"sync"
 )
 
+type PRCache struct {
+	sync.Mutex
+	pullRequestCache map[string]upstream.ManifestHolder
+}
+
 var (
-	prCache = struct {
-		sync.Mutex
-		pullRequestCache map[string]upstream.ManifestHolder
-	}{
+	prCache = PRCache{
 		pullRequestCache: make(map[string]upstream.ManifestHolder),
 	}
 )
@@ -26,4 +28,12 @@ func AddToCache(pr pullrequest.PullRequest, mh upstream.ManifestHolder) {
 	prCache.Lock()
 	prCache.pullRequestCache[pr.Id()] = mh
 	prCache.Unlock()
+}
+
+func GetCache() *PRCache {
+	return &prCache
+}
+
+func AddToCacheWithoutLock(pr pullrequest.PullRequest, mh upstream.ManifestHolder) {
+	prCache.pullRequestCache[pr.Id()] = mh
 }

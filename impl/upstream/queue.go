@@ -35,9 +35,7 @@ var (
 func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (ManifestHolder, error) {
 	imageUrl := pr.Url()
 	ch := make(chan bool)
-	var mh = ManifestHolder{
-		ImageUrl: imageUrl,
-	}
+	var mh = ManifestHolder{}
 	var err error = nil
 	// a goroutine because it signals the outer function so must run independently
 	go func(imageUrl string, ch chan bool) {
@@ -69,6 +67,7 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 	case <-ch:
 	case <-time.After(time.Duration(waitMillis) * time.Millisecond):
 	}
+	mh.Pr = pr
 	return mh, err
 }
 
@@ -90,12 +89,14 @@ func manifestHolderFromDescriptor(d *remote.Descriptor) (ManifestHolder, error) 
 		err = json.Unmarshal(d.Manifest, &m)
 		if err == nil {
 			mh.Im = m
+			mh.Type = ImageManifestType
 		}
 	} else {
 		var m = ManifestList{}
 		err = json.Unmarshal(d.Manifest, &m)
 		if err == nil {
 			mh.Ml = m
+			mh.Type = ManifestListType
 		}
 	}
 	return mh, err

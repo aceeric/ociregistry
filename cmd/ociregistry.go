@@ -10,6 +10,8 @@ import (
 	"ociregistry/api"
 	"ociregistry/globals"
 	"ociregistry/impl"
+	"ociregistry/impl/memcache"
+	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
 
 	"github.com/labstack/echo/v4"
@@ -33,6 +35,7 @@ Started: %s (port %s)
 // main runs the registry server
 func main() {
 	args := parseCmdline()
+	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
 
 	swagger, err := api.GetSwagger()
 	if err != nil {
@@ -68,8 +71,10 @@ func main() {
 	// set up the ability to handle image tarballs placed in the images dir
 	// NEED TO REWORK THIS... go importer.Importer(args.imagePath)
 
-	// start the server
-	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
+	// load cached image metadata
+	serialize.FromFilesystem(memcache.GetCache(), args.imagePath)
+
+	// start the API server
 	err = e.Start(net.JoinHostPort("0.0.0.0", args.port))
 	if err != nil {
 		log.Error(err.Error())

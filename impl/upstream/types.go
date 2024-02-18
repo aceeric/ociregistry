@@ -1,5 +1,7 @@
 package upstream
 
+import "ociregistry/impl/pullrequest"
+
 // ManifestConfig corresponds to the 'config' part of an 'ImageManifest'
 type ManifestConfig struct {
 	MediaType string `json:"mediaType"`
@@ -24,46 +26,49 @@ type ImageManifest struct {
 
 // ManifestJson is the 'manifest.json' file in a saved image tarball
 type ManifestJson struct {
-	Config   string   `json:"Config"`
-	RepoTags []string `json:"RepoTags"`
-	Layers   []string `json:"Layers"`
+	Config   string   `json:"config"`
+	RepoTags []string `json:"repoTags"`
+	Layers   []string `json:"layers"`
 }
 
 // ManifestPlatform is the 'platform' entry of a 'ManifestItem'
 type ManifestPlatform struct {
-	architecture string `json:"Architecture"`
-	os           string `json:"Os"`
-	variant      string `json:"Variant"`
+	Architecture string `json:"architecture"`
+	Os           string `json:"os"`
+	Variant      string `json:"variant"`
 }
 
 // ManifestItem is one manifest in the 'manifests' list of 'ManifestList'
 type ManifestItem struct {
-	MediaType string           `json:"MediaType"`
-	Size      int              `json:"Size"`
-	digest    string           `json:"Digest"`
-	platform  ManifestPlatform `json:"Platform"`
+	MediaType string           `json:"mediaType"`
+	Size      int              `json:"size"`
+	Digest    string           `json:"digest"`
+	Platform  ManifestPlatform `json:"platform"`
 }
 
 // ManifestList is an image manifest provided when querying a manifest by tag
 type ManifestList struct {
-	SchemaVersion int            `json:"SchemaVersion"`
-	MediaType     string         `json:"MediaType"`
-	Manifests     []ManifestItem `json:"Manifests"`
+	SchemaVersion int            `json:"schemaVersion"`
+	MediaType     string         `json:"mediaType"`
+	Manifests     []ManifestItem `json:"manifests"`
 }
 
 type ManifestType int
 
 const (
-	ManfestList ManifestType = iota
+	ManifestListType ManifestType = iota
+	ImageManifestType
 )
 
 type ManifestHolder struct {
-	ImageUrl  string
-	MediaType string
-	Digest    string
-	Size      int
-	Bytes     []byte
-	Ml        ManifestList
-	Im        ImageManifest
-	Tarfile   string
+	Pr        pullrequest.PullRequest `json:"pullRequest"`
+	ImageUrl  string                  `json:"imageUrl"`
+	MediaType string                  `json:"mediaType"`
+	Digest    string                  `json:"digest"`
+	Size      int                     `json:"size"`
+	Bytes     []byte                  `json:"bytes"`
+	Ml        ManifestList            `json:"ml"`
+	Im        ImageManifest           `json:"im"`
+	Tarfile   string                  `json:"tarfile"`
+	Type      ManifestType            `json:"type"`
 }

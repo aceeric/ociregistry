@@ -155,3 +155,90 @@ The following options are supported:
 | --config-path | Empty                | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to HTTPS using the OS Trust store to validate the remote registry. |
 | --port        | 8080                 | Server port. E.g. `crane pull localhost:8080 foo.tar`        |
 
+## Quick Start
+
+### Build the server
+```
+make
+```
+
+### Run the server
+```
+mkdir /tmp/images && bin/server --image-path /tmp/images
+```
+
+### Result
+```
+----------------------------------------------------------------------
+OCI Registry: pull-only, pull-through, caching OCI Distribution Server
+Started: 2024-02-17 20:49:56.516302625 -0500 EST (port 8080)
+----------------------------------------------------------------------
+```
+
+### In another terminal
+
+### Curl a manifest list
+```
+curl localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io | jq
+```
+
+### Result (partial)
+```
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+      "size": 2612,
+      "digest": "sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    etc...
+```
+
+### Curl an image manifest
+
+Pick the first manifest from the list above - the `amd64/linux` manifest:
+
+```
+curl localhost:8080/v2/kube-scheduler/manifests/sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c?ns=registry.k8s.io | jq
+```
+
+### Inspect the files created by the two curl calls
+
+```
+find /tmp/images
+```
+
+### Result:
+```images
+images/pulls
+images/mflst
+images/mflst/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
+images/blobs
+images/blobs/4873874c08efc72e9729683a83ffbb7502ee729e9a5ac097723806ea7fa13517
+images/blobs/fcb6f6d2c9986d9cd6a2ea3cc2936e5fc613e09f1af9042329011e43057f3265
+images/blobs/9457426d68990df190301d2e20b8450c4f67d7559bdb7ded6c40d41ced6731f7
+images/blobs/e5dbef90bae3c9df1dfd4ae7048c56226f6209d538c91f987aff4f54e888f566
+images/blobs/e8c73c638ae9ec5ad70c49df7e484040d889cca6b4a9af056579c3d058ea93f0
+images/blobs/65efb1cabba44ca8eefa2058ebdc19b7f76bbb48400ff9e32b809be25f0cdefa
+images/blobs/6523efc24f16435b7507a67c2a1f21828c9d58531902856b294bf49d04b96bbe
+images/blobs/aba5379b9c6dc7c095628fe6598183d680b134c7f99748649dddf07ff1422846
+images/blobs/fbe9343cb4af98ca5a60b6517bf45a5a4d7f7172fb4793d4b55c950196089cda
+images/blobs/53f492e4d27a1a1326e593efdaffcb5e2b0230dc661b20a81a04fa740a37cb4c
+images/blobs/13547472c521121fc04c8fa473757115ef8abe698cc9fa67e828371feeff40e7
+images/blobs/1e3d9b7d145208fa8fa3ee1c9612d0adaac7255f1bbc9ddea7e461e0b317805c
+images/blobs/4aa0ea1413d37a58615488592a0b827ea4b2e48fa5a77cf707d0e35f025e613f
+images/blobs/406945b5115423a8c1d1e5cd53222ef2ff0ce9d279ed85badbc4793beebebc6c
+images/imgmf
+images/imgmf/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
+```
+
+The manifest list was saved in `images/mflst/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7` and the image manifest was saved in `images/imgmf/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c`.
+
+### Stop and restart the server and repeat
+
+You will notice that the manifest list and the image manifest are now being returned from cache.

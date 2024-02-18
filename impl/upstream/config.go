@@ -50,6 +50,7 @@ var (
 // TODO start a goroutine to periodically reload the config file
 // if it changes on disk. (Maybe hash it?)
 func ConfigLoader(configPath string) error {
+	log.Debugf("load remote registry configuration from %s", configPath)
 	if configPath != "" {
 		b, err := os.ReadFile(configPath)
 		if err != nil {

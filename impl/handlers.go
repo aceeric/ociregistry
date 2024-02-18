@@ -23,10 +23,11 @@ func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org s
 	remote := parseRemote(ctx, namespace)
 	pr := pullrequest.NewPullRequest(org, image, reference, remote)
 	mh, exists := memcache.IsCached(pr)
-	if !exists {
-		if remote == "" {
-			return ctx.NoContent(http.StatusNotFound)
-		}
+	if exists {
+		log.Debugf("serving manifest from cache: %s", pr.Url())
+	} else if remote == "" {
+		return ctx.NoContent(http.StatusNotFound)
+	} else {
 		imh, err := r.pullAndCache(pr)
 		if err != nil {
 			return ctx.NoContent(http.StatusInternalServerError)
@@ -69,14 +70,13 @@ func (r *OciRegistry) handleV2Default(ctx echo.Context) error {
 }
 
 func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
-	log.Debugf("get blob org: %s, image: %s, digest: %s", org, image, digest)
+	log.Infof("get blob org: %s, image: %s, digest: %s", org, image, digest)
 	logRequestHeaders(ctx)
 
 	blob_file := helpers.GetBlobPath(imagePath, digest)
 	if blob_file == "" {
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	log.Debugf("found blob %s", blob_file)
 	fi, _ := os.Stat(blob_file)
 
 	now := time.Now()
@@ -110,13 +110,14 @@ func parseRemote(ctx echo.Context, namespace *string) string {
 	return ""
 }
 
+// TODO configurable timeout
 func (r *OciRegistry) pullAndCache(pr pullrequest.PullRequest) (upstream.ManifestHolder, error) {
 	mh, err := upstream.Get(pr, r.imagePath, 60000)
 	if err != nil {
 		return mh, err
 	}
 	memcache.AddToCache(pr, mh)
-	go serialize.ToDisk(mh, r.imagePath)
+	go serialize.ToFilesystem(mh, r.imagePath)
 	return mh, nil
 }
 

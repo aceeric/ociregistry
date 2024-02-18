@@ -11,47 +11,47 @@ const (
 )
 
 type PullRequest struct {
-	pullType  int
-	org       string
-	image     string
-	reference string
-	remote    string
+	PullType  int    `json:"pullType"`
+	Org       string `json:"org"`
+	Image     string `json:"image"`
+	Reference string `json:"reference"`
+	Remote    string `json:"remote"`
 }
 
 func NewPullRequest(org, image, reference, remote string) PullRequest {
 	return PullRequest{
-		pullType:  typeFromRef(reference),
-		org:       org,
-		image:     image,
-		reference: reference,
-		remote:    remote,
+		PullType:  typeFromRef(reference),
+		Org:       org,
+		Image:     image,
+		Reference: reference,
+		Remote:    remote,
 	}
 }
 
 func (pr *PullRequest) Url() string {
 	separator := ":"
-	if strings.HasPrefix(pr.reference, "sha256:") {
+	if strings.HasPrefix(pr.Reference, "sha256:") {
 		separator = "@"
 	}
-	if pr.org == "" {
-		return fmt.Sprintf("%s/%s%s%s", pr.remote, pr.image, separator, pr.reference)
+	if pr.Org == "" {
+		return fmt.Sprintf("%s/%s%s%s", pr.Remote, pr.Image, separator, pr.Reference)
 	}
-	return fmt.Sprintf("%s/%s/%s%s%s", pr.remote, pr.org, pr.image, separator, pr.reference)
+	return fmt.Sprintf("%s/%s/%s%s%s", pr.Remote, pr.Org, pr.Image, separator, pr.Reference)
 }
 
 func (pr *PullRequest) isByTag() bool {
-	return pr.pullType == byTag
+	return pr.PullType == byTag
 }
 
 func (pr *PullRequest) isByDigest() bool {
-	return pr.pullType == byDigest
+	return pr.PullType == byDigest
 }
 
 // calico/node:v1.23.0 becomes "calico/node/v1.23.0 and"
 // hello-world:v1.0.0 becomes "/hello-world/v1.0.0"
 // foo/bar@sha256:a15f3c... becomes "foo/bar/sha256:a15f3c..."
 func (pr *PullRequest) Id() string {
-	return fmt.Sprintf("%s/%s/%s/", pr.org, pr.image, pr.reference)
+	return fmt.Sprintf("%s/%s/%s/", pr.Org, pr.Image, pr.Reference)
 }
 
 func ByTag() int {

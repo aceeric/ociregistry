@@ -121,7 +121,7 @@ func doneGet(imageUrl string) {
 		for _, ch := range chans {
 			defer func() {
 				if err := recover(); err != nil {
-					// TODO log
+					// TODO log?
 				}
 			}()
 			ch <- true

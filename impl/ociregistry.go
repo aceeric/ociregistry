@@ -6,7 +6,6 @@ package impl
 import (
 	"net/http"
 	. "ociregistry/api/models"
-	"os"
 
 	_ "crypto/sha256"
 	_ "crypto/sha512"
@@ -25,12 +24,6 @@ func NewOciRegistry(imagePath string) OciRegistry {
 	return OciRegistry{
 		imagePath: imagePath,
 	}
-}
-
-// TODO goes into OciRegistry
-func SetImagePath(imagePathArg string) error {
-	imagePath = imagePathArg
-	return os.MkdirAll(imagePath, 0755)
 }
 
 // CONNECT

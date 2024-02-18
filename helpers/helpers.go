@@ -10,8 +10,8 @@ import (
 var srch = `.*([a-f0-9]{64}).*`
 var re = regexp.MustCompile(srch)
 
-func GetSHAfromPath(shaExpr string) string {
-	tmpdgst := re.FindStringSubmatch(shaExpr)
+func GetSHAfrom(str string) string {
+	tmpdgst := re.FindStringSubmatch(str)
 	if len(tmpdgst) == 2 {
 		return tmpdgst[1]
 	}
@@ -19,7 +19,7 @@ func GetSHAfromPath(shaExpr string) string {
 }
 
 func GetBlobPath(base string, shapat string) string {
-	shapat = GetSHAfromPath(shapat)
+	shapat = GetSHAfrom(shapat)
 	blobFile := filepath.Join(base, globals.BlobsDir, shapat)
 	_, err := os.Stat(blobFile)
 	if err != nil {

@@ -65,7 +65,7 @@ func Extract(fileName string, tarfilePath string) error {
 			// ignore directories
 			continue
 		case tar.TypeReg:
-			sha := helpers.GetSHAfromPath(header.Name)
+			sha := helpers.GetSHAfrom(header.Name)
 			if sha != "" {
 				filePath := filepath.Join(tarfilePath, globals.BlobsDir, sha)
 				if _, err := os.Stat(filePath); err != nil {

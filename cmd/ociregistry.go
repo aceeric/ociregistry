@@ -47,13 +47,14 @@ func main() {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
-	// create an instance of the API handler
 	ociRegistry := impl.NewOciRegistry(args.imagePath)
 
 	// set up a basic Echo router
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
+	// register our OCI Registry above as the handler for the interface
+	api.RegisterHandlers(e, &ociRegistry)
 
 	globals.SetLogLevel(args.logLevel)
 
@@ -65,13 +66,10 @@ func main() {
 	// use Open API middleware to check all requests against the OpenAPI schema
 	e.Use(middleware.OapiRequestValidator(swagger))
 
-	// register our OCI Registry above as the handler for the interface
-	api.RegisterHandlers(e, &ociRegistry)
-
 	// set up the ability to handle image tarballs placed in the images dir
 	// NEED TO REWORK THIS... go importer.Importer(args.imagePath)
 
-	// load cached image metadata
+	// load cached image metadata into mem
 	serialize.FromFilesystem(memcache.GetCache(), args.imagePath)
 
 	// start the API server

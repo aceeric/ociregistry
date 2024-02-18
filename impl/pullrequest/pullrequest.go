@@ -51,7 +51,11 @@ func (pr *PullRequest) isByDigest() bool {
 // hello-world:v1.0.0 becomes "/hello-world/v1.0.0"
 // foo/bar@sha256:a15f3c... becomes "foo/bar/sha256:a15f3c..."
 func (pr *PullRequest) Id() string {
-	return fmt.Sprintf("%s/%s/%s/", pr.Org, pr.Image, pr.Reference)
+	return fmt.Sprintf("%s/%s/%s", pr.Org, pr.Image, pr.Reference)
+}
+
+func (pr *PullRequest) IdDigest(digest string) string {
+	return fmt.Sprintf("%s/%s/%s", pr.Org, pr.Image, digest)
 }
 
 func ByTag() int {
@@ -68,8 +72,4 @@ func typeFromRef(ref string) int {
 	}
 	return ByTag()
 
-}
-
-func isValidPullType(pullType int) bool {
-	return 0 <= pullType && pullType <= byDigest
 }

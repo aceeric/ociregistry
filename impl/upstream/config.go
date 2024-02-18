@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -50,13 +51,18 @@ var (
 // TODO start a goroutine to periodically reload the config file
 // if it changes on disk. (Maybe hash it?)
 func ConfigLoader(configPath string) error {
-	log.Debugf("load remote registry configuration from %s", configPath)
 	if configPath != "" {
+		start := time.Now()
+		log.Infof("load remote registry configuration from %s", configPath)
 		b, err := os.ReadFile(configPath)
 		if err != nil {
 			return err
 		}
-		return parseConfig(b)
+		err = parseConfig(b)
+		if err != nil {
+			return err
+		}
+		log.Infof("loaded %d registry configurations from the file system in %s", len(config), time.Since(start))
 	}
 	return nil
 }

@@ -2,6 +2,7 @@ package upstream
 
 import (
 	"encoding/json"
+	"fmt"
 	"ociregistry/globals"
 	"ociregistry/impl/extractor"
 	"ociregistry/impl/pullrequest"
@@ -68,12 +69,8 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 	case <-time.After(time.Duration(waitMillis) * time.Millisecond):
 	}
 	mh.Pr = pr
+	mh.ImageUrl = imageUrl
 	return mh, err
-}
-
-// TODO err if unknown mediatype
-func isImageDescriptor(d *remote.Descriptor) bool {
-	return d.Descriptor.MediaType == "application/vnd.docker.distribution.manifest.v2+json"
 }
 
 func manifestHolderFromDescriptor(d *remote.Descriptor) (ManifestHolder, error) {
@@ -84,22 +81,28 @@ func manifestHolderFromDescriptor(d *remote.Descriptor) (ManifestHolder, error) 
 		Bytes:     d.Manifest,
 	}
 	var err error
-	if isImageDescriptor(d) {
-		var m = ImageManifest{}
-		err = json.Unmarshal(d.Manifest, &m)
-		if err == nil {
-			mh.Im = m
-			mh.Type = ImageManifestType
-		}
-	} else {
-		var m = ManifestList{}
-		err = json.Unmarshal(d.Manifest, &m)
-		if err == nil {
-			mh.Ml = m
-			mh.Type = ManifestListType
-		}
+	switch d.Descriptor.MediaType {
+	case V2dockerManifestListMt:
+		mh.Type = V2dockerManifestList
+		err = json.Unmarshal(d.Manifest, &mh.V2dockerManifestList)
+	case V2dockerManifestMt:
+		mh.Type = V2dockerManifest
+		err = json.Unmarshal(d.Manifest, &mh.V2dockerManifest)
+	case V1ociIndexMt:
+		mh.Type = V1ociIndex
+		err = json.Unmarshal(d.Manifest, &mh.V1ociIndex)
+	case V1ociManifestMt:
+		mh.Type = V1ociDescriptor
+		err = json.Unmarshal(d.Manifest, &mh.V1ociDescriptor)
+	default:
+		return ManifestHolder{}, fmt.Errorf("unsupported media type: %s", d.Descriptor.MediaType)
 	}
 	return mh, err
+
+}
+
+func isImageDescriptor(d *remote.Descriptor) bool {
+	return d.Descriptor.MediaType == V2dockerManifestMt || d.Descriptor.MediaType == V1ociManifestMt
 }
 
 func enqueueGet(imageUrl string, ch chan bool) bool {
@@ -121,7 +124,7 @@ func doneGet(imageUrl string) {
 		for _, ch := range chans {
 			defer func() {
 				if err := recover(); err != nil {
-					// TODO log?
+					log.Errorf("attempt to write to closed channel pulling %s", imageUrl)
 				}
 			}()
 			ch <- true

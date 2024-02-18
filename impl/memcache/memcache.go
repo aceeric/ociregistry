@@ -24,16 +24,19 @@ func IsCached(pr pullrequest.PullRequest) (upstream.ManifestHolder, bool) {
 	return mh, exists
 }
 
-func AddToCache(pr pullrequest.PullRequest, mh upstream.ManifestHolder) {
-	prCache.Lock()
+// AddToCache adds the pull request to the in-mem cache. The PR is added two ways:
+// the way it came in (e.g. "coredns/coredns:1.11.1") and by digest from the manifest
+// (e.g. coredns/coredns@sha256:nnn) because the client will likely HEAD the manifest
+// using the tag then GET by SHA
+func AddToCache(pr pullrequest.PullRequest, mh upstream.ManifestHolder, withlock bool) {
+	if withlock {
+		prCache.Lock()
+		defer prCache.Unlock()
+	}
 	prCache.pullRequestCache[pr.Id()] = mh
-	prCache.Unlock()
+	prCache.pullRequestCache[pr.IdDigest("sha256:"+mh.Digest)] = mh
 }
 
 func GetCache() *PRCache {
 	return &prCache
-}
-
-func AddToCacheWithoutLock(pr pullrequest.PullRequest, mh upstream.ManifestHolder) {
-	prCache.pullRequestCache[pr.Id()] = mh
 }

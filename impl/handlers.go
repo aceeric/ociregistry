@@ -28,6 +28,7 @@ func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org s
 	} else if remote == "" {
 		return ctx.NoContent(http.StatusNotFound)
 	} else {
+		log.Debugf("will pull and cache for pr id: %s", pr.Id())
 		imh, err := r.pullAndCache(pr)
 		if err != nil {
 			return ctx.NoContent(http.StatusInternalServerError)
@@ -116,7 +117,8 @@ func (r *OciRegistry) pullAndCache(pr pullrequest.PullRequest) (upstream.Manifes
 	if err != nil {
 		return mh, err
 	}
-	memcache.AddToCache(pr, mh)
+	log.Debugf("add to mem cache pr id: %s", pr.Id())
+	memcache.AddToCache(pr, mh, true)
 	go serialize.ToFilesystem(mh, r.imagePath)
 	return mh, nil
 }

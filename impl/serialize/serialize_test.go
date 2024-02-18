@@ -1,95 +1,131 @@
 package serialize
 
 import (
+	"encoding/json"
+	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/upstream"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
+var mfst = `{
+	"schemaVersion": 2,
+	"mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+	"manifests": [
+	   {
+		  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		  "size": 526,
+		  "digest": "sha256:f5944f2d1daf66463768a1503d0c8c5e8dde7c1674d3f85abc70cef9c7e32e95",
+		  "platform": {
+			 "architecture": "amd64",
+			 "os": "linux"
+		  }
+	   },
+	   {
+		  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		  "size": 526,
+		  "digest": "sha256:27295ffe5a75328e8230ff9bcabe2b54ebb9079ff70344d73a7b7c7e163ee1a6",
+		  "platform": {
+			 "architecture": "arm",
+			 "os": "linux",
+			 "variant": "v7"
+		  }
+	   },
+	   {
+		  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		  "size": 526,
+		  "digest": "sha256:566af08540f378a70a03588f3963b035f33c49ebab3e4e13a4f5edbcd78c6689",
+		  "platform": {
+			 "architecture": "arm64",
+			 "os": "linux"
+		  }
+	   },
+	   {
+		  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		  "size": 526,
+		  "digest": "sha256:2f205253a51c641263b155d48460ee2056c5b5013f8239ae3811792ec63b3546",
+		  "platform": {
+			 "architecture": "ppc64le",
+			 "os": "linux"
+		  }
+	   },
+	   {
+		  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		  "size": 526,
+		  "digest": "sha256:7eaeb31509d7f370599ef78d55956e170eafb7f4a75b8dc14b5c06071d13aae0",
+		  "platform": {
+			 "architecture": "s390x",
+			 "os": "linux"
+		  }
+	   },
+	   {
+		  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		  "size": 1969,
+		  "digest": "sha256:78bfb9d8999c190fca79871c4b2f8d69d94a0605266f0bbb2dbaa1b6dfd03720",
+		  "platform": {
+			 "architecture": "amd64",
+			 "os": "windows",
+			 "os.version": "10.0.17763.2928"
+		  }
+	   },
+	   {
+		  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		  "size": 1969,
+		  "digest": "sha256:9d05676469a08d6dba9889297333b7d1768e44e38075ab5350a4f8edd97f5be1",
+		  "platform": {
+			 "architecture": "amd64",
+			 "os": "windows",
+			 "os.version": "10.0.19042.1706"
+		  }
+	   },
+	   {
+		  "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+		  "size": 1969,
+		  "digest": "sha256:e8fb66bcfe1a85ec1299652d28e6f7f9cfbb01d33c6260582a42971d30dcb77d",
+		  "platform": {
+			 "architecture": "amd64",
+			 "os": "windows",
+			 "os.version": "10.0.20348.707"
+		  }
+	   }
+	]
+ }`
+
 func Test1(t *testing.T) {
 	td, _ := os.MkdirTemp("", "")
-	digest := "406945b5115423a8c1d1e5cd53222ef2ff0ce9d279ed85badbc4793beebebc6c"
-	mh := upstream.ManifestHolder{
-		ImageUrl:  "registry.k8s.io/kube-scheduler:v1.29.1",
-		MediaType: "application/vnd.docker.distribution.manifest.v2+json",
-		Digest:    digest,
-		Size:      2043,
-		Bytes:     []byte("TEST"),
-		Ml:        upstream.ManifestList{},
-		Im: upstream.ImageManifest{
-			SchemaVersion: 2,
-			MediaType:     "application/vnd.docker.distribution.manifest.v2+json",
-			Config: upstream.ManifestConfig{
-				MediaType: "application/vnd.docker.container.image.v1+json",
-				Digest:    "sha256:" + digest,
-				Size:      2425,
-			},
-			Layers: []upstream.ManifestLayer{
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      84572,
-					Digest:    "sha256:aba5379b9c6dc7c095628fe6598183d680b134c7f99748649dddf07ff1422846",
-				},
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      12594,
-					Digest:    "sha256:e5dbef90bae3c9df1dfd4ae7048c56226f6209d538c91f987aff4f54e888f566",
-				},
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      452856,
-					Digest:    "sha256:fbe9343cb4af98ca5a60b6517bf45a5a4d7f7172fb4793d4b55c950196089cda",
-				},
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      317,
-					Digest:    "sha256:fcb6f6d2c9986d9cd6a2ea3cc2936e5fc613e09f1af9042329011e43057f3265",
-				},
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      198,
-					Digest:    "sha256:e8c73c638ae9ec5ad70c49df7e484040d889cca6b4a9af056579c3d058ea93f0",
-				},
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      113,
-					Digest:    "sha256:1e3d9b7d145208fa8fa3ee1c9612d0adaac7255f1bbc9ddea7e461e0b317805c",
-				},
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      385,
-					Digest:    "sha256:4aa0ea1413d37a58615488592a0b827ea4b2e48fa5a77cf707d0e35f025e613f",
-				},
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      343,
-					Digest:    "sha256:65efb1cabba44ca8eefa2058ebdc19b7f76bbb48400ff9e32b809be25f0cdefa",
-				},
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      129151,
-					Digest:    "sha256:13547472c521121fc04c8fa473757115ef8abe698cc9fa67e828371feeff40e7",
-				},
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      734919,
-					Digest:    "sha256:53f492e4d27a1a1326e593efdaffcb5e2b0230dc661b20a81a04fa740a37cb4c",
-				},
-				{
-					MediaType: "application/vnd.docker.image.rootfs.diff.tar.gzip",
-					Size:      17099135,
-					Digest:    "sha256:6523efc24f16435b7507a67c2a1f21828c9d58531902856b294bf49d04b96bbe",
-				},
-			},
-		},
-		Tarfile: "/foo/bar/baz",
-		Type:    upstream.ImageManifestType,
+	mhOut := upstream.ManifestHolder{
+		Pr:        pullrequest.PullRequest{},
+		ImageUrl:  "registry.k8s.io/pause:3.8",
+		MediaType: "application/vnd.docker.distribution.manifest.list.v2+json",
+		Digest:    "9001185023633d17a2f98ff69b6ff2615b8ea02a825adffa40422f51dfdcde9d",
+		Size:      2761,
+		Bytes:     []byte{},
+		Tarfile:   "/frobozz",
+		Type:      upstream.V2dockerManifestList,
 	}
-	ToFilesystem(mh, td)
-	fname := filepath.Join(td, "imgmf", digest)
-	_, err := os.Stat(fname)
+	err := json.Unmarshal([]byte(mfst), &mhOut.V2dockerManifestList)
 	if err != nil {
+		t.Fail()
+	}
+	ToFilesystem(mhOut, td)
+	fname := filepath.Join(td, "fat", mhOut.Digest)
+	_, err = os.Stat(fname)
+	if err != nil {
+		t.Fail()
+	}
+	b, err := os.ReadFile(fname)
+	if err != nil {
+		t.Fail()
+	}
+	mhIn := upstream.ManifestHolder{}
+	err = json.Unmarshal(b, &mhIn)
+	if err != nil {
+		t.Fail()
+	}
+	same := reflect.DeepEqual(mhOut, mhIn)
+	if !same {
 		t.Fail()
 	}
 }

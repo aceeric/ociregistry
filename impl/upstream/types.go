@@ -1,74 +1,39 @@
 package upstream
 
-import "ociregistry/impl/pullrequest"
+import (
+	"ociregistry/impl/pullrequest"
+	"ociregistry/impl/upstream/v1oci"
+	"ociregistry/impl/upstream/v2docker"
+)
 
-// ManifestConfig corresponds to the 'config' part of an 'ImageManifest'
-type ManifestConfig struct {
-	MediaType string `json:"mediaType"`
-	Digest    string `json:"digest"`
-	Size      int    `json:"size"`
-}
-
-// ManifestLayer is one element of the 'layers' list in an 'ImageManifest'
-type ManifestLayer struct {
-	MediaType string `json:"mediaType"`
-	Digest    string `json:"digest"`
-	Size      int    `json:"size"`
-}
-
-// ImageManifest is an image manifest provided when querying a manifest by digest
-type ImageManifest struct {
-	SchemaVersion int             `json:"schemaVersion"`
-	MediaType     string          `json:"mediaType"`
-	Config        ManifestConfig  `json:"config"`
-	Layers        []ManifestLayer `json:"layers"`
-}
-
-// ManifestJson is the 'manifest.json' file in a saved image tarball
-type ManifestJson struct {
-	Config   string   `json:"config"`
-	RepoTags []string `json:"repoTags"`
-	Layers   []string `json:"layers"`
-}
-
-// ManifestPlatform is the 'platform' entry of a 'ManifestItem'
-type ManifestPlatform struct {
-	Architecture string `json:"architecture"`
-	Os           string `json:"os"`
-	Variant      string `json:"variant"`
-}
-
-// ManifestItem is one manifest in the 'manifests' list of 'ManifestList'
-type ManifestItem struct {
-	MediaType string           `json:"mediaType"`
-	Size      int              `json:"size"`
-	Digest    string           `json:"digest"`
-	Platform  ManifestPlatform `json:"platform"`
-}
-
-// ManifestList is an image manifest provided when querying a manifest by tag
-type ManifestList struct {
-	SchemaVersion int            `json:"schemaVersion"`
-	MediaType     string         `json:"mediaType"`
-	Manifests     []ManifestItem `json:"manifests"`
-}
+const (
+	V2dockerManifestListMt = "application/vnd.docker.distribution.manifest.list.v2+json"
+	V2dockerManifestMt     = "application/vnd.docker.distribution.manifest.v2+json"
+	V1ociIndexMt           = "application/vnd.oci.image.index.v1+json"
+	V1ociManifestMt        = "application/vnd.oci.image.manifest.v1+json"
+)
 
 type ManifestType int
 
 const (
-	ManifestListType ManifestType = iota
-	ImageManifestType
+	V2dockerManifestList ManifestType = iota
+	V2dockerManifest
+	V1ociIndex
+	V1ociDescriptor
+	Unknown
 )
 
 type ManifestHolder struct {
-	Pr        pullrequest.PullRequest `json:"pullRequest"`
-	ImageUrl  string                  `json:"imageUrl"`
-	MediaType string                  `json:"mediaType"`
-	Digest    string                  `json:"digest"`
-	Size      int                     `json:"size"`
-	Bytes     []byte                  `json:"bytes"`
-	Ml        ManifestList            `json:"ml"`
-	Im        ImageManifest           `json:"im"`
-	Tarfile   string                  `json:"tarfile"`
-	Type      ManifestType            `json:"type"`
+	Pr                   pullrequest.PullRequest `json:"pullRequest"`
+	ImageUrl             string                  `json:"imageUrl"`
+	MediaType            string                  `json:"mediaType"`
+	Digest               string                  `json:"digest"`
+	Size                 int                     `json:"size"`
+	Bytes                []byte                  `json:"bytes"`
+	Tarfile              string                  `json:"tarfile"`
+	Type                 ManifestType            `json:"type"`
+	V1ociIndex           v1oci.Index             `json:"v1.oci.index"`
+	V1ociDescriptor      v1oci.Descriptor        `json:"v1.oci.descriptor"`
+	V2dockerManifestList v2docker.ManifestList   `json:"v2.docker.manifesList"`
+	V2dockerManifest     v2docker.Manifest       `json:"v2.docker.Manifest"`
 }

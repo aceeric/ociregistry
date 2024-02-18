@@ -32,7 +32,6 @@ Started: %s (port %s)
 ----------------------------------------------------------------------
 `
 
-// main runs the registry server
 func main() {
 	args := parseCmdline()
 	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
@@ -49,11 +48,10 @@ func main() {
 
 	ociRegistry := impl.NewOciRegistry(args.imagePath)
 
-	// set up a basic Echo router
+	// Echo router
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
-	// register our OCI Registry above as the handler for the interface
 	api.RegisterHandlers(e, &ociRegistry)
 
 	globals.SetLogLevel(args.logLevel)

@@ -1,3 +1,4 @@
 .vscode
 images/
 bin/*
+cmd/__debug_bin*

@@ -4,7 +4,7 @@
 
 ```
 mkdir\
-  test-registry-servers/nginx/data\
+  test-registry-servers/nginx/conf\
   test-registry-servers/nginx/certs
 ```
 

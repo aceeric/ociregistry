@@ -9,7 +9,6 @@ require (
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/oapi-codegen/echo-middleware v1.0.1
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/opencontainers/go-digest v1.0.0
 	github.com/sirupsen/logrus v1.9.1
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -25,6 +24,7 @@ require (
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect

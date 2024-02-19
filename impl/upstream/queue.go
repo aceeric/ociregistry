@@ -136,7 +136,6 @@ func doneGet(imageUrl string) {
 	ps.mu.Unlock()
 }
 
-// TODO cachepath
 func cranePull(imageUrl string) (*remote.Descriptor, error) {
 	ref, err := name.ParseReference(imageUrl, make([]name.Option, 0)...)
 	if err != nil {

@@ -17,7 +17,7 @@ import (
 var dlmCln = regexp.MustCompile("[/:]+")
 var dlmAt = regexp.MustCompile("[/@]+")
 
-func Preload(imageListFile, imagePath, platformArch, platformOs string) error {
+func Preload(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int) error {
 	start := time.Now()
 	log.Infof("loading images from file: %s", imageListFile)
 	itemcnt := 0
@@ -54,7 +54,7 @@ func Preload(imageListFile, imagePath, platformArch, platformOs string) error {
 		// manifest list
 		pr := pullrequest.NewPullRequest(org, image, ref, remote)
 		log.Infof("get from remote: %s", pr.Url())
-		mh, err := upstream.Get(pr, imagePath, 60000)
+		mh, err := upstream.Get(pr, imagePath, pullTimeout)
 		if err != nil {
 			return err
 		}
@@ -62,7 +62,10 @@ func Preload(imageListFile, imagePath, platformArch, platformOs string) error {
 		if serialize.IsOnFilesystem(mh.Digest, false, imagePath) {
 			log.Infof("image manifest already cached for: %s", pr.Url())
 		} else {
-			serialize.ToFilesystem(mh, imagePath)
+			err = serialize.ToFilesystem(mh, imagePath)
+			if err != nil {
+				return err
+			}
 			itemcnt++
 		}
 		digest, err := getImageManifestDigest(mh, platformArch, platformOs)
@@ -77,11 +80,14 @@ func Preload(imageListFile, imagePath, platformArch, platformOs string) error {
 			continue
 		}
 		log.Infof("get from remote: %s", pr.Url())
-		_, err = upstream.Get(pr, imagePath, 60000)
+		_, err = upstream.Get(pr, imagePath, pullTimeout)
 		if err != nil {
 			return err
 		}
-		serialize.ToFilesystem(mh, imagePath)
+		err = serialize.ToFilesystem(mh, imagePath)
+		if err != nil {
+			return err
+		}
 		itemcnt++
 	}
 	log.Infof("loaded %d images to the file system cache in %s", itemcnt, time.Since(start))

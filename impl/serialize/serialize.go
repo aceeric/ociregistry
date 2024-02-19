@@ -30,8 +30,7 @@ func IsOnFilesystem(digest string, isImageManifest bool, imagePath string) bool 
 	return err == nil
 }
 
-// TODO return error
-func ToFilesystem(mh upstream.ManifestHolder, imagePath string) {
+func ToFilesystem(mh upstream.ManifestHolder, imagePath string) error {
 	var subdir = fatPath
 	if mh.IsImageManifest() {
 		subdir = imgPath
@@ -46,10 +45,11 @@ func ToFilesystem(mh upstream.ManifestHolder, imagePath string) {
 		if os.WriteFile(fname, mb, 0644) != nil {
 			log.Errorf("error serializing manifest for %s", mh.ImageUrl)
 		}
-		return
+		return err
 	} else {
 		log.Infof("manifest already in cache %s", fname)
 	}
+	return nil
 }
 
 func FromFilesystem(imagePath string) error {

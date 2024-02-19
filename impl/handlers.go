@@ -107,10 +107,9 @@ func parseRemote(ctx echo.Context, namespace *string) string {
 
 // pullAndCache pulls a manifest represented in the passed 'PullRequest' and caches it.
 // If the manifest is an image manifest then the blobs are also downloaded and cached. Upon
-// return from this function, the server is able to serve the image from cache. TODO
-// configurable timeout
+// return from this function, the server is able to serve the image from cache.
 func (r *OciRegistry) pullAndCache(pr pullrequest.PullRequest) (upstream.ManifestHolder, error) {
-	mh, err := upstream.Get(pr, r.imagePath, 60000)
+	mh, err := upstream.Get(pr, r.imagePath, r.pullTimeout)
 	if err != nil {
 		return mh, err
 	}

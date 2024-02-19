@@ -10,7 +10,6 @@ import (
 )
 
 // PRCache is a synchronized in-memory representation of all cached manifests.
-// TODO badly named - get away from "pull request" as it is overloaded with GitHub
 type PRCache struct {
 	sync.Mutex
 	pullRequestCache map[string]upstream.ManifestHolder

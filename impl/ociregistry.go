@@ -14,12 +14,14 @@ import (
 )
 
 type OciRegistry struct {
-	imagePath string
+	imagePath   string
+	pullTimeout int
 }
 
-func NewOciRegistry(imagePath string) OciRegistry {
+func NewOciRegistry(imagePath string, pullTimeout int) OciRegistry {
 	return OciRegistry{
-		imagePath: imagePath,
+		imagePath:   imagePath,
+		pullTimeout: pullTimeout,
 	}
 }
 

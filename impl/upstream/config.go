@@ -47,8 +47,7 @@ var (
 // referenced by the 'configPath' arg. If the arg is the empty string
 // then nothing is done and no remote registry configs are defined.
 // The result of this will be that every remote registry will be
-// accessed anonymously. TODO start a goroutine to periodically reload
-// the config file if it changes on disk. (Maybe hash it?)
+// accessed anonymously.
 func ConfigLoader(configPath string) error {
 	if configPath != "" {
 		start := time.Now()

@@ -21,13 +21,14 @@ import (
 )
 
 type cmdLine struct {
-	logLevel   string
-	imagePath  string
-	port       string
-	configPath string
-	loadImages string
-	arch       string
-	os         string
+	logLevel    string
+	imagePath   string
+	port        string
+	configPath  string
+	loadImages  string
+	arch        string
+	os          string
+	pullTimeout int
 }
 
 const startupBanner = `----------------------------------------------------------------------
@@ -41,12 +42,7 @@ func main() {
 	globals.ConfigureLogging(args.logLevel)
 
 	if args.loadImages != "" {
-		err := preload.Preload(args.loadImages, args.imagePath, args.arch, args.os)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error loading images in file: %s. error %s\n", args.loadImages, err)
-			os.Exit(1)
-		}
-		os.Exit(0)
+		doPreloadAndExit(args)
 	}
 
 	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
@@ -61,7 +57,7 @@ func main() {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
-	ociRegistry := impl.NewOciRegistry(args.imagePath)
+	ociRegistry := impl.NewOciRegistry(args.imagePath, args.pullTimeout)
 
 	// Echo router
 	e := echo.New()
@@ -75,7 +71,7 @@ func main() {
 	upstream.ConfigLoader(args.configPath)
 
 	// use Open API middleware to check all requests against the OpenAPI schema
-	// for now, don't do this otherwise have to add the cmd api to the Swagger spec
+	// for now, don't do this until I add the cmd api to the Swagger spec
 	//e.Use(middleware.OapiRequestValidator(swagger))
 
 	// load cached image metadata into mem
@@ -109,6 +105,7 @@ func parseCmdline() cmdLine {
 	flag.StringVar(&args.loadImages, "load-images", "", "load images in the specified file into cache and then exit")
 	flag.StringVar(&args.arch, "arch", "amd64", "architecture for the --load-images arg")
 	flag.StringVar(&args.os, "os", "linux", "os for the --load-images arg")
+	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "max time in millis to pull an image from an upstream. Defaults to one minute")
 	flag.Parse()
 	return args
 }
@@ -121,4 +118,13 @@ func cmdApi(e *echo.Echo, ch chan bool) {
 			ch <- true
 			return nil
 		})
+}
+
+func doPreloadAndExit(args cmdLine) {
+	err := preload.Preload(args.loadImages, args.imagePath, args.arch, args.os, args.pullTimeout)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error loading images in file: %s. error %s\n", args.loadImages, err)
+		os.Exit(1)
+	}
+	os.Exit(0)
 }

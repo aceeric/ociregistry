@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+
+set -e
+
+if [[ $(basename $PWD) != "test-registry-servers" ]]; then
+  echo "must be in the test-registry-servers directory"
+  exit
+fi
+
+do_docker_setup=1
+if [[ "$1" == "--skip-docker-setup" ]]; then
+  do_docker_setup=0
+fi
+
+mkdir -p /tmp/image-test
+
+if [[ $do_docker_setup -eq 1 ]]; then
+  echo "starting no-auth registry container on 5000"
+
+  docker run -d\
+    --name registry\
+    -p 5000:5000\
+    registry:2.8.3
+
+  echo "starting basic auth registry container on 5001"
+
+  docker run -d\
+  --name registry-auth\
+  -p 5001:5000\
+  -v $(realpath ./basic-auth-no-tls/auth):/auth\
+  -e REGISTRY_AUTH=htpasswd\
+  -e REGISTRY_AUTH_HTPASSWD_REALM="Registry Realm"\
+  -e REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd\
+  registry:2.8.3
+
+  echo "starting nginx container on 8443 and 8444"
+
+  docker run -d\
+    --name nginx\
+    --network host\
+    -v $(realpath ./nginx/conf/):/etc/nginx\
+    -v $(realpath ./nginx/certs):/certs\
+    -P\
+    nginx:latest
+
+  echo "populating both registries with docker.io/hello-world:latest"
+
+  crane pull docker.io/hello-world:latest hello-world.latest.tar
+  crane push hello-world.latest.tar localhost:5000/hello-world:latest
+  crane auth login -u ericace -p ericace localhost:5001
+  crane push hello-world.latest.tar localhost:5001/hello-world:latest
+  crane auth logout localhost:5001
+fi
+
+results=""
+
+for t in \
+    "http-anon.yaml+200+localhost:5000"\
+    "http-basic-auth.yaml+200+localhost:5001"\
+    "https-one-way-anon-secure-fails.yaml+500+localhost:8443"\
+    "https-one-way-anon-insecure.yaml+200+localhost:8443"\
+    "https-one-way-anon-secure.yaml+200+localhost:8443"\
+    "https-mtls-anon-secure.yaml+200+localhost:8444"; do
+  cfg=$(echo $t | cut -d '+' -f1)
+  exp=$(echo $t | cut -d '+' -f2)
+  ns=$(echo  $t | cut -d '+' -f3)
+  echo "CFG=$cfg // EXP. RESULT=$exp // NS=$ns"
+
+  rm -rf /tmp/image-test/*
+  ../bin/server --config-path=./$cfg --log-level=info --image-path=/tmp/image-test &
+  sleep 1s
+  act=$(curl -s -o /dev/null -w "%{http_code}" localhost:8080/v2/hello-world/manifests/latest?ns=$ns)
+  curl localhost:8080/cmd/stop
+  if [[ $exp != $act ]]; then
+    results="$results\nFAIL: $cfg"
+  else
+    results="$results\nPASS: $cfg"
+  fi
+done
+
+echo "cleanup"
+
+docker stop nginx registry-auth registry
+docker container rm -f nginx registry-auth registry
+
+rm -f "hello-world.latest.tar"
+
+echo
+echo "RESULTS:"
+echo -e "$results"

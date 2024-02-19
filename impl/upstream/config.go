@@ -47,9 +47,8 @@ var (
 // referenced by the 'configPath' arg. If the arg is the empty string
 // then nothing is done and no remote registry configs are defined.
 // The result of this will be that every remote registry will be
-// accessed anonymously by the image puller.
-// TODO start a goroutine to periodically reload the config file
-// if it changes on disk. (Maybe hash it?)
+// accessed anonymously. TODO start a goroutine to periodically reload
+// the config file if it changes on disk. (Maybe hash it?)
 func ConfigLoader(configPath string) error {
 	if configPath != "" {
 		start := time.Now()
@@ -67,11 +66,12 @@ func ConfigLoader(configPath string) error {
 	return nil
 }
 
-// parseConfig parses the remote registry configuration in the passed
-// 'configBytes' arg. which consists on some number of entries, each
-// describing the auth and TLS configuration to access a remote registry.
-// The results are parsed into the package-level 'config' map keyed by
-// the remote name (e.g. 'quay.io').
+// parseConfig parses the remote registry configuration in the passed 'configBytes'
+// arg. which consists on some number of entries, each describing the auth and TLS
+// configuration to access a remote registry. The results are parsed into the package-level
+// 'config' map keyed by the remote name. Therefore the `name` element ofthe configuration
+// is important: it must exactly match a remote registry with no HTTP scheme, e.g.: 'quay.io',
+// or: our.private.registry.gov:6443, or 129.168.1.1:8080, etc.
 func parseConfig(configBytes []byte) error {
 	var entries []cfgEntry
 	err := yaml.Unmarshal(configBytes, &entries)
@@ -149,4 +149,14 @@ func configFor(registry string) ([]remote.Option, error) {
 	config[registry] = regCfg
 	mu.Unlock()
 	return opts, nil
+}
+
+func configEntryFor(registry string) (cfgEntry, error) {
+	mu.Lock()
+	regCfg, exists := config[registry]
+	mu.Unlock()
+	if !exists {
+		return cfgEntry{}, errors.New("no entry in configuration for registry: " + registry)
+	}
+	return regCfg, nil
 }

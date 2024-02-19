@@ -1,0 +1,6 @@
+---
+- name: localhost:5001
+  description: Basic auth, HTTP
+  auth:
+    user: ericace
+    password: ericace

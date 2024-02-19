@@ -18,6 +18,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// HEAD or GET manifest
 func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, verb string, namespace *string) error {
 	logRequestHeaders(ctx)
 	remote := parseRemote(ctx, namespace)
@@ -64,12 +65,14 @@ func (r *OciRegistry) handleV2Auth(ctx echo.Context, params V2AuthParams) error 
 	return ctx.JSON(http.StatusOK, body)
 }
 
+// GET /v2
 func (r *OciRegistry) handleV2Default(ctx echo.Context) error {
 	log.Info("get /v2/")
 	logRequestHeaders(ctx)
 	return ctx.JSON(http.StatusOK, "true")
 }
 
+// GET blob
 func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
 	log.Infof("get blob org: %s, image: %s, digest: %s", org, image, digest)
 	logRequestHeaders(ctx)
@@ -96,10 +99,16 @@ func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org strin
 	return ctx.Stream(http.StatusOK, "binary/octet-stream", f)
 }
 
-// parseRemoteNamespace accepts the remote registry to pull from in either the X-Registry header,
-// or a query param 'ns' - such as is passed by containerd. E.g. if containerd is configured
-// to mirror, then when it pulls from the mirror it passes the registry being mirrored like so:
-// https://mymirror.io/v2/image-name/manifests/tag-name?ns=myregistry.io:5000.
+// parseRemoteNamespace looks in the passed echo context for header 'X-Registry' and if
+// it exists, returns the header value. Else looks at the passed namespace arg and if
+// non-nil, returns the value from the pointer. Background: if containerd is configured
+// to mirror, then when it pulls from the mirror it passes the registry being mirrored
+// as a query param like so:
+//
+//	https://mymirror.io/v2/image-name/manifests/tag-name?ns=myregistry.io:5000.
+//
+// This query param is passed through to the API handlers so they can know which upstream
+// registry to pull from.
 func parseRemote(ctx echo.Context, namespace *string) string {
 	hdr, exists := ctx.Request().Header["X-Registry"]
 	if exists && len(hdr) == 1 {
@@ -111,7 +120,10 @@ func parseRemote(ctx echo.Context, namespace *string) string {
 	return ""
 }
 
-// TODO configurable timeout
+// pullAndCache pulls a manifest represented in the passed 'PullRequest' and caches it.
+// If the manifest is an image manifest then the blobs are also downloaded and cached. Upon
+// return from this function, the server is able to serve the image from cache. TODO
+// configurable timeout
 func (r *OciRegistry) pullAndCache(pr pullrequest.PullRequest) (upstream.ManifestHolder, error) {
 	mh, err := upstream.Get(pr, r.imagePath, 60000)
 	if err != nil {
@@ -123,6 +135,7 @@ func (r *OciRegistry) pullAndCache(pr pullrequest.PullRequest) (upstream.Manifes
 	return mh, nil
 }
 
+// logRequestHeaders emanates the request headers to the logger
 func logRequestHeaders(ctx echo.Context) {
 	if !log.IsLevelEnabled(log.DebugLevel) {
 		return

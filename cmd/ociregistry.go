@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"time"
 
@@ -16,8 +18,7 @@ import (
 	"ociregistry/impl/upstream"
 
 	"github.com/labstack/echo/v4"
-	middleware "github.com/oapi-codegen/echo-middleware"
-	log "github.com/sirupsen/logrus"
+	"github.com/labstack/gommon/log"
 )
 
 type cmdLine struct {
@@ -75,19 +76,26 @@ func main() {
 	upstream.ConfigLoader(args.configPath)
 
 	// use Open API middleware to check all requests against the OpenAPI schema
-	e.Use(middleware.OapiRequestValidator(swagger))
-
-	// set up the ability to handle image tarballs placed in the images dir
-	// NEED TO REWORK THIS... go importer.Importer(args.imagePath)
+	// for now, don't do this otherwise have to add the cmd api to the Swagger spec
+	//e.Use(middleware.OapiRequestValidator(swagger))
 
 	// load cached image metadata into mem
 	serialize.FromFilesystem(memcache.GetCache(), args.imagePath)
 
+	// set up the command API
+	shutdownCh := make(chan bool)
+	cmdApi(e, shutdownCh)
+
 	// start the API server
-	err = e.Start(net.JoinHostPort("0.0.0.0", args.port))
-	if err != nil {
-		log.Error(err.Error())
-	}
+	go func() {
+		if err := e.Start(net.JoinHostPort("0.0.0.0", args.port)); err != nil && err != http.ErrServerClosed {
+			e.Logger.Fatal("shutting down the server")
+		}
+	}()
+	<-shutdownCh
+	log.Infof("received stop command - stopping")
+	e.Server.Shutdown(context.Background())
+	log.Infof("stopped")
 }
 
 // parseCmdline defines configuration defaults, parses the command line to
@@ -103,4 +111,14 @@ func parseCmdline() cmdLine {
 	flag.StringVar(&args.os, "os", "linux", "os for the --load-images arg")
 	flag.Parse()
 	return args
+}
+
+// cmdApi implements the command API. Presently it consists only of:
+// GET /cmd/stop
+func cmdApi(e *echo.Echo, ch chan bool) {
+	e.GET("/cmd/stop",
+		func(c echo.Context) error {
+			ch <- true
+			return nil
+		})
 }

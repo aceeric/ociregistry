@@ -33,6 +33,7 @@ var (
 	alreadyEnqueued bool = true
 )
 
+// Get gets fat manifests, image manifests, and image blobs
 func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (ManifestHolder, error) {
 	imageUrl := pr.Url()
 	ch := make(chan bool)

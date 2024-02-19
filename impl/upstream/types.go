@@ -23,6 +23,7 @@ const (
 	Unknown
 )
 
+// TODO don't need Bytes
 type ManifestHolder struct {
 	Pr                   pullrequest.PullRequest `json:"pullRequest"`
 	ImageUrl             string                  `json:"imageUrl"`

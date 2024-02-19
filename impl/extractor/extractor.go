@@ -56,7 +56,7 @@ func Extract(tarfile string, tarfilePath string, deleteAfter bool) error {
 			// ignore directories
 			continue
 		case tar.TypeReg:
-			sha := helpers.GetSHAfrom(header.Name)
+			sha := helpers.GetDigestFrom(header.Name)
 			if sha == "" {
 				continue
 			}

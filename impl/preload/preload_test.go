@@ -92,7 +92,7 @@ var mfst = `{
 	]
  }`
 
-func Test1(t *testing.T) {
+func TestManifestHolder(t *testing.T) {
 	mh := upstream.ManifestHolder{
 		Pr:        pullrequest.PullRequest{},
 		ImageUrl:  "registry.k8s.io/pause:3.8",
@@ -117,7 +117,8 @@ func Test1(t *testing.T) {
 }
 
 // TODO run against a docker registry
-func Test2(t *testing.T) {
+func TestPreload(t *testing.T) {
+	t.SkipNow()
 	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fail()

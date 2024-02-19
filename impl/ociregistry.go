@@ -1,6 +1,6 @@
 // implements the "pull-only" registry server. Provides implementations for methods
 // required to pull an image. This file is lean to simplify handling any changes to
-// the API
+// the API - each function simply calls a handler in 'handlers.go'.
 package impl
 
 import (
@@ -12,9 +12,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 )
-
-// where image tarballs are unarchived to
-var imagePath string
 
 type OciRegistry struct {
 	imagePath string

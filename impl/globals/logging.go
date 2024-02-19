@@ -1,12 +1,18 @@
 package globals
 
 import (
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
+
+const msg = "echo server %s:%s status=%d latency=%s host=%s ip=%s"
+const srch = `.*sha256:([a-f0-9]{64}).*`
+
+var re = regexp.MustCompile(srch)
 
 func ConfigureLogging(level string) {
 	log.SetLevel(xlatLogLevel(level))
@@ -31,8 +37,6 @@ func xlatLogLevel(level string) log.Level {
 	return log.FatalLevel
 }
 
-const msg = "echo server %s:%s status=%d latency=%s host=%s ip=%s"
-
 func GetEchoLoggingFunc() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -45,6 +49,11 @@ func GetEchoLoggingFunc() echo.MiddlewareFunc {
 
 			req := c.Request()
 			res := c.Response()
+
+			dgst := re.FindStringSubmatch(req.RequestURI)
+			if len(dgst) == 2 {
+				req.RequestURI = strings.Replace(req.RequestURI, dgst[1], dgst[1][:10], 1)
+			}
 
 			flds := make([]interface{}, 6)
 			flds[0] = req.Method

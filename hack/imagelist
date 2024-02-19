@@ -1,7 +1,0 @@
-#docker.io/coredns/coredns:1.11.1
-#docker.io/library/registry:2.8.1
-#docker.io/openebs/provisioner-localpv:3.5.0
-quay.io/cilium/cilium@sha256:7f077c49ce091428b04de006d5f4cb01b8e32d63dc1d45fa3e372d624681e836
-quay.io/cilium/operator-generic@sha256:e5506ddf0665307cf4012a9fbe3f1a51c722b63a12e7abd357119b7c2d1f68af
-registry.k8s.io/metrics-server/metrics-server:v0.6.4
-registry.k8s.io/pause:3.8

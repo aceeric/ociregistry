@@ -11,9 +11,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func Extract(tarfile string, tarfilePath string, deleteAfter bool) error {
+	log.Debugf("extracting tarfile %s", tarfile)
 	defer deleteFile(tarfile, deleteAfter)
 	blobPath := filepath.Join(tarfilePath, globals.BlobsDir)
 	if err := os.MkdirAll(blobPath, 0755); err != nil {
@@ -62,6 +65,7 @@ func Extract(tarfile string, tarfilePath string, deleteAfter bool) error {
 			}
 			filePath := filepath.Join(blobPath, sha)
 			if _, err := os.Stat(filePath); err != nil {
+				log.Debugf("writing blob: %s", filePath)
 				f, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR, 0766)
 				if err != nil {
 					return err
@@ -70,9 +74,12 @@ func Extract(tarfile string, tarfilePath string, deleteAfter bool) error {
 				if _, err := io.Copy(f, tarReader); err != nil {
 					return err
 				}
+			} else {
+				log.Debugf("blob file already exists: %s", filePath)
 			}
 		}
 	}
+	log.Debugf("done extracting tarfile %s", tarfile)
 	return nil
 }
 

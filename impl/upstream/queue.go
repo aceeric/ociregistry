@@ -56,6 +56,7 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 			return
 		}
 		if isImageDescriptor(descriptor) {
+			log.Debugf("downloading image %s", imageUrl)
 			tarfile, ierr := craneDownloadImg(imageUrl, descriptor, imagePath)
 			if ierr != nil {
 				err = ierr
@@ -160,5 +161,6 @@ func craneDownloadImg(imageUrl string, d *remote.Descriptor, imagePath string) (
 	if err != nil {
 		return "", err
 	}
+	log.Debugf("save image to %s", imageTar)
 	return imageTar, crane.Save(img, imageUrl, imageTar)
 }

@@ -1,2 +1,8 @@
+quay.io/jetstack/cert-manager-cainjector:v1.11.2
+quay.io/jetstack/cert-manager-controller:v1.11.2
+quay.io/jetstack/cert-manager-webhook:v1.11.2
 registry.k8s.io/metrics-server/metrics-server:v0.6.2
 registry.k8s.io/ingress-nginx/controller:v1.8.1
+docker.io/kubernetesui/dashboard-api:v1.0.0
+docker.io/kubernetesui/metrics-scraper:v1.0.9
+docker.io/kubernetesui/dashboard-web:v1.0.0

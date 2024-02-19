@@ -1,5 +1,6 @@
 # TODO
 
+0. Support multiple archictures for pre-loading
 1. Special handing for "latest"?
 2. Modularize
 3. Use structs more to carry state

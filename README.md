@@ -59,7 +59,7 @@ The _resolve_ capability tells containerd that a HEAD request to the server with
 
 ## Configuring the OCI Registry Server
 
-The OCI Registry server may need configuration information to connect to upstream registries. By default, it will attempt anonymous plain HTTP access. Many OCI Distribution servers will reject HTTP and fail over to HTTPS. Then you're in the realm of TLS and PKI. Some servers require auth as well. To address all of these concerns the OCI Registry server accepts an optional command line parameter `--config-path` which identifies a configuration file in the following format:
+The OCI Registry server may need configuration information to connect to upstream registries. If run with no upstream registry config, it will attempt anonymous plain HTTP access. Many OCI Distribution servers will reject HTTP and fail over to HTTPS. Then you're in the realm of TLS and PKI. Some servers require auth as well. To address all of these concerns the OCI Registry server accepts an optional command line parameter `--config-path` which identifies a configuration file in the following format:
 
 ```
 - name: upstream one
@@ -77,7 +77,7 @@ The configuration file is a yaml list of upstream registry entries. Each entry s
 
 ```
 - name: my-upstream (or my-upstream:PORT)
-  description: Something that makes sense to you (or omit it - its optional)
+  description: Something that makes sense to you (or omit it - it is optional)
   auth:
     user: theuser
     password: thepass
@@ -148,12 +148,15 @@ mTLS can be implemented **with** and **without** remote server cert validation a
 
 The following options are supported:
 
-| Option        | Default              | Meaning                                                      |
-| ------------- | -------------------- | ------------------------------------------------------------ |
-| --log-level   | error                | Valid values: debug, info, warn, error                       |
-| --image-path  | /var/lib/ociregistry | The root directory of the image store                        |
-| --config-path | Empty                | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to HTTPS using the OS Trust store to validate the remote registry. |
-| --port        | 8080                 | Server port. E.g. `crane pull localhost:8080 foo.tar`        |
+| Option          | Default              | Meaning                                                      |
+| --------------- | -------------------- | ------------------------------------------------------------ |
+| `--log-level`   | error                | Valid values: debug, info, warn, error                       |
+| `--image-path`  | /var/lib/ociregistry | The root directory of the image store                        |
+| `--config-path` | Empty                | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to HTTPS using the OS Trust store to validate the remote registry. |
+| `--port`        | 8080                 | Server port. E.g. `crane pull localhost:8080 foo.tar`        |
+| `--load-images` | n/a                  | Provide a path to a file with image refs to load into the registry. (See _Pre-loading the registry_ below) |
+| `--arch`        | n/a                  | used with `--load-images`                                    |
+| `--os`          | n/a                  | used with `--load-images`                                    |
 
 ## Quick Start
 
@@ -178,6 +181,9 @@ Started: 2024-02-17 20:49:56.516302625 -0500 EST (port 8080)
 ### In another terminal
 
 ### Curl a manifest list
+
+Note the `ns` query parameter which tells the server to go to that upstream if the image isn't already locally cached.
+
 ```
 curl localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io | jq
 ```
@@ -215,30 +221,114 @@ find /tmp/images
 
 ### Result:
 ```images
-images/pulls
-images/mflst
-images/mflst/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
 images/blobs
 images/blobs/4873874c08efc72e9729683a83ffbb7502ee729e9a5ac097723806ea7fa13517
 images/blobs/fcb6f6d2c9986d9cd6a2ea3cc2936e5fc613e09f1af9042329011e43057f3265
 images/blobs/9457426d68990df190301d2e20b8450c4f67d7559bdb7ded6c40d41ced6731f7
-images/blobs/e5dbef90bae3c9df1dfd4ae7048c56226f6209d538c91f987aff4f54e888f566
-images/blobs/e8c73c638ae9ec5ad70c49df7e484040d889cca6b4a9af056579c3d058ea93f0
-images/blobs/65efb1cabba44ca8eefa2058ebdc19b7f76bbb48400ff9e32b809be25f0cdefa
-images/blobs/6523efc24f16435b7507a67c2a1f21828c9d58531902856b294bf49d04b96bbe
-images/blobs/aba5379b9c6dc7c095628fe6598183d680b134c7f99748649dddf07ff1422846
-images/blobs/fbe9343cb4af98ca5a60b6517bf45a5a4d7f7172fb4793d4b55c950196089cda
-images/blobs/53f492e4d27a1a1326e593efdaffcb5e2b0230dc661b20a81a04fa740a37cb4c
-images/blobs/13547472c521121fc04c8fa473757115ef8abe698cc9fa67e828371feeff40e7
-images/blobs/1e3d9b7d145208fa8fa3ee1c9612d0adaac7255f1bbc9ddea7e461e0b317805c
-images/blobs/4aa0ea1413d37a58615488592a0b827ea4b2e48fa5a77cf707d0e35f025e613f
-images/blobs/406945b5115423a8c1d1e5cd53222ef2ff0ce9d279ed85badbc4793beebebc6c
-images/imgmf
-images/imgmf/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
+etc...
+images/fat
+images/fat/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
+images/img
+images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
+images/pulls
 ```
 
-The manifest list was saved in `images/mflst/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7` and the image manifest was saved in `images/imgmf/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c`.
+The manifest list was saved in `images/fat/4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7` and the image manifest was saved in `images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c`.
 
 ### Stop and restart the server and repeat
 
 You will notice that the manifest list and the image manifest are now being returned from cache.
+
+## Pre-loading the registry
+
+Pre-loading supports the air-gapped use case of populating the registry, and then moving it into an air-gapped environment. The registry normally runs as a service. You can also run it as a CLI to pre-load itself. To do this, you create a file with a list of image references. Example:
+
+```
+cat <<EOF >| imagelist
+quay.io/jetstack/cert-manager-cainjector:v1.11.2
+quay.io/jetstack/cert-manager-controller:v1.11.2
+quay.io/jetstack/cert-manager-webhook:v1.11.2
+registry.k8s.io/metrics-server/metrics-server:v0.6.2
+registry.k8s.io/ingress-nginx/controller:v1.8.1
+registry.k8s.io/pause:3.8
+docker.io/kubernetesui/dashboard-api:v1.0.0
+docker.io/kubernetesui/metrics-scraper:v1.0.9
+docker.io/kubernetesui/dashboard-web:v1.0.0
+EOF
+```
+
+(You can also use the `@sha256:nnn` ref format instead in addition to the `:tag` format.) The key point here is to specify the _fat_ manifest in the list. (When you pull by tag, you get the fat manifest.) Pullers implement the following sequence:
+
+1. HEAD the manifest by tag
+2. Receive digest of the manifest in a response header (or Not Found)
+3. GET the same (fat) manifest by digest
+4. Pick an image manifest digest from the list of manifests in the _fat_ manifest received in step 2
+5. GET the image manifest by digest
+6. GET the blobs for the image
+
+To support this, the registry server caches both the fat manifest and the image manifest. (Two manifests for every one pull.) The pre-loader does the same so you need to provide the tags or digest of the fat manifest in your list. You should understand though that - if you cache a fat manifest by digest and later run a workload in an air-gapped environment that attempts to get the fat manifest by tag, the registry will not know the tag and so will not be able to provide that image.
+
+The pre-loader logic is similar to the client pull logic:
+
+1. Get the fat manifest by tag from the upstream registry and cache it
+2. Pick the digest from the image manifest list in the fat manifest that matches the requested architecture and os
+3. Get the image manifest by digest and the blobs and cache them.
+
+Once you've configured your image list file, then:
+```
+bin/server --image-path=/var/ociregistry/images --log-level=info --load-images=$PWD/imagelist --arch=amd64 --os=linux
+```
+
+The registry executable will populate the cache and then exit.
+
+## File system structure
+
+State is exclusively persisted to the file system. Let's say you run the server with `--image-path=/var/ociregistry/images`. Then:
+
+```
+.../images
+├── blobs
+├── fat
+├── img
+└── pulls
+```
+
+1. `blobs` are where the blobs are stored
+2. `fat` is where the fat manifests are stored: the manifests with lists of image manifests
+3. `img` stores the image manifests
+3. `pulls` is temp storage for image downloads that should be empty unless a pull is in progress
+
+Manifests are all stored by digest. The program uses a data structure called a `ManifestHolder` to hold all the image metadata and the actual manifest from the upstream registry. These are simply serialized to the file system as JSON. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
+
+## Code structure
+
+```
+├── api
+│   └── models
+├── bin
+├── cmd
+├── hack
+├── impl
+│   ├── extractor
+│   ├── globals
+│   ├── helpers
+│   ├── memcache
+│   ├── preload
+│   ├── pullrequest
+│   ├── serialize
+│   └── upstream
+│       ├── v1oci
+│       └── v2docker
+└── test-registry-servers
+    ├── basic-auth-no-tls
+    │   └── auth
+    └── nginx
+        ├── certs
+        └── conf
+```
+
+1. `api` is mostly generated by `oapi-codegen`.
+2. `bin` has the compiled server
+3. `cmd` is the entry point
+4. `impl` has the implementation of the server
+5. `test-registry-servers` is temporary for now

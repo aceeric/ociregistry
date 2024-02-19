@@ -18,5 +18,11 @@ The flags are:
 	    Port for server. Defaults to 8080
 	--load-images
 	    Loads the registry with images listed in the specified file by pulling and saving
+	--arch
+	    Architecture for the --load-images arg
+	--os
+		OS for the --load-images arg
+	--load-images
+	    Loads the registry with images listed in the specified file by pulling and saving
 */
 package main

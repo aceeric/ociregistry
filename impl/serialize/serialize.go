@@ -17,6 +17,8 @@ const (
 	imgPath = "img"
 )
 
+type CacheEntryHandler func(upstream.ManifestHolder) error
+
 func IsOnFilesystem(digest string, isImageManifest bool, imagePath string) bool {
 	var subdir = fatPath
 	if isImageManifest {
@@ -52,10 +54,25 @@ func ToFilesystem(mh upstream.ManifestHolder, imagePath string) error {
 	return nil
 }
 
+// FromFilesystem reads the manifests from the file system and adds them
+// the the in-memory data structure that represents the cache in memory.
 func FromFilesystem(imagePath string) error {
 	start := time.Now()
 	log.Infof("load in-mem cache from file system")
 	itemcnt := 0
+	WalkTheCache(imagePath, func(mh upstream.ManifestHolder) error {
+		memcache.AddToCache(mh.Pr, mh, false)
+		log.Debugf("loading manifest for %s", mh.ImageUrl)
+		itemcnt++
+		return nil
+	})
+	log.Infof("loaded %d manifest(s) from the file system in %s", itemcnt, time.Since(start))
+	return nil
+}
+
+// WalkTheCache walks the image cache and provdides each de-serialized 'ManifestHolder'
+// to the passed function.
+func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 	for _, subpath := range []string{fatPath, imgPath} {
 		mfpath := filepath.Join(imagePath, subpath)
 		err := filepath.Walk(mfpath, func(path string, info os.FileInfo, err error) error {
@@ -74,15 +91,15 @@ func FromFilesystem(imagePath string) error {
 			if err != nil {
 				return err
 			}
-			memcache.AddToCache(mh.Pr, mh, false)
-			log.Debugf("loading manifest for %s", mh.ImageUrl)
-			itemcnt++
+			err = handler(mh)
+			if err != nil {
+				return err
+			}
 			return nil
 		})
 		if err != nil {
 			return err
 		}
 	}
-	log.Infof("loaded %d manifest(s) from the file system in %s", itemcnt, time.Since(start))
 	return nil
 }

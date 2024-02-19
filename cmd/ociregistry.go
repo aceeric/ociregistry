@@ -12,7 +12,6 @@ import (
 	"ociregistry/api"
 	"ociregistry/impl"
 	"ociregistry/impl/globals"
-	"ociregistry/impl/preload"
 	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
 
@@ -29,6 +28,7 @@ type cmdLine struct {
 	arch        string
 	os          string
 	pullTimeout int
+	listCache   bool
 }
 
 const startupBanner = `----------------------------------------------------------------------
@@ -41,9 +41,7 @@ func main() {
 	args := parseCmdline()
 	globals.ConfigureLogging(args.logLevel)
 
-	if args.loadImages != "" {
-		doPreloadAndExit(args)
-	}
+	cliCommands(args)
 
 	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
 
@@ -106,6 +104,7 @@ func parseCmdline() cmdLine {
 	flag.StringVar(&args.arch, "arch", "amd64", "architecture for the --load-images arg")
 	flag.StringVar(&args.os, "os", "linux", "os for the --load-images arg")
 	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "max time in millis to pull an image from an upstream. Defaults to one minute")
+	flag.BoolVar(&args.listCache, "list-cache", false, "Lists the cached images and exits")
 	flag.Parse()
 	return args
 }
@@ -118,13 +117,4 @@ func cmdApi(e *echo.Echo, ch chan bool) {
 			ch <- true
 			return nil
 		})
-}
-
-func doPreloadAndExit(args cmdLine) {
-	err := preload.Preload(args.loadImages, args.imagePath, args.arch, args.os, args.pullTimeout)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error loading images in file: %s. error %s\n", args.loadImages, err)
-		os.Exit(1)
-	}
-	os.Exit(0)
 }

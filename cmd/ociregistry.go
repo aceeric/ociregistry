@@ -91,6 +91,7 @@ func main() {
 			e.Logger.Fatal("shutting down the server")
 		}
 	}()
+	log.Info("server is running")
 	<-shutdownCh
 	log.Infof("received stop command - stopping")
 	e.Server.Shutdown(context.Background())

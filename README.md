@@ -34,6 +34,8 @@ The key components of the API scaffolding supported by OAPI-Codegen are shown be
 ​```
 ```
 
+I elected to use the [Echo](https://echo.labstack.com/) option to run the API.
+
 ## Configuring `containerd`
 
 The following snippet shows how to configure `containerd` in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry:

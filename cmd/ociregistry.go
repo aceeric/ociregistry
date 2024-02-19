@@ -12,7 +12,6 @@ import (
 	"ociregistry/api"
 	"ociregistry/impl"
 	"ociregistry/impl/globals"
-	"ociregistry/impl/memcache"
 	"ociregistry/impl/preload"
 	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
@@ -80,7 +79,7 @@ func main() {
 	//e.Use(middleware.OapiRequestValidator(swagger))
 
 	// load cached image metadata into mem
-	serialize.FromFilesystem(memcache.GetCache(), args.imagePath)
+	serialize.FromFilesystem(args.imagePath)
 
 	// set up the command API
 	shutdownCh := make(chan bool)

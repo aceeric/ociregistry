@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	// ps is a synchronizable map of pulls in progress so that if multiple
+	// ps is a synchronized map of pulls in progress so that if multiple
 	// handlers concurrently try to pull the same manifest or image, only
 	// the first will pull, but all (including the first) will return when
 	// the pull is complete.

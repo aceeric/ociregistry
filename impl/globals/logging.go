@@ -50,6 +50,7 @@ func GetEchoLoggingFunc() echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 
+			// digests clutter the logs so shorten them
 			dgst := re.FindStringSubmatch(req.RequestURI)
 			if len(dgst) == 2 {
 				req.RequestURI = strings.Replace(req.RequestURI, dgst[1], dgst[1][:10], 1)

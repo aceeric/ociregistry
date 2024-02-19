@@ -51,8 +51,3 @@ func AddToCache(pr pullrequest.PullRequest, mh upstream.ManifestHolder, withlock
 		}
 	}
 }
-
-// GetCache returns the cache as a pointer
-func GetCache() *PRCache {
-	return &prCache
-}

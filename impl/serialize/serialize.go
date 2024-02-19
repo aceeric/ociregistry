@@ -30,7 +30,7 @@ func IsOnFilesystem(digest string, isImageManifest bool, imagePath string) bool 
 	return err == nil
 }
 
-// todo return error
+// TODO return error
 func ToFilesystem(mh upstream.ManifestHolder, imagePath string) {
 	var subdir = fatPath
 	if mh.IsImageManifest() {
@@ -52,7 +52,7 @@ func ToFilesystem(mh upstream.ManifestHolder, imagePath string) {
 	}
 }
 
-func FromFilesystem(prc *memcache.PRCache, imagePath string) error {
+func FromFilesystem(imagePath string) error {
 	start := time.Now()
 	log.Infof("load in-mem cache from file system")
 	itemcnt := 0

@@ -2,6 +2,7 @@ package serialize
 
 import (
 	"encoding/json"
+	"ociregistry/impl/memcache"
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/upstream"
 	"os"
@@ -126,6 +127,48 @@ func Test1(t *testing.T) {
 	}
 	same := reflect.DeepEqual(mhOut, mhIn)
 	if !same {
+		t.Fail()
+	}
+}
+
+// TODO this test doing something wierd - seems to go away
+// after mh, exists := memcache.IsCached(pr) and not exec the
+// remainder of the test in debug mode but in run mode it DOES
+// run the entire test...
+func Test2(t *testing.T) {
+	td, _ := os.MkdirTemp("", "")
+	pr := pullrequest.NewPullRequest("foo", "bar", "baz", "frobozz")
+	mhOut := upstream.ManifestHolder{
+		Pr:        pr,
+		ImageUrl:  "registry.k8s.io/pause:3.8",
+		MediaType: "application/vnd.docker.distribution.manifest.list.v2+json",
+		Digest:    "9001185023633d17a2f98ff69b6ff2615b8ea02a825adffa40422f51dfdcde9d",
+		Size:      2761,
+		Bytes:     []byte{},
+		Tarfile:   "/frobozz",
+		Type:      upstream.V2dockerManifestList,
+	}
+	ToFilesystem(mhOut, td)
+	err := FromFilesystem(td)
+	if err != nil {
+		t.Fail()
+	}
+	mh, exists := memcache.IsCached(pr)
+	if !exists {
+		t.Fail()
+	}
+	if mh.Pr != pr {
+		t.Fail()
+	}
+}
+
+func Test3(t *testing.T) {
+	pr := pullrequest.PullRequest{}
+	mh, exists := memcache.IsCached(pr)
+	if exists {
+		t.Fail()
+	}
+	if mh.Pr != pr {
 		t.Fail()
 	}
 }

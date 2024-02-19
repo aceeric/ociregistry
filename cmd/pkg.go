@@ -21,8 +21,6 @@ The flags are:
 	--arch
 	    Architecture for the --load-images arg
 	--os
-		OS for the --load-images arg
-	--load-images
-	    Loads the registry with images listed in the specified file by pulling and saving
+		Operating system for the --load-images arg
 */
 package main

@@ -124,7 +124,7 @@ func TestPreload(t *testing.T) {
 		t.Fail()
 	}
 	defer os.RemoveAll(d)
-	err = Preload("imagelist", d, "amd64", "linux")
+	err = Preload("imagelist", d, "amd64", "linux", 1000)
 	if err != nil {
 		t.Fail()
 	}

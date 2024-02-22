@@ -11,7 +11,7 @@ import (
 
 type cliCmd func(cmdLine) (bool, error)
 
-var cmdList []cliCmd = []cliCmd{preloadCache, listCache}
+var cmdList []cliCmd = []cliCmd{preloadCache, listCache, showVer}
 
 func cliCommands(args cmdLine) {
 	for _, f := range cmdList {
@@ -24,6 +24,14 @@ func cliCommands(args cmdLine) {
 			os.Exit(0)
 		}
 	}
+}
+
+func showVer(args cmdLine) (bool, error) {
+	if !args.version {
+		return false, nil
+	}
+	fmt.Printf("ociregistry version: %s build date: %s\n", args.buildVer, args.buildDtm)
+	return true, nil
 }
 
 func preloadCache(args cmdLine) (bool, error) {

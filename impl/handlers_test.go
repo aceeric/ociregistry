@@ -10,7 +10,7 @@ import (
 )
 
 func Test1(t *testing.T) {
-	r := NewOciRegistry("/tmp")
+	r := NewOciRegistry("/tmp", 1000)
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()

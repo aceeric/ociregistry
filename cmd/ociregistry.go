@@ -29,6 +29,9 @@ type cmdLine struct {
 	os          string
 	pullTimeout int
 	listCache   bool
+	version     bool
+	buildVer    string
+	buildDtm    string
 }
 
 const startupBanner = `----------------------------------------------------------------------
@@ -36,6 +39,11 @@ OCI Registry: pull-only, pull-through, caching OCI Distribution Server
 Started: %s (port %s)
 ----------------------------------------------------------------------
 `
+
+var (
+	buildVer string
+	buildDtm string
+)
 
 func main() {
 	args := parseCmdline()
@@ -105,7 +113,10 @@ func parseCmdline() cmdLine {
 	flag.StringVar(&args.os, "os", "linux", "os for the --load-images arg")
 	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "max time in millis to pull an image from an upstream. Defaults to one minute")
 	flag.BoolVar(&args.listCache, "list-cache", false, "Lists the cached images and exits")
+	flag.BoolVar(&args.version, "version", false, "Displays the version and exits")
 	flag.Parse()
+	args.buildDtm = buildDtm
+	args.buildVer = buildVer
 	return args
 }
 

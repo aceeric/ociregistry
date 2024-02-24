@@ -1,0 +1,10 @@
+{{- if and .Values.persistence.persistentVolumeClaim.enabled .Values.persistence.persistentVolumeClaim.spec -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ociregistry.fullname" . }}
+  labels:
+    {{- include "ociregistry.labels" . | nindent 4 }}
+spec:
+  {{ toYaml .Values.persistence.persistentVolumeClaim.spec | nindent 2}}
+{{- end }}

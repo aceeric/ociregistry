@@ -7,7 +7,7 @@ This directory tests the various ways that the project registry server can conne
 3. One-way TLS (secure and insecure)
 4. mTLS
 
-These steps use the Go Container Registry *crane* utility: https://github.com/google/go-containerregistry/blob/main/cmd/crane/doc/crane.md
+These steps use the Go Container Registry *crane* utility: https://github.com/google/go-containerregistry/blob/main/cmd/crane/doc/crane.md as well as Docker and the Docker CLI.
 
 ## Approach
 

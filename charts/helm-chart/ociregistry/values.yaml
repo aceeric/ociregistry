@@ -1,0 +1,100 @@
+image:
+  registry: quay.io
+  repository: appzygy/ociregistry
+  tag: 1.0.0
+  digest:
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# the defaults coded into the server are shown below. To override,
+# uncomment and re-define the values
+
+#args:
+#- --port 8080
+#- --log-level error
+#- --config-path ""
+#- --image-path /var/ociregistry/images
+#- --pull-timeout: 60000
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+# if you change the port, you must also specify
+# the --port in the `args` section
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+  - host: chart-example.local
+    paths:
+    - path: /
+      pathType: ImplementationSpecific
+  tls: []
+  #- secretName: chart-example-tls
+  #  hosts:
+  #  - chart-example.local
+
+resources: {}
+
+volumeMounts:
+- name: images
+  mountPath: /var/ociregistry/images
+  readOnly: false
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+persistence:
+  persistentVolumeClaim:
+    enabled: false
+    claimName: frobozz
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      volumeMode: Filesystem
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: fiddlesticks
+      selector:
+        matchLabels: {}
+        matchExpressions: {}
+  hostPath:
+    enabled: false
+    type: DirectoryOrCreate
+    path: /var/ociregistry/images
+  emptyDir:
+    enabled: true
+    sizeLimit: 2Gi
+
+upstreamConfig:
+- name: my-upstream:8800
+  description: Basic auth, mTLS with mounted CA
+  auth:
+    user: frobozz
+    password: flathead
+  tls:
+    ca:   nginx/certs/ca.crt
+    cert: nginx/certs/localhost.crt
+    key:  nginx/certs/localhost.key

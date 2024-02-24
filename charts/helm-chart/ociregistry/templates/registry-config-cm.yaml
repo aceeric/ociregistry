@@ -1,0 +1,9 @@
+{{- if .Values.upstreamConfig -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ociregistry.fullname" . }}
+data:
+  registry-config.yaml:
+  {{- toYaml .Values.upstreamConfig | nindent 2 }}
+{{- end }}

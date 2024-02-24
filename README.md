@@ -150,15 +150,18 @@ mTLS can be implemented **with** and **without** remote server cert validation a
 
 The following options are supported:
 
-| Option          | Default              | Meaning                                                      |
-| --------------- | -------------------- | ------------------------------------------------------------ |
-| `--log-level`   | error                | Valid values: debug, info, warn, error                       |
-| `--image-path`  | /var/lib/ociregistry | The root directory of the image store                        |
-| `--config-path` | Empty                | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to HTTPS using the OS Trust store to validate the remote registry. |
-| `--port`        | 8080                 | Server port. E.g. `crane pull localhost:8080 foo.tar`        |
+| Option | Default | Meaning |
+|-|-|-|
+| `--log-level`   | error                | Valid values: debug, info, warn, error |
+| `--image-path`  | /var/lib/ociregistry | The root directory of the image store |
+| `--config-path` | Empty                | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to 1-way HTTPS using the OS Trust store to validate the remote registry certs. |
+| `--port`        | 8080                 | Server port. E.g. `crane pull localhost:8080 foo.tar` |
 | `--load-images` | n/a                  | Provide a path to a file with image refs to load into the registry. (See _Pre-loading the registry_ below) |
-| `--arch`        | n/a                  | used with `--load-images`                                    |
-| `--os`          | n/a                  | used with `--load-images`                                    |
+| `--arch`        | n/a                  | used with `--load-images` |
+| `--os`          | n/a                  | used with `--load-images` |
+| `--pull-timeout`| 60000 (one minute)   | Time in millis to wait for an upstream registry |
+| `--list-cache`  | n/a                  | Lists the images in the cache and then exits |
+| `--version`     | n/a                  |  Displays the version and then exits |
 
 ## Quick Start
 

@@ -1,18 +1,32 @@
-# EXPERIMENTAL Pull-only Pull-through Caching OCI Distribution Server
+# Pull-only Pull-through Caching OCI Distribution Server
 
 This project is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 
 1. It exclusively provides _pull_ capability. You can't push images to it, it doesn't support the `/v2/_catalog` endpoint, etc.
 2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public; supporting the following types of access: anonymous, basic auth, HTTP, HTTPS, one-way TLS, and mTLS.
 
-> This is a POC. As such it is very rough. I'll be cleaning it up over time. (See the TODO file)
-
-This distribution server is intended to satisfy **one** use case: the need for an in-cluster Kubernetes caching pull-through registry that enables the k8s cluster to run reliably in a network context with no-, intermittent-, or low latency connectivity to upstream registries - or - an environment where the upstream registries serving the k8s cluster have less than 5 nines availability.
+This OCI distribution server is intended to satisfy one use case: the need for a Kubernetes caching pull-through registry that enables a k8s cluster to run reliably in an air-gapped network or in a network with intermittent/degraded connectivity to upstream registries.
 
 The goals of the project are:
 
 1. Implement one use case
 2. Be simple
+
+## Design
+
+The following image describes the design:
+
+![design](resources/design.jpg)
+
+Narrative:
+
+1. A client initiates an image pull. In this case: containerd. The image pull consists of a series of REST API calls.
+2. The API calls are handled by the REST API, which implements a portion of the [OCI Distribution Spec](https://github.com/opencontainers/distribution-spec). The API is just a veneer that delegates to the server implementation.
+3. The server checks the local cache and if the image is in cache it is returned from cache.
+4. If the image is not in cache, the server calls embedded [Google Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/doc/crane.md) Go code to pull the image from the upstream registry. The way the server knows which upstream to pull from is: containerd appends a query parameter to each API call. (More on this below.)
+5. The Google Crane code pulls the image from the upstream registry and returns it to the server.
+6. The server adds the image to cache for the next pull.
+
 
 ## API Implementation
 
@@ -38,9 +52,9 @@ I elected to use the [Echo](https://echo.labstack.com/) option to run the API.
 
 ## Configuring `containerd`
 
-The following snippet shows how to configure `containerd` in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry:
+The following shows how to configure containerd in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry. This has been tested with containerd v1.7.6:
 
-Add a `config_path` entry to `/etc/containerd/config.toml` to tell `containerd` to load all registry mirror configurations from that directory:
+Add a `config_path` entry to `/etc/containerd/config.toml` to tell containerd to load all registry mirror configurations from that directory:
 
 ```shell
    ...
@@ -58,6 +72,20 @@ Then create a configuration directory and file that tells containerd to pull fro
 ```
 
 The _resolve_ capability tells containerd that a HEAD request to the server with a manifest will return a manifest digest. The _pull_ capability indicates to containerd that the image can be pulled.
+
+After restarting containerd, you can confirm visually that is is mirroring by running the following command on a cluster host:
+
+```
+crictl pull quay.io/appzygy/ociregistry:1.0.0
+```
+
+Enable `debug` logging on the pull-through registry server and you will see the traffic from containerd. Example:
+
+```
+echo server HEAD:/v2/appzygy/ociregistry/manifests/1.0.0?ns=quay.io status=200 latency=2.664780196s host=192.168.0.49:8080 ip=192.168.0.49
+```
+
+Notice the `?ns=quay.io` query parameter appended to the API call. The pull-through server uses this to determine which upstream registry to get images from.
 
 ## Configuring the OCI Registry Server
 
@@ -152,14 +180,14 @@ The following options are supported:
 
 | Option | Default | Meaning |
 |-|-|-|
-| `--log-level`   | error                | Valid values: debug, info, warn, error |
+| `--log-level`   | error                | Valid values: trace, debug, info, warn, error |
 | `--image-path`  | /var/lib/ociregistry | The root directory of the image store |
 | `--config-path` | Empty                | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to 1-way HTTPS using the OS Trust store to validate the remote registry certs. |
 | `--port`        | 8080                 | Server port. E.g. `crane pull localhost:8080 foo.tar` |
-| `--load-images` | n/a                  | Provide a path to a file with image refs to load into the registry. (See _Pre-loading the registry_ below) |
+| `--load-images` | n/a                  | See _Pre-loading the registry_ below |
 | `--arch`        | n/a                  | used with `--load-images` |
 | `--os`          | n/a                  | used with `--load-images` |
-| `--pull-timeout`| 60000 (one minute)   | Time in millis to wait for an upstream registry |
+| `--pull-timeout`| 60000 (one minute)   | Time in milliseconds to wait for an upstream registry |
 | `--list-cache`  | n/a                  | Lists the images in the cache and then exits |
 | `--version`     | n/a                  |  Displays the version and then exits |
 
@@ -238,7 +266,7 @@ images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
 images/pulls
 ```
 
-The manifest list was saved in `images/fat/4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7` and the image manifest was saved in `images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c`.
+The manifest list was saved in: `images/fat/4afe5bf0ee...` and the image manifest was saved in: `images/img/019d7877d1...`.
 
 ### Stop and restart the server and repeat
 
@@ -246,7 +274,7 @@ You will notice that the manifest list and the image manifest are now being retu
 
 ## Pre-loading the registry
 
-Pre-loading supports the air-gapped use case of populating the registry, and then moving it into an air-gapped environment. The registry normally runs as a service. You can also run it as a CLI to pre-load itself. To do this, you create a file with a list of image references. Example:
+Pre-loading supports the air-gapped use case of populating the registry in a connected environment, and then moving it into an air-gapped environment. The registry normally runs as a service. But  you can also run it as a CLI to pre-load itself. To do this, you create a file with a list of image references. Example:
 
 ```
 cat <<EOF >| imagelist

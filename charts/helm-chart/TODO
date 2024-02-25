@@ -1,0 +1,6 @@
+
+
+1) nodeport svc for running within the cluster
+2) test on multi-node cluster
+3) configure containerd
+4) seed containerd with registry image

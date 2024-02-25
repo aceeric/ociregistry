@@ -1,6 +1,7 @@
 package upstream
 
 import (
+	"crypto/md5"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -47,22 +48,40 @@ var (
 // referenced by the 'configPath' arg. If the arg is the empty string
 // then nothing is done and no remote registry configs are defined.
 // The result of this will be that every remote registry will be
-// accessed anonymously.
-func ConfigLoader(configPath string) error {
+// accessed anonymously. The function loops forever checking the config
+// file for changes every 'chkSeconds' seconds.
+func ConfigLoader(configPath string, chkSeconds int) {
 	if configPath != "" {
-		start := time.Now()
-		log.Infof("load remote registry configuration from %s", configPath)
-		b, err := os.ReadFile(configPath)
-		if err != nil {
-			return err
+		var lastHash [md5.Size]byte
+		for {
+			func() {
+				contents, err := os.ReadFile(configPath)
+				if err != nil {
+					log.Errorf("error reading configuration from %s", configPath)
+					return
+				}
+				hash := md5.Sum(contents)
+				if hash != lastHash {
+					start := time.Now()
+					lastHash = hash
+					log.Info("load remote registry configuration")
+					newConfig, err := parseConfig(contents)
+					if err != nil {
+						log.Error("error parsing configuration")
+						return
+					}
+					mu.Lock()
+					config = newConfig
+					mu.Unlock()
+					log.Infof("loaded %d registry configurations from %s in %s", len(config), configPath, time.Since(start))
+				}
+			}()
+			if chkSeconds <= 0 {
+				break
+			}
+			time.Sleep(time.Second * time.Duration(chkSeconds))
 		}
-		err = parseConfig(b)
-		if err != nil {
-			return err
-		}
-		log.Infof("loaded %d registry configurations from the file system in %s", len(config), time.Since(start))
 	}
-	return nil
 }
 
 // parseConfig parses the remote registry configuration in the passed 'configBytes'
@@ -71,19 +90,21 @@ func ConfigLoader(configPath string) error {
 // 'config' map keyed by the remote name. Therefore the `name` element ofthe configuration
 // is important: it must exactly match a remote registry with no HTTP scheme, e.g.: 'quay.io',
 // or: our.private.registry.gov:6443, or 129.168.1.1:8080, etc.
-func parseConfig(configBytes []byte) error {
+func parseConfig(configBytes []byte) (map[string]cfgEntry, error) {
 	var entries []cfgEntry
 	err := yaml.Unmarshal(configBytes, &entries)
 	if err != nil {
-		return err
+		return map[string]cfgEntry{}, err
 	}
+	config := make(map[string]cfgEntry)
+
 	for _, entry := range entries {
 		_, exists := config[entry.Name]
 		if !exists {
 			config[entry.Name] = entry
 		}
 	}
-	return nil
+	return config, nil
 }
 
 // configFor looks for a configuration entry keyed by the passed 'registry' arg

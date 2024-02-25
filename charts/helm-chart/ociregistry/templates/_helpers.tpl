@@ -79,7 +79,50 @@ Image URL
 {{- end }}
 
 {{/*
-Server Args
+Emanate args for the server
 */}}
 {{- define "ociregistry.args" -}}
+{{- $args := 0 }}
+{{- if .Values.upstreamConfig }}
+{{- $args = 1 }}
+{{- end }}
+{{- if and .Values.configs .Values.configs.port }}
+{{- $args = 1 }}
+{{- end }}
+{{- if and .Values.configs .Values.configs.logLevel }}
+{{- $args = 1 }}
+{{- end }}
+{{- if and .Values.configs .Values.configs.configPath }}
+{{- $args = 1 }}
+{{- end }}
+{{- if and .Values.configs .Values.configs.imagePath }}
+{{- $args = 1 }}
+{{- end }}
+{{- if and .Values.configs .Values.configs.pullTimeout }}
+{{- $args = 1 }}
+{{- end }}
+{{- if eq $args 0 }}
+{{- printf "args: []" }}
+{{- else }}
+{{- $arg := "args:" }}
+{{- if .Values.upstreamConfig }}
+{{- $arg = printf "%s\n- --config-path=%s" $arg .Values.upstreamConfig.mountPath }}
+{{- end }}
+{{- if and .Values.configs .Values.configs.port }}
+{{- $arg = printf "%s\n- --port=%v" $arg .Values.configs.port }}
+{{- end }}
+{{- if and .Values.configs .Values.configs.logLevel }}
+{{- $arg = printf "%s\n- --log-level=%s" $arg .Values.configs.logLevel }}
+{{- end }}
+{{- if and .Values.configs .Values.configs.configPath }}
+{{- $arg = printf "%s\n- --config-path=%s" $arg .Values.configs.configPath }}
+{{- end }}
+{{- if and .Values.configs .Values.configs.imagePath }}
+{{- $arg = printf "%s\n- --image-path=%s" $arg .Values.configs.imagePath }}
+{{- end }}
+{{- if and .Values.configs .Values.configs.pullTimeout }}
+{{- $arg = printf "%s\n- --pull-timeout=%v" $arg .Values.configs.pullTimeout }}
+{{- end }}
+{{- printf $arg }}
+{{- end }}
 {{- end }}

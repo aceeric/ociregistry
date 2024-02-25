@@ -74,7 +74,7 @@ func main() {
 	// have Echo use the global logging
 	e.Use(globals.GetEchoLoggingFunc())
 
-	upstream.ConfigLoader(args.configPath)
+	go upstream.ConfigLoader(args.configPath, 30)
 
 	// use Open API middleware to check all requests against the OpenAPI schema
 	// for now, don't do this until I add the cmd api to the Swagger spec
@@ -124,8 +124,12 @@ func parseCmdline() cmdLine {
 // GET /cmd/stop
 func cmdApi(e *echo.Echo, ch chan bool) {
 	e.GET("/cmd/stop",
-		func(c echo.Context) error {
+		func(ctx echo.Context) error {
 			ch <- true
 			return nil
+		})
+	e.GET("/health",
+		func(ctx echo.Context) error {
+			return ctx.NoContent(http.StatusOK)
 		})
 }

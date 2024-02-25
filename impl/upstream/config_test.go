@@ -2,7 +2,9 @@ package upstream
 
 import (
 	"fmt"
+	"os"
 	"testing"
+	"time"
 )
 
 var cfg = `
@@ -18,25 +20,46 @@ var cfg = `
     key: %s`
 
 func TestCfg(t *testing.T) {
-	name := "foobar"
-	description := "frobozz"
-	user := "flathead"
-	pass := "fizzbin"
-	ca := "zorkmid"
-	cert := "westlands"
-	key := "eastlands"
-	manifest := fmt.Sprintf(cfg, name, description, user, pass, ca, cert, key)
-	parseConfig([]byte(manifest))
-	entry, err := configEntryFor(name)
+	names := []string{"t1", "t2"}
+	descriptions := []string{"t3", "t4"}
+	users := []string{"t5", "t6"}
+	passs := []string{"t7", "t8"}
+	cas := []string{"t9", "t10"}
+	certs := []string{"t11", "t12"}
+	keys := []string{"t13", "t14"}
+
+	f, err := os.CreateTemp("", "")
 	if err != nil {
-		t.Errorf(err.Error())
-	}
-	if entry.Description != description ||
-		entry.Auth.User != user ||
-		entry.Auth.Password != pass ||
-		entry.Tls.CA != ca ||
-		entry.Tls.Cert != cert ||
-		entry.Tls.Key != key {
 		t.Fail()
+	}
+	f.Close()
+	defer os.Remove(f.Name())
+
+	// reload configuration every second
+	go ConfigLoader(f.Name(), 1)
+
+	for i := 0; i <= 1; i++ {
+		name := names[i]
+		description := descriptions[i]
+		user := users[i]
+		pass := passs[i]
+		ca := cas[i]
+		cert := certs[i]
+		key := keys[i]
+		manifest := fmt.Sprintf(cfg, name, description, user, pass, ca, cert, key)
+		os.WriteFile(f.Name(), []byte(manifest), 0700)
+		time.Sleep(time.Second * time.Duration(2))
+		entry, err := configEntryFor(name)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+		if entry.Description != descriptions[i] ||
+			entry.Auth.User != users[i] ||
+			entry.Auth.Password != passs[i] ||
+			entry.Tls.CA != cas[i] ||
+			entry.Tls.Cert != certs[i] ||
+			entry.Tls.Key != keys[i] {
+			t.Fail()
+		}
 	}
 }

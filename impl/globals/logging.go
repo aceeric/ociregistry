@@ -50,6 +50,12 @@ func GetEchoLoggingFunc() echo.MiddlewareFunc {
 			req := c.Request()
 			res := c.Response()
 
+			// don't log the health check because it clutters the log and it is intended to
+			// be used by Kubernetes so doesn't need to be logged
+			if req.RequestURI == "/health" {
+				return nil
+			}
+
 			// digests clutter the logs so shorten them
 			dgst := re.FindStringSubmatch(req.RequestURI)
 			if len(dgst) == 2 {

@@ -9,15 +9,17 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# the defaults coded into the server are shown below. To override,
-# uncomment and re-define the values
-
-#args:
-#- --port 8080
-#- --log-level error
-#- --config-path ""
-#- --image-path /var/ociregistry/images
-#- --pull-timeout: 60000
+# The program defaults coded into the server go code are shown below. To override,
+# uncomment and re-define the values. The configPath does not need to be defined if
+# upstreamConfig is defined. However, if  you specify both, the 'configPath' value
+# must match 'upstreamConfig.mountPath'. If you change the port, you must also change
+# the 'service.port' value.
+configs:
+  logLevel: info
+  #port: 8080
+  #configPath:
+  #imagePath: /var/lib/ociregistry
+  #pullTimeout: 60000
 
 serviceAccount:
   create: true
@@ -33,7 +35,7 @@ podSecurityContext: {}
 securityContext: {}
 
 # if you change the port, you must also specify
-# the --port in the `args` section
+# the --port in the 'configs' section.
 service:
   type: ClusterIP
   port: 8080
@@ -54,9 +56,19 @@ ingress:
 
 resources: {}
 
+#volumes:
+#- name: my-other-volume
+#  emptyDir: {}
+
+# Since this is a caching pull-through registry it needs a place to
+# store image data. The default in the server code is shown below.
+# When you select a 'persistence' type, a volume will be templated
+# named 'images'. By default the server will look in the path below.
+# if you mount the storage at some other path you must change the
+# 'configs.imagePath' to match.
 volumeMounts:
 - name: images
-  mountPath: /var/ociregistry/images
+  mountPath: /var/lib/ociregistry
   readOnly: false
 
 nodeSelector: {}
@@ -83,18 +95,20 @@ persistence:
   hostPath:
     enabled: false
     type: DirectoryOrCreate
-    path: /var/ociregistry/images
+    path: /var/lib/ociregistry
   emptyDir:
     enabled: true
     sizeLimit: 2Gi
 
-upstreamConfig:
-- name: my-upstream:8800
-  description: Basic auth, mTLS with mounted CA
-  auth:
-    user: frobozz
-    password: flathead
-  tls:
-    ca:   nginx/certs/ca.crt
-    cert: nginx/certs/localhost.crt
-    key:  nginx/certs/localhost.key
+#upstreamConfig:
+#  mountPath: /var/ociregistry/config
+#  registries:
+#  - name: my-upstream:8800
+#    description: Basic auth, mTLS with mounted CA
+#    auth:
+#      user: frobozz
+#      password: flathead
+#    tls:
+#      ca:   nginx/certs/ca.crt
+#      cert: nginx/certs/localhost.crt
+#      key:  nginx/certs/localhost.key

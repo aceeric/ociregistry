@@ -30,12 +30,9 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
       - name: {{ .Chart.Name }}
-        {{- with .Values.args }}
-        args:
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        {{- include "ociregistry.args" . | nindent 8 }}
         securityContext:
-          {{- toYaml .Values.securityContext | nindent 12 }}
+          {{- toYaml .Values.securityContext | nindent 10 }}
         image: {{ include "ociregistry.image" . }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         ports:
@@ -44,11 +41,11 @@ spec:
           protocol: TCP
         livenessProbe:
           httpGet:
-            path: /
+            path: /v2/
             port: http
         readinessProbe:
           httpGet:
-            path: /
+            path: /v2/
             port: http
         resources:
         {{- toYaml .Values.resources | nindent 10 }}
@@ -56,7 +53,17 @@ spec:
         volumeMounts:
         {{- toYaml . | nindent 8 }}
         {{- end }}
+        {{- if .Values.upstreamConfig }}
+        - name: config
+          mountPath: {{ .Values.upstreamConfig.mountPath }}
+          readOnly: true
+        {{- end }}
       volumes:
+      {{- if .Values.volumes }}
+      {{- with .Values.volumes }}
+        {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- end }}
       {{- if .Values.persistence.hostPath.enabled }}
       - name: images
         hostPath:
@@ -76,6 +83,11 @@ spec:
           {{- else }}
           claimName: {{ .Values.persistence.persistentVolumeClaim.claimName }}
           {{- end }}
+      {{- end }}
+      {{- if .Values.upstreamConfig }}
+      - name: config
+        configMap:
+          name: {{ include "ociregistry.fullname" . }}-config
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

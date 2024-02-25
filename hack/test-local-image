@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+container=$(docker run -d\
+  --name ociregistry\
+  -p 8080:8080\
+  --user $(id -u):$(id -g)\
+  -v $PWD/images:/var/lib/ociregistry\
+  quay.io/appzygy/ociregistry:1.0.0 --log-level=debug)
+
+echo "when done: 'docker stop ociregistry'"
+
+docker logs $container -f

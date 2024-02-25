@@ -195,8 +195,10 @@ The following options are supported:
 
 ### Build the server
 ```
-make
+make desktop
 ```
+
+This command compiles the server and creates a binary called `server` in the `bin` directory relative to the project root.
 
 ### Run the server
 ```

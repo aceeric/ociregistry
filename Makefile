@@ -2,6 +2,7 @@ SERVER_VERSION := 1.0.0
 DATETIME       := $(shell date -u +%Y-%m-%dT%T.%2NZ)
 REGISTRY       := quay.io
 ORG            := appzygy
+ROOT           := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 
 .PHONY : all
 all:
@@ -9,19 +10,20 @@ all:
 
 .PHONY: oapi-codegen
 oapi-codegen:
-	oapi-codegen -config api/server.cfg.yaml ociregistry.yaml
-	oapi-codegen -config api/models.cfg.yaml ociregistry.yaml
+	oapi-codegen -config $(ROOT)/api/server.cfg.yaml $(ROOT)/ociregistry.yaml
+	oapi-codegen -config $(ROOT)/api/models.cfg.yaml $(ROOT)/ociregistry.yaml
 
 .PHONY: desktop
 desktop: oapi-codegen
-	CGO_ENABLED=0 go build -ldflags "-X 'main.buildVer=$(SERVER_VERSION)' -X 'main.buildDtm=$(DATETIME)'" -a -o bin/server cmd/*.go
+	CGO_ENABLED=0 go build -ldflags "-X 'main.buildVer=$(SERVER_VERSION)' -X 'main.buildDtm=$(DATETIME)'"\
+	 -a -o $(ROOT)/bin/server $(ROOT)/cmd/*.go
 
 .PHONY: image
 image: oapi-codegen
 	docker buildx build --tag $(REGISTRY)/$(ORG)/ociregistry:$(SERVER_VERSION)\
 	 --build-arg SERVER_VERSION=$(SERVER_VERSION)\
 	 --build-arg DATETIME=$(DATETIME)\
-	 .
+	 $(ROOT)
 
 .PHONY: push
 push:

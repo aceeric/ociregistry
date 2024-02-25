@@ -78,7 +78,7 @@ spec:
       {{- if .Values.persistence.persistentVolumeClaim.enabled }}
       - name: images
         persistentVolumeClaim:
-          {{- if .Values.persistence.persistentVolumeClaim.spec -}}
+          {{- if .Values.persistence.persistentVolumeClaim.spec }}
           claimName: {{ include "ociregistry.fullname" . }}
           {{- else }}
           claimName: {{ .Values.persistence.persistentVolumeClaim.claimName }}

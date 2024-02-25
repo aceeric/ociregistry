@@ -6,5 +6,19 @@ metadata:
   labels:
     {{- include "ociregistry.labels" . | nindent 4 }}
 spec:
-  {{ toYaml .Values.persistence.persistentVolumeClaim.spec | nindent 2}}
+  {{- with .Values.persistence.persistentVolumeClaim.spec }}
+  accessModes:
+  {{- toYaml .accessModes | nindent 2 }}
+  resources:
+    requests:
+      storage: {{ .resources.requests.storage }}
+  {{- if .selector }}
+  selector:
+    {{- toYaml .selector | nindent 4 }}
+  {{- end }}
+  {{- if .storageClassName }}
+  storageClassName: {{ .storageClassName }}
+  {{- end }}
+  volumeMode: {{ .volumeMode }}
+{{- end }}
 {{- end }}

@@ -34,11 +34,23 @@ podSecurityContext: {}
 
 securityContext: {}
 
-# if you change the port, you must also specify
-# the --port in the 'configs' section.
+# if you change the 'port', you must also specify
+# the --port in the 'configs' section. A NodePort service
+# makes the registry available to containerd on each host.
+# Each containerd instance can be configured to mirror to
+# the registry using its own hostname. E.g.:
+#
+# cat /etc/containerd/certs.d/_default/hosts.toml
+#
+# Result:
+#
+# [host."localhost:31080"]
+#   capabilities = ["pull", "resolve"]
+#   skip_verify = true
 service:
-  type: ClusterIP
+  type: NodePort
   port: 8080
+  nodePort: 31080
 
 ingress:
   enabled: false
@@ -77,10 +89,13 @@ tolerations: []
 
 affinity: {}
 
+# for ephemeral storage (i.e. for testing or trying it out) enable the
+# emptyDir option. If you have a storage provisioner enable the persistentVolumeClaim
+# option. The hostPath option uses host storage.
 persistence:
   persistentVolumeClaim:
-    enabled: false
-    claimName: frobozz
+    enabled: true
+    claimName: registry
     spec:
       accessModes:
       - ReadWriteOnce
@@ -88,18 +103,20 @@ persistence:
       resources:
         requests:
           storage: 2Gi
-      storageClassName: fiddlesticks
-      selector:
-        matchLabels: {}
-        matchExpressions: {}
+      storageClassName:
+      #selector:
+      #  matchLabels: {}
+      #  matchExpressions: []
   hostPath:
     enabled: false
     type: DirectoryOrCreate
     path: /var/lib/ociregistry
   emptyDir:
-    enabled: true
+    enabled: false
     sizeLimit: 2Gi
 
+# upstreamConfig supports providing auth and TLS configuration
+# for upstream registries.
 #upstreamConfig:
 #  mountPath: /var/ociregistry/config
 #  registries:
@@ -109,6 +126,6 @@ persistence:
 #      user: frobozz
 #      password: flathead
 #    tls:
-#      ca:   nginx/certs/ca.crt
-#      cert: nginx/certs/localhost.crt
-#      key:  nginx/certs/localhost.key
+#      ca:   /etc/pki/certs/ca.crt
+#      cert: /etc/pki/certs/client.crt
+#      key:  /etc/pki/certs/client.key

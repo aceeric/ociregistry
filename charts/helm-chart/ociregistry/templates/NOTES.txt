@@ -1,7 +1,7 @@
-Thank you for installing {{ .Chart.Name }}.
+Successfully installed the pull-only, pull-through caching OCI Image Registry.
 
 Your release is named {{ .Release.Name }}.
 
-To learn more about the the pull-only, pull-through caching OCI Image Registry, please look at:
+To learn more about the features of the registry, please see:
 
 https://github.com/aceeric/ociregistry

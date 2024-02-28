@@ -1,0 +1,17 @@
+[Unit]
+Description=ociregistry
+Documentation=https://github.com/aceeric/ociregistry
+After=network.target
+
+[Service]
+ExecStart=/bin/ociregistry/server\
+  --config-path=/var/lib/ociregistry/config.yaml\
+  --image-path=/var/lib/ociregistry/images\
+  --log-level=info\
+  --pull-timeout=60000
+Type=simple
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

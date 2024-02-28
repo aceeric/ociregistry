@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+if [[ $(id -u) -ne 0 ]]; then
+  echo "must run as sudo"
+fi
+
+cp bin/server /bin/ociregistry/server
+cp systemd-service/ociregistry.service /etc/systemd/system/
+systemctl enable --now ociregistry

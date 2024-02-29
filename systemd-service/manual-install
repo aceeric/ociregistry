@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
+#
+# Once you've locally built the executable you can install it as a systemd
+# service using this script. Run this script from the root of the cloned
+# repository.
+#
 
 if [[ $(id -u) -ne 0 ]]; then
   echo "must run as sudo"
 fi
 
-cp bin/server /bin/ociregistry/server
+cp bin/server /bin/ociregistry-server
 cp systemd-service/ociregistry.service /etc/systemd/system/
 systemctl enable --now ociregistry

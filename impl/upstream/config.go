@@ -55,6 +55,15 @@ func ConfigLoader(configPath string, chkSeconds int) {
 		var lastHash [md5.Size]byte
 		for {
 			func() {
+				_, err := os.Stat(configPath)
+				if err != nil {
+					if errors.Is(err, os.ErrNotExist) {
+						log.Warnf("config file does not exist, ignoring: %s", configPath)
+					} else {
+						log.Errorf("unable to stat configuration file: %s", configPath)
+					}
+					return
+				}
 				contents, err := os.ReadFile(configPath)
 				if err != nil {
 					log.Errorf("error reading configuration from %s", configPath)

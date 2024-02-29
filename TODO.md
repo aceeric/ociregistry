@@ -1,5 +1,6 @@
 # TODO
 
+- Load on startup? E.g. if running in cluster (connected) exec the pre-load function to populate the registry
 - Unit test mock remotes https://medium.com/zus-health/mocking-outbound-http-requests-in-go-youre-probably-doing-it-wrong-60373a38d2aa
 - Support upstream encoded into image url in case its not possible to configure containerd. E.g.:
   - `image: in-cluster-mirror:8181/gcr.io/google-containers/echoserver:1.10`

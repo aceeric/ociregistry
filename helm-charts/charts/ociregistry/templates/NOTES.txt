@@ -1,7 +1,0 @@
-Successfully installed the pull-only, pull-through caching OCI Image Registry.
-
-Your release is named {{ .Release.Name }}.
-
-To learn more about the features of the registry, please see:
-
-https://github.com/aceeric/ociregistry

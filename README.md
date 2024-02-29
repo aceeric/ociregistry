@@ -12,6 +12,95 @@ The goals of the project are:
 1. Implement one use case
 2. Be simple
 
+## Quick Start 1 - on your desktop
+
+After git cloning the project:
+
+### Build the server
+```
+make desktop
+```
+
+This command compiles the server and creates a binary called `server` in the `bin` directory relative to the project root.
+
+### Run the server
+
+You provide an image storage location with the `--image-path` arg
+```
+mkdir /tmp/images && bin/server --image-path /tmp/images
+```
+
+### Result
+```
+----------------------------------------------------------------------
+OCI Registry: pull-only, pull-through, caching OCI Distribution Server
+Started: 2024-02-17 20:49:56.516302625 -0500 EST (port 8080)
+----------------------------------------------------------------------
+```
+
+### In another terminal
+
+Curl a manifest list. Note the `ns` query parameter in the URL which tells the server to go to that upstream if the image isn't already locally cached (this is exactly how `containerd` does it):
+
+```
+curl localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io | jq
+```
+
+### Result
+```
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
+  "manifests": [
+    {
+      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+      "size": 2612,
+      "digest": "sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c",
+      "platform": {
+        "architecture": "amd64",
+        "os": "linux"
+      }
+    },
+    etc...
+```
+
+### Curl an image manifest
+
+Pick the first manifest from the list above - the `amd64/linux` manifest:
+
+```
+curl localhost:8080/v2/kube-scheduler/manifests/sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c?ns=registry.k8s.io | jq
+```
+
+### Inspect the files created by the two curl calls
+
+```
+find /tmp/images
+```
+
+### Result:
+```images
+images/blobs
+images/blobs/4873874c08efc72e9729683a83ffbb7502ee729e9a5ac097723806ea7fa13517
+images/blobs/fcb6f6d2c9986d9cd6a2ea3cc2936e5fc613e09f1af9042329011e43057f3265
+images/blobs/9457426d68990df190301d2e20b8450c4f67d7559bdb7ded6c40d41ced6731f7
+etc...
+images/fat
+images/fat/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
+images/img
+images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
+images/pulls
+```
+
+The manifest list was saved in: `images/fat/4afe5bf0ee...` and the image manifest was saved in: `images/img/019d7877d1...`.
+
+### Stop and restart the server and repeat
+
+You will notice that the manifest list and the image manifest are now being returned from cache.
+
+## Quick Start 2 - in your Kubernetes cluster
+
+Follow the instructions at the GitHub pages link: https://aceeric.github.io/ociregistry-helm/ociregistry/
+
 ## Design
 
 The following image describes the design:
@@ -191,88 +280,6 @@ The following options are supported:
 | `--list-cache`  | n/a                  | Lists the images in the cache and then exits |
 | `--version`     | n/a                  |  Displays the version and then exits |
 
-## Quick Start
-
-### Build the server
-```
-make desktop
-```
-
-This command compiles the server and creates a binary called `server` in the `bin` directory relative to the project root.
-
-### Run the server
-```
-mkdir /tmp/images && bin/server --image-path /tmp/images
-```
-
-### Result
-```
-----------------------------------------------------------------------
-OCI Registry: pull-only, pull-through, caching OCI Distribution Server
-Started: 2024-02-17 20:49:56.516302625 -0500 EST (port 8080)
-----------------------------------------------------------------------
-```
-
-### In another terminal
-
-### Curl a manifest list
-
-Note the `ns` query parameter which tells the server to go to that upstream if the image isn't already locally cached.
-
-```
-curl localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io | jq
-```
-
-### Result (partial)
-```
-  "schemaVersion": 2,
-  "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
-  "manifests": [
-    {
-      "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-      "size": 2612,
-      "digest": "sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c",
-      "platform": {
-        "architecture": "amd64",
-        "os": "linux"
-      }
-    },
-    etc...
-```
-
-### Curl an image manifest
-
-Pick the first manifest from the list above - the `amd64/linux` manifest:
-
-```
-curl localhost:8080/v2/kube-scheduler/manifests/sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c?ns=registry.k8s.io | jq
-```
-
-### Inspect the files created by the two curl calls
-
-```
-find /tmp/images
-```
-
-### Result:
-```images
-images/blobs
-images/blobs/4873874c08efc72e9729683a83ffbb7502ee729e9a5ac097723806ea7fa13517
-images/blobs/fcb6f6d2c9986d9cd6a2ea3cc2936e5fc613e09f1af9042329011e43057f3265
-images/blobs/9457426d68990df190301d2e20b8450c4f67d7559bdb7ded6c40d41ced6731f7
-etc...
-images/fat
-images/fat/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
-images/img
-images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
-images/pulls
-```
-
-The manifest list was saved in: `images/fat/4afe5bf0ee...` and the image manifest was saved in: `images/img/019d7877d1...`.
-
-### Stop and restart the server and repeat
-
-You will notice that the manifest list and the image manifest are now being returned from cache.
 
 ## Pre-loading the registry
 

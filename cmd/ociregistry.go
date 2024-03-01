@@ -12,6 +12,7 @@ import (
 	"ociregistry/api"
 	"ociregistry/impl"
 	"ociregistry/impl/globals"
+	"ociregistry/impl/preload"
 	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
 
@@ -20,18 +21,19 @@ import (
 )
 
 type cmdLine struct {
-	logLevel    string
-	imagePath   string
-	port        string
-	configPath  string
-	loadImages  string
-	arch        string
-	os          string
-	pullTimeout int
-	listCache   bool
-	version     bool
-	buildVer    string
-	buildDtm    string
+	logLevel      string
+	imagePath     string
+	port          string
+	configPath    string
+	loadImages    string
+	preloadImages string
+	arch          string
+	os            string
+	pullTimeout   int
+	listCache     bool
+	version       bool
+	buildVer      string
+	buildDtm      string
 }
 
 const startupBanner = `----------------------------------------------------------------------
@@ -52,6 +54,14 @@ func main() {
 	cliCommands(args)
 
 	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
+
+	if args.preloadImages != "" {
+		err := preload.Preload(args.preloadImages, args.imagePath, args.arch, args.os, args.pullTimeout)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error preloading images: %s\n", err)
+			os.Exit(1)
+		}
+	}
 
 	swagger, err := api.GetSwagger()
 	if err != nil {
@@ -109,6 +119,7 @@ func parseCmdline() cmdLine {
 	flag.StringVar(&args.configPath, "config-path", "", "Remote registry configuration file. Defaults to empty string (all remotes anonymous)")
 	flag.StringVar(&args.port, "port", "8080", "Port for server. Defaults to 8080")
 	flag.StringVar(&args.loadImages, "load-images", "", "load images in the specified file into cache and then exit")
+	flag.StringVar(&args.preloadImages, "preload-images", "", "load images in the specified file into cache at startup and then continue to serve")
 	flag.StringVar(&args.arch, "arch", "amd64", "architecture for the --load-images arg")
 	flag.StringVar(&args.os, "os", "linux", "os for the --load-images arg")
 	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "max time in millis to pull an image from an upstream. Defaults to one minute")

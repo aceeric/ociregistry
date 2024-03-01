@@ -44,7 +44,8 @@ func ToFilesystem(mh upstream.ManifestHolder, imagePath string) error {
 	_, err := os.Stat(fname)
 	if err != nil {
 		mb, _ := json.Marshal(mh)
-		if os.WriteFile(fname, mb, 0644) != nil {
+		err = os.WriteFile(fname, mb, 0755)
+		if err != nil {
 			log.Errorf("error serializing manifest for %s", mh.ImageUrl)
 		}
 		return err
@@ -70,7 +71,7 @@ func FromFilesystem(imagePath string) error {
 	return nil
 }
 
-// WalkTheCache walks the image cache and provdides each de-serialized 'ManifestHolder'
+// WalkTheCache walks the image cache and provides each de-serialized 'ManifestHolder'
 // to the passed function.
 func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 	for _, subpath := range []string{fatPath, imgPath} {

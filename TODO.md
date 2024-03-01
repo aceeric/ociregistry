@@ -1,6 +1,10 @@
+# IN PROGRESS
+
+- Load on startup. NEED TO USE REMOTE.HEAD to efficiently know if the image is already cached.
+  - ok since this is startup and not concurrent
+
 # TODO
 
-- Load on startup? E.g. if running in cluster (connected) exec the pre-load function to populate the registry
 - Unit test mock remotes https://medium.com/zus-health/mocking-outbound-http-requests-in-go-youre-probably-doing-it-wrong-60373a38d2aa
 - Support upstream encoded into image url in case its not possible to configure containerd. E.g.:
   - `image: in-cluster-mirror:8181/gcr.io/google-containers/echoserver:1.10`

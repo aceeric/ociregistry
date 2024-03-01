@@ -28,8 +28,8 @@ func Preload(imageListFile string, imagePath string, platformArch string, platfo
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		line := string(scanner.Bytes())
-		if strings.HasPrefix(line, "#") {
+		line := strings.TrimSpace(string(scanner.Bytes()))
+		if len(line) == 0 || strings.HasPrefix(line, "#") {
 			continue
 		}
 		var parts []string
@@ -68,6 +68,10 @@ func Preload(imageListFile string, imagePath string, platformArch string, platfo
 			}
 			itemcnt++
 		}
+		if mh.IsImageManifest() {
+			// it's possible that the server will not return a manifest list
+			continue
+		}
 		digest, err := getImageManifestDigest(mh, platformArch, platformOs)
 		if err != nil {
 			return err
@@ -80,7 +84,7 @@ func Preload(imageListFile string, imagePath string, platformArch string, platfo
 			continue
 		}
 		log.Infof("get from remote: %s", pr.Url())
-		_, err = upstream.Get(pr, imagePath, pullTimeout)
+		mh, err = upstream.Get(pr, imagePath, pullTimeout)
 		if err != nil {
 			return err
 		}

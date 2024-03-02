@@ -16,7 +16,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// HEAD or GET /v2/.../manifests
+// HEAD or GET /v2/.../manifests/ref
 func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, verb string, namespace *string) error {
 	remote := parseRemote(ctx, namespace)
 	pr := pullrequest.NewPullRequest(org, image, reference, remote)
@@ -58,7 +58,7 @@ func (r *OciRegistry) handleV2Auth(ctx echo.Context, params V2AuthParams) error 
 	return ctx.JSON(http.StatusOK, body)
 }
 
-// GET /v2
+// GET /v2/
 func (r *OciRegistry) handleV2Default(ctx echo.Context) error {
 	log.Info("get /v2/")
 	return ctx.JSON(http.StatusOK, "true")
@@ -84,7 +84,7 @@ func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org strin
 	return ctx.Stream(http.StatusOK, "binary/octet-stream", f)
 }
 
-// parseRemoteNamespace looks in the passed echo context for header 'X-Registry' and if
+// parseRemote looks in the passed echo context for header 'X-Registry' and if
 // it exists, returns the header value. Else looks at the passed namespace arg and if
 // non-nil, returns the value from the pointer. Background: if containerd is configured
 // to mirror, then when it pulls from the mirror it passes the registry being mirrored
@@ -93,7 +93,8 @@ func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org strin
 //	https://mymirror.io/v2/image-name/manifests/tag-name?ns=myregistry.io:5000.
 //
 // This query param is passed through to the API handlers so they can know which upstream
-// registry to pull from.
+// registry to pull from. If neither the header nor the query param are set then the
+// function returns the empty string.
 func parseRemote(ctx echo.Context, namespace *string) string {
 	hdr, exists := ctx.Request().Header["X-Registry"]
 	if exists && len(hdr) == 1 {
@@ -107,7 +108,8 @@ func parseRemote(ctx echo.Context, namespace *string) string {
 
 // pullAndCache pulls a manifest represented in the passed 'PullRequest' and caches it.
 // If the manifest is an image manifest then the blobs are also downloaded and cached. Upon
-// return from this function, the server is able to serve the image from cache.
+// return from this function, if the manifest is an image manifest, then the server is able
+// to serve the image from cache.
 func (r *OciRegistry) pullAndCache(pr pullrequest.PullRequest) (upstream.ManifestHolder, error) {
 	mh, err := upstream.Get(pr, r.imagePath, r.pullTimeout)
 	if err != nil {

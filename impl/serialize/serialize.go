@@ -13,12 +13,18 @@ import (
 )
 
 const (
+	// where the "fat" manifests reside (the manifests that are lists of image manifests)
 	fatPath = "fat"
+	// where the image manifests reside
 	imgPath = "img"
 )
 
+// CacheEntryHandler defines a function that can operator on a 'ManifestHolder' instance
 type CacheEntryHandler func(upstream.ManifestHolder) error
 
+// MhFromFileSystem gets a 'ManifestHolder' from the file system at the passed path.
+// If not found, returns an empty 'ManifestHolder' and false, else the 'ManifestHolder'
+// from the file system and true
 func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (upstream.ManifestHolder, bool) {
 	var subdir = fatPath
 	if isImageManifest {
@@ -43,6 +49,8 @@ func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (up
 	return upstream.ManifestHolder{}, false
 }
 
+// ToFilesystem serializes the passed 'ManifestHolder' to the file system at
+// the passed image path.
 func ToFilesystem(mh upstream.ManifestHolder, imagePath string) error {
 	var subdir = fatPath
 	if mh.IsImageManifest() {
@@ -66,7 +74,7 @@ func ToFilesystem(mh upstream.ManifestHolder, imagePath string) error {
 	return nil
 }
 
-// FromFilesystem reads the manifests from the file system and adds them
+// FromFilesystem reads all the manifests from the file system and adds them
 // the the in-memory data structure that represents the cache in memory.
 func FromFilesystem(imagePath string) error {
 	start := time.Now()

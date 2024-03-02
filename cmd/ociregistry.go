@@ -43,6 +43,7 @@ Started: %s (port %s)
 ----------------------------------------------------------------------
 `
 
+// set by the compiler:
 var (
 	buildVer string
 	buildDtm string
@@ -119,11 +120,11 @@ func parseCmdline() cmdLine {
 	flag.StringVar(&args.imagePath, "image-path", "/var/lib/ociregistry", "Path for the image store. Defaults to '/var/lib/ociregistry'")
 	flag.StringVar(&args.configPath, "config-path", "", "Remote registry configuration file. Defaults to empty string (all remotes anonymous)")
 	flag.StringVar(&args.port, "port", "8080", "Port for server. Defaults to 8080")
-	flag.StringVar(&args.loadImages, "load-images", "", "load images in the specified file into cache and then exit")
-	flag.StringVar(&args.preloadImages, "preload-images", "", "load images in the specified file into cache at startup and then continue to serve")
-	flag.StringVar(&args.arch, "arch", "amd64", "architecture for the --load-images arg")
-	flag.StringVar(&args.os, "os", "linux", "os for the --load-images arg")
-	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "max time in millis to pull an image from an upstream. Defaults to one minute")
+	flag.StringVar(&args.loadImages, "load-images", "", "Loads images enumerated in the specified file into cache and then exits")
+	flag.StringVar(&args.preloadImages, "preload-images", "", "Loads images enumerated in the specified file into cache at startup and then continues to serve")
+	flag.StringVar(&args.arch, "arch", "amd64", "Architecture for the --load-images and --preload-images arg")
+	flag.StringVar(&args.os, "os", "linux", "Operating system for the --load-images and --preload-images arg")
+	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "Max time in millis to pull an image from an upstream. Defaults to one minute")
 	flag.BoolVar(&args.listCache, "list-cache", false, "Lists the cached images and exits")
 	flag.BoolVar(&args.version, "version", false, "Displays the version and exits")
 	flag.Parse()
@@ -141,8 +142,10 @@ func parseCmdline() cmdLine {
 	return args
 }
 
-// cmdApi implements the command API. Presently it consists only of:
-// GET /cmd/stop and GET  /health (intended for k8s)
+// cmdApi implements the command API. Presently it consists of:
+//
+//	GET /cmd/stop to shutdown the server
+//	GET /health (intended for k8s)
 func cmdApi(e *echo.Echo, ch chan bool) {
 	e.GET("/cmd/stop",
 		func(ctx echo.Context) error {
@@ -155,7 +158,7 @@ func cmdApi(e *echo.Echo, ch chan bool) {
 		})
 }
 
-// makeDir creates all directories up to and including the passed directory.
+// makeDirs creates all directories up to and including the passed directory.
 // The passed directory can be relative or absolute.
 func makeDirs(path string) (string, error) {
 	if absPath, err := filepath.Abs(path); err == nil {

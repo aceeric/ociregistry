@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 
-container=$(docker run -d\
-  --name ociregistry\
-  -p 8080:8080\
-  --user $(id -u):$(id -g)\
-  -v $PWD/images:/var/lib/ociregistry\
-  quay.io/appzygy/ociregistry:1.0.0 --log-level=debug)
+if [[ -z "$1" ]]; then
+  echo "need version in arg 1. E.g. 'test-local-image 1.2.0'"
+  exit 1
+fi
 
-echo "when done: 'docker stop ociregistry'"
+docker run\
+  --detach\
+  --name    ociregistry\
+  --publish 8888:8080\
+  --user    $(id -u):$(id -g)\
+  --volume  $PWD/images:/var/lib/ociregistry\
+  quay.io/appzygy/ociregistry:1.2.0 --log-level=debug
 
-docker logs $container -f
+echo "when done: 'docker stop ociregistry && docker container rm ociregistry"
+echo "tail the logs: docker logs ociregistry -f"

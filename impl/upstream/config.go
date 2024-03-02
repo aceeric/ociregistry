@@ -17,11 +17,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// authCfg holds basic auth user/pass
 type authCfg struct {
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
 }
 
+// tlsCfg holds TLS configuration
 type tlsCfg struct {
 	Cert     string `yaml:"cert"`
 	Key      string `yaml:"key"`
@@ -29,6 +31,7 @@ type tlsCfg struct {
 	Insecure bool   `yaml:"insecure_skip_verify"`
 }
 
+// cfgEntry combines authCfg and tlsCfg
 type cfgEntry struct {
 	Name        string  `yaml:"name"`
 	Description string  `yaml:"description"`
@@ -49,7 +52,20 @@ var (
 // then nothing is done and no remote registry configs are defined.
 // The result of this will be that every remote registry will be
 // accessed anonymously. The function loops forever checking the config
-// file for changes every 'chkSeconds' seconds.
+// file for changes every 'chkSeconds' seconds. A fully-populated
+// configuration entry looks like so:
+//
+//	---
+//	- name: localhost:5001
+//	  description: An optional mnemonic that you deem useful
+//	  auth:
+//	    user: foo
+//	    password: bar
+//	  tls:
+//	    ca:   /etc/certs/ca.crt
+//	    cert: /etc/certs/server.crt
+//	    key:  /etc/certs/server.key
+//	    insecure_skip_verify: true
 func ConfigLoader(configPath string, chkSeconds int) {
 	if configPath != "" {
 		var lastHash [md5.Size]byte
@@ -93,12 +109,13 @@ func ConfigLoader(configPath string, chkSeconds int) {
 	}
 }
 
-// parseConfig parses the remote registry configuration in the passed 'configBytes'
-// arg. which consists on some number of entries, each describing the auth and TLS
-// configuration to access a remote registry. The results are parsed into the package-level
-// 'config' map keyed by the remote name. Therefore the `name` element ofthe configuration
-// is important: it must exactly match a remote registry with no HTTP scheme, e.g.: 'quay.io',
-// or: our.private.registry.gov:6443, or 129.168.1.1:8080, etc.
+// parseConfig parses the remote registry yaml config in the passed 'configBytes'
+// arg. which consists of some number of entries, each describing the auth and TLS
+// configuration to access one remote registry. The results are parsed into a map of
+// 'cfgEntry' structs and returned to the caller. The map key is the 'name' element
+// of each configuration which must exactly match a remote registry URL with no
+// scheme, e.g.: quay.io, or: our.private.registry.gov:6443, or 129.168.1.1:8080,
+// etc.
 func parseConfig(configBytes []byte) (map[string]cfgEntry, error) {
 	var entries []cfgEntry
 	err := yaml.Unmarshal(configBytes, &entries)
@@ -118,15 +135,15 @@ func parseConfig(configBytes []byte) (map[string]cfgEntry, error) {
 
 // configFor looks for a configuration entry keyed by the passed 'registry' arg
 // (e.g. 'index.docker.io') and returns an array of options built from the config
-// to configure the Crane image puller for that remote registry. If no matching
-// config is found, then an empty array is returned with an error. (The error means
-// the caller requested a config that didn't exist.) An empty array can be also
-// be returned without an error - which means that the registry existed in the
-// configuration but it didn't supply any options that would be used to configure
-// Crane. This would be the case for a registry with no auth and no TLS. Bottom
-// line, the caller can always use the options returned by the function, but may
-// wish to log or record the fact that a registry was provided for lookup that
-// was not configured.
+// to configure the Crane image puller for that remote registry. In other words this
+// is purpose-built to integrate with Crane. If no matching config is found, then
+// an empty array is returned with an error. (The error means the caller requested
+// a config that didn't exist.) An empty array can be also be returned without an
+// error - which means that the registry existed in the configuration but it didn't
+// supply any options that would be used to configure Crane. This would be the case
+// for a registry with no auth and no TLS. Bottom line, the caller can always use
+// the options returned by the function, but may wish to log or record the fact
+// that a registry was provided for lookup that was not configured.
 func configFor(registry string) ([]remote.Option, error) {
 	mu.Lock()
 	regCfg, exists := config[registry]
@@ -180,6 +197,9 @@ func configFor(registry string) ([]remote.Option, error) {
 	return opts, nil
 }
 
+// configEntryFor returns a configuration entry from the config map that
+// matches the passed 'registry', or and empy config if no matching entry
+// exists.
 func configEntryFor(registry string) (cfgEntry, error) {
 	mu.Lock()
 	regCfg, exists := config[registry]

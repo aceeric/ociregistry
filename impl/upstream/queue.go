@@ -34,7 +34,8 @@ var (
 	alreadyEnqueued bool = true
 )
 
-// Get gets fat manifests, image manifests, and image blobs
+// Get gets fat manifests, image manifests, and image blobs from an
+// upstream registry.
 func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (ManifestHolder, error) {
 	imageUrl := pr.Url()
 	ch := make(chan bool)
@@ -76,6 +77,8 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 	return mh, err
 }
 
+// manifestHolderFromDescriptor does some parsing of the passed descriptor
+// and basically wraps it in a 'ManifestHolder' which is returned to the caller.
 func manifestHolderFromDescriptor(d *remote.Descriptor) (ManifestHolder, error) {
 	mh := ManifestHolder{
 		MediaType: string(d.MediaType),
@@ -104,10 +107,21 @@ func manifestHolderFromDescriptor(d *remote.Descriptor) (ManifestHolder, error) 
 
 }
 
+// isImageDescriptor returns true if the passed descriptor is an image
+// descriptor, otherwise returns false, meaning that it is a manifest list.
 func isImageDescriptor(d *remote.Descriptor) bool {
 	return d.Descriptor.MediaType == V2dockerManifestMt || d.Descriptor.MediaType == V1ociManifestMt
 }
 
+// enqueueGet enqueues an upstream registry get request for the passed
+// 'imageUrl'. If there are no other requesters, then the function returns
+// false - meaning the caller is the first requester and therefore will have
+// to actaully pull the image. If a request was previously enqueued for the
+// image url then true is returned meaning the caller should simply wait for
+// a signal on the passed channel which signifies that the prior caller has
+// pulled the image and added it to the cache and so this caller can access
+// the cached image. In all cases, all callers will be signalled on the passed
+// channel when the image is pulled and available in cache.
 func enqueueGet(imageUrl string, ch chan bool) bool {
 	ps.mu.Lock()
 	chans, exists := ps.pullMap[imageUrl]
@@ -120,6 +134,7 @@ func enqueueGet(imageUrl string, ch chan bool) bool {
 	return exists
 }
 
+// doneGet signals all waiters for the passed image URL.
 func doneGet(imageUrl string) {
 	ps.mu.Lock()
 	chans, exists := ps.pullMap[imageUrl]
@@ -137,6 +152,10 @@ func doneGet(imageUrl string) {
 	ps.mu.Unlock()
 }
 
+// cranePull gets any defined upstream registry configuration associated with the
+// registry in the passed URL, and packages it for the Google Crane code embedded in the
+// project, then calls Google Crane to get the object behind the URL which will be either
+// a manifest list, or an image manifest.
 func cranePull(imageUrl string) (*remote.Descriptor, error) {
 	ref, err := name.ParseReference(imageUrl, make([]name.Option, 0)...)
 	if err != nil {
@@ -149,6 +168,8 @@ func cranePull(imageUrl string) (*remote.Descriptor, error) {
 	return remote.Get(ref, opts...)
 }
 
+// CraneHead is like 'cranePull' except it does a HEAD request from the upstream
+// registry.
 func CraneHead(imageUrl string) (*v1.Descriptor, error) {
 	ref, err := name.ParseReference(imageUrl, make([]name.Option, 0)...)
 	if err != nil {
@@ -161,6 +182,8 @@ func CraneHead(imageUrl string) (*v1.Descriptor, error) {
 	return remote.Head(ref, opts...)
 }
 
+// craneDownloadImg downloads an image tarball to the "pulls" drectory under
+// the passed 'imagePath' directory, or returns an error if unable to do so.
 func craneDownloadImg(imageUrl string, d *remote.Descriptor, imagePath string) (string, error) {
 	var imageTar = filepath.Join(imagePath, globals.PullsDir)
 	if _, err := os.Stat(imageTar); err != nil {

@@ -15,10 +15,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func Extract(tarfile string, tarfilePath string, deleteAfter bool) error {
+// Extract gets all the blobs from the passed tar file and writes them into
+// the "blobs" directory under the passed 'imagePath' directory. If 'deleteAfter'
+// is true then the tar file is deleted on completion, otherwise the tar file is
+// left in place.
+func Extract(tarfile string, imagePath string, deleteAfter bool) error {
 	log.Debugf("extracting tarfile %s", tarfile)
 	defer deleteFile(tarfile, deleteAfter)
-	blobPath := filepath.Join(tarfilePath, globals.BlobsDir)
+	blobPath := filepath.Join(imagePath, globals.BlobsDir)
 	if err := os.MkdirAll(blobPath, 0755); err != nil {
 		return err
 	}

@@ -17,6 +17,15 @@ import (
 var dlmCln = regexp.MustCompile("[/:]+")
 var dlmAt = regexp.MustCompile("[/@]+")
 
+// Preload loads the manifest and blob cache at the passed 'imagePath' locatino from
+// the list of images enumerated in the passed 'imageListFile' arg. If an image is already
+// present in cache, it is skipped. Otherwise the image is pulled from the upstream using
+// the upstream registry encoded into the image entry. For example:
+//
+//	'registry.k8s.io/metrics-server/metrics-server:v0.6.2'
+//
+// The platform architecture and OS are used to select an image from an "fat" manifest
+// that contains a list of images.
 func Preload(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int) error {
 	start := time.Now()
 	log.Infof("loading images from file: %s", imageListFile)
@@ -115,6 +124,10 @@ func Preload(imageListFile string, imagePath string, platformArch string, platfo
 	return nil
 }
 
+// getImageManifestDigest uses the passed platform architecture and os to select a
+// manifest from the manifest list wrapped in the passed 'ManifestHolder'. If found,
+// then  the digest is returned. If not found then the empty string and an error are
+// returned.
 func getImageManifestDigest(mh upstream.ManifestHolder, platformArch, platformOs string) (string, error) {
 	if mh.Type == upstream.V2dockerManifestList {
 		for _, m := range mh.V2dockerManifestList.Manifests {

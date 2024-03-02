@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/go-containerregistry/pkg/crane"
 	"github.com/google/go-containerregistry/pkg/name"
+	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"github.com/google/uuid"
 )
@@ -146,6 +147,18 @@ func cranePull(imageUrl string) (*remote.Descriptor, error) {
 		log.Warn(err.Error())
 	}
 	return remote.Get(ref, opts...)
+}
+
+func CraneHead(imageUrl string) (*v1.Descriptor, error) {
+	ref, err := name.ParseReference(imageUrl, make([]name.Option, 0)...)
+	if err != nil {
+		return nil, err
+	}
+	opts, err := configFor(ref.Context().Registry.Name())
+	if err != nil {
+		log.Warn(err.Error())
+	}
+	return remote.Head(ref, opts...)
 }
 
 func craneDownloadImg(imageUrl string, d *remote.Descriptor, imagePath string) (string, error) {

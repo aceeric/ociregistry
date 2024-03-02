@@ -54,3 +54,12 @@ func Test3(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func Test4(t *testing.T) {
+	pr := pullrequest.NewPullRequest("appzygy", "ociregistry", "1.0.0", "quay.io")
+	d, err := CraneHead(pr.Url())
+	if err != nil {
+		t.Fail()
+	}
+	fmt.Printf("%+v\n", d)
+}

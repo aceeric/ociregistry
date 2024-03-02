@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"ociregistry/api"
@@ -128,11 +129,20 @@ func parseCmdline() cmdLine {
 	flag.Parse()
 	args.buildDtm = buildDtm
 	args.buildVer = buildVer
+
+	absPath, err := makeDirs(args.imagePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error initializing image directory: %s, error: %s\n", args.imagePath, err)
+		os.Exit(1)
+	} else {
+		args.imagePath = absPath
+	}
+
 	return args
 }
 
 // cmdApi implements the command API. Presently it consists only of:
-// GET /cmd/stop
+// GET /cmd/stop and GET  /health (intended for k8s)
 func cmdApi(e *echo.Echo, ch chan bool) {
 	e.GET("/cmd/stop",
 		func(ctx echo.Context) error {
@@ -143,4 +153,17 @@ func cmdApi(e *echo.Echo, ch chan bool) {
 		func(ctx echo.Context) error {
 			return ctx.NoContent(http.StatusOK)
 		})
+}
+
+// makeDir creates all directories up to and including the passed directory.
+// The passed directory can be relative or absolute.
+func makeDirs(path string) (string, error) {
+	if absPath, err := filepath.Abs(path); err == nil {
+		if err := os.MkdirAll(absPath, 0755); err != nil {
+			return "", err
+		}
+		return absPath, nil
+	} else {
+		return "", err
+	}
 }

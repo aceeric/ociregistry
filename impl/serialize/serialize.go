@@ -19,7 +19,7 @@ const (
 
 type CacheEntryHandler func(upstream.ManifestHolder) error
 
-func IsOnFilesystem(digest string, isImageManifest bool, imagePath string) bool {
+func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (upstream.ManifestHolder, bool) {
 	var subdir = fatPath
 	if isImageManifest {
 		subdir = imgPath
@@ -29,7 +29,18 @@ func IsOnFilesystem(digest string, isImageManifest bool, imagePath string) bool 
 	}
 	fname := filepath.Join(imagePath, subdir, digest)
 	_, err := os.Stat(fname)
-	return err == nil
+	if err == nil {
+		b, err := os.ReadFile(fname)
+		if err != nil {
+			return upstream.ManifestHolder{}, false
+		}
+		mh := upstream.ManifestHolder{}
+		err = json.Unmarshal(b, &mh)
+		if err == nil {
+			return mh, true
+		}
+	}
+	return upstream.ManifestHolder{}, false
 }
 
 func ToFilesystem(mh upstream.ManifestHolder, imagePath string) error {

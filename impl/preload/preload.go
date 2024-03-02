@@ -51,17 +51,26 @@ func Preload(imageListFile string, imagePath string, platformArch string, platfo
 		}
 		remote = parts[0]
 
-		// manifest list
+		// first pull could be  a manifest list or an image manifest
 		pr := pullrequest.NewPullRequest(org, image, ref, remote)
-		log.Infof("get from remote: %s", pr.Url())
-		mh, err := upstream.Get(pr, imagePath, pullTimeout)
+		log.Infof("head remote: %s", pr.Url())
+		d, err := upstream.CraneHead(pr.Url())
 		if err != nil {
 			return err
 		}
-
-		if serialize.IsOnFilesystem(mh.Digest, false, imagePath) {
-			log.Infof("image manifest already cached for: %s", pr.Url())
+		isImageManifest := upstream.IsImageManifest(string(d.MediaType))
+		mh, found := serialize.MhFromFileSystem(d.Digest.Hex, isImageManifest, imagePath)
+		if found {
+			t := "image list"
+			if isImageManifest {
+				t = "image"
+			}
+			log.Infof("%s manifest already cached for: %s", t, pr.Url())
 		} else {
+			mh, err = upstream.Get(pr, imagePath, pullTimeout)
+			if err != nil {
+				return err
+			}
 			err = serialize.ToFilesystem(mh, imagePath)
 			if err != nil {
 				return err
@@ -72,18 +81,26 @@ func Preload(imageListFile string, imagePath string, platformArch string, platfo
 			// it's possible that the server will not return a manifest list
 			continue
 		}
+		// get the digest from the manifest list for to the platform/os of interest
+		// and see if an *image* manifest is cached for that digest
 		digest, err := getImageManifestDigest(mh, platformArch, platformOs)
 		if err != nil {
 			return err
 		}
-
-		// image manifest
-		pr = pullrequest.NewPullRequest(org, image, digest, remote)
-		if serialize.IsOnFilesystem(digest, true, imagePath) {
+		mh, found = serialize.MhFromFileSystem(digest, true, imagePath)
+		if found {
 			log.Infof("image manifest already cached for: %s", pr.Url())
 			continue
 		}
-		log.Infof("get from remote: %s", pr.Url())
+
+		// must be image manifest
+		pr = pullrequest.NewPullRequest(org, image, digest, remote)
+		mh, found = serialize.MhFromFileSystem(digest, true, imagePath)
+		if found {
+			log.Infof("image manifest already cached for: %s", pr.Url())
+			continue
+		}
+		log.Infof("get remote: %s", pr.Url())
 		mh, err = upstream.Get(pr, imagePath, pullTimeout)
 		if err != nil {
 			return err

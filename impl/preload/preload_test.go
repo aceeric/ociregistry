@@ -2,8 +2,10 @@ package preload
 
 import (
 	"encoding/json"
+	"ociregistry/impl/globals"
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/upstream"
+	"ociregistry/mock"
 	"os"
 	"path/filepath"
 	"testing"
@@ -116,20 +118,23 @@ func TestManifestHolder(t *testing.T) {
 	}
 }
 
-// TODO run against a docker registry
 func TestPreload(t *testing.T) {
-	t.SkipNow()
+	globals.ConfigureLogging("error")
+	server, mi := mock.Server()
+	defer server.Close()
 	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fail()
 	}
 	defer os.RemoveAll(d)
-	err = Preload("imagelist", d, "amd64", "linux", 1000)
-	if err != nil {
+	cnt, err := preloadOneImage(mi.Url+"/hello-world:latest", d, "amd64", "linux", 1000)
+	// count is 2 because one manifest list and one image
+	if err != nil || cnt != 2 {
 		t.Fail()
 	}
+	// the hello-world latest image has two blobs
 	blobs, _ := os.ReadDir(filepath.Join(d, "blobs"))
-	if len(blobs) != 18 {
+	if len(blobs) != 2 {
 		t.Fail()
 	}
 }

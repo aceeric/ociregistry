@@ -17,15 +17,16 @@ import (
 var dlmCln = regexp.MustCompile("[/:]+")
 var dlmAt = regexp.MustCompile("[/@]+")
 
-// Preload loads the manifest and blob cache at the passed 'imagePath' locatino from
+// Preload loads the manifest and blob cache at the passed 'imagePath' location from
 // the list of images enumerated in the passed 'imageListFile' arg. If an image is already
 // present in cache, it is skipped. Otherwise the image is pulled from the upstream using
-// the upstream registry encoded into the image entry. For example:
+// the upstream registry encoded into the file entry. For example:
 //
 //	'registry.k8s.io/metrics-server/metrics-server:v0.6.2'
 //
-// The platform architecture and OS are used to select an image from an "fat" manifest
-// that contains a list of images.
+// The platform architecture and OS are used to select an image from a "fat" manifest
+// that contains a list of images. IMPORTANT: each item in the list MUST begin with
+// a remote registry ref - i.e. to the left of the first forward slash
 func Preload(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int) error {
 	start := time.Now()
 	log.Infof("loading images from file: %s", imageListFile)
@@ -41,87 +42,85 @@ func Preload(imageListFile string, imagePath string, platformArch string, platfo
 		if len(line) == 0 || strings.HasPrefix(line, "#") {
 			continue
 		}
-		var parts []string
-		if strings.Contains(line, "@") {
-			parts = dlmAt.Split(line, -1)
-		} else {
-			parts = dlmCln.Split(line, -1)
-		}
-		var org, image, ref, remote string
-		if len(parts) == 4 {
-			org = parts[1]
-			image = parts[2]
-			ref = parts[3]
-		} else if len(parts) == 3 {
-			image = parts[1]
-			ref = parts[2]
-		} else {
-			return fmt.Errorf("unable to parse image ref: %s", line)
-		}
-		remote = parts[0]
-
-		// first pull could be  a manifest list or an image manifest
-		pr := pullrequest.NewPullRequest(org, image, ref, remote)
-		log.Infof("head remote: %s", pr.Url())
-		d, err := upstream.CraneHead(pr.Url())
+		cnt, err := preloadOneImage(line, imagePath, platformArch, platformOs, pullTimeout)
 		if err != nil {
 			return err
 		}
-		isImageManifest := upstream.IsImageManifest(string(d.MediaType))
-		mh, found := serialize.MhFromFileSystem(d.Digest.Hex, isImageManifest, imagePath)
-		if found {
-			t := "image list"
-			if isImageManifest {
-				t = "image"
-			}
-			log.Infof("%s manifest already cached for: %s", t, pr.Url())
-		} else {
-			mh, err = upstream.Get(pr, imagePath, pullTimeout)
-			if err != nil {
-				return err
-			}
-			err = serialize.ToFilesystem(mh, imagePath)
-			if err != nil {
-				return err
-			}
-			itemcnt++
-		}
-		if mh.IsImageManifest() {
-			// it's possible that the server will not return a manifest list
-			continue
-		}
-		// get the digest from the manifest list for to the platform/os of interest
-		// and see if an *image* manifest is cached for that digest
-		digest, err := getImageManifestDigest(mh, platformArch, platformOs)
-		if err != nil {
-			return err
-		}
-		mh, found = serialize.MhFromFileSystem(digest, true, imagePath)
-		if found {
-			log.Infof("image manifest already cached for: %s", pr.Url())
-			continue
-		}
-
-		// must be image manifest
-		pr = pullrequest.NewPullRequest(org, image, digest, remote)
-		mh, found = serialize.MhFromFileSystem(digest, true, imagePath)
-		if found {
-			log.Infof("image manifest already cached for: %s", pr.Url())
-			continue
-		}
-		log.Infof("get remote: %s", pr.Url())
-		mh, err = upstream.Get(pr, imagePath, pullTimeout)
-		if err != nil {
-			return err
-		}
-		err = serialize.ToFilesystem(mh, imagePath)
-		if err != nil {
-			return err
-		}
-		itemcnt++
+		itemcnt += cnt
 	}
 	log.Infof("loaded %d images to the file system cache in %s", itemcnt, time.Since(start))
 	return nil
+}
+
+// preloadOneImage loads the image specified by the 'imageUrl' arg (e.g.: docker.io/foo:latest)
+// into the cache, if not already cached. If already cached, nothing happens. In the case where the
+// image url specifies a manifest list, the function retrieves from the manifest list the image
+// manifest that matches the passed platform architecture and OS and also downloads that image
+// manifest and the blobs for that image. So this function can perform zero, one, or two
+// pulls from the upstream registry. The number of pulls is returned to the caller.
+func preloadOneImage(imageUrl string, imagePath string, platformArch string, platformOs string, pullTimeout int) (int, error) {
+	itemcnt := 0
+	pr, err := pullrequest.NewPullRequestFromUrl(imageUrl)
+	if err != nil {
+		return 0, fmt.Errorf("unable to parse image ref: %s", imageUrl)
+	}
+	// first HEAD could be a manifest list or an image manifest
+	log.Infof("head remote: %s", pr.Url())
+	d, err := upstream.CraneHead(pr.Url())
+	if err != nil {
+		return 0, err
+	}
+	isImageManifest := upstream.IsImageManifest(string(d.MediaType))
+	mh, found := serialize.MhFromFileSystem(d.Digest.Hex, isImageManifest, imagePath)
+	if found {
+		t := "image list"
+		if isImageManifest {
+			t = "image"
+		}
+		log.Infof("%s manifest already cached for: %s", t, pr.Url())
+	} else {
+		mh, err = upstream.Get(pr, imagePath, pullTimeout)
+		if err != nil {
+			return 0, err
+		}
+		err = serialize.ToFilesystem(mh, imagePath)
+		if err != nil {
+			return 0, err
+		}
+		itemcnt++
+	}
+	if mh.IsImageManifest() {
+		// it's possible that the server will not return a manifest list
+		return itemcnt, nil
+	}
+	// get the digest from the manifest list for the platform & os of interest
+	// and see if an *image* manifest is cached for that digest
+	digest, err := getImageManifestDigest(mh, platformArch, platformOs)
+	if err != nil {
+		return 0, err
+	}
+	mh, found = serialize.MhFromFileSystem(digest, true, imagePath)
+	if found {
+		log.Infof("image manifest already cached for: %s", pr.Url())
+		return itemcnt, nil
+	}
+	pr = pullrequest.NewPullRequest(pr.Org, pr.Image, digest, pr.Remote)
+	mh, found = serialize.MhFromFileSystem(digest, true, imagePath)
+	if found {
+		log.Infof("image manifest already cached for: %s", pr.Url())
+		return itemcnt, nil
+	}
+	log.Infof("get remote: %s", pr.Url())
+	mh, err = upstream.Get(pr, imagePath, pullTimeout)
+	if err != nil {
+		return 0, err
+	}
+	err = serialize.ToFilesystem(mh, imagePath)
+	if err != nil {
+		return 0, err
+	}
+	itemcnt++
+	return itemcnt, nil
 }
 
 // getImageManifestDigest uses the passed platform architecture and os to select a

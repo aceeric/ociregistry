@@ -51,7 +51,7 @@ func GetEchoLoggingFunc() echo.MiddlewareFunc {
 			res := c.Response()
 
 			// don't log the health check because it clutters the log and it is intended to
-			// be used by Kubernetes so doesn't need to be logged
+			// be used by Kubernetes anyway so doesn't need to be logged
 			if req.RequestURI == "/health" {
 				return nil
 			}

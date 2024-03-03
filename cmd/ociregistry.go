@@ -51,6 +51,8 @@ var (
 
 func main() {
 	args := parseCmdline()
+	postprocessArgs(args)
+
 	globals.ConfigureLogging(args.logLevel)
 
 	cliCommands(args)
@@ -130,15 +132,6 @@ func parseCmdline() cmdLine {
 	flag.Parse()
 	args.buildDtm = buildDtm
 	args.buildVer = buildVer
-
-	absPath, err := makeDirs(args.imagePath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error initializing image directory: %s, error: %s\n", args.imagePath, err)
-		os.Exit(1)
-	} else {
-		args.imagePath = absPath
-	}
-
 	return args
 }
 
@@ -156,6 +149,18 @@ func cmdApi(e *echo.Echo, ch chan bool) {
 		func(ctx echo.Context) error {
 			return ctx.NoContent(http.StatusOK)
 		})
+}
+
+// postProcessArgs does some modification to the args. If anything fails, the
+// program is terminated
+func postprocessArgs(args cmdLine) {
+	absPath, err := makeDirs(args.imagePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error initializing image directory: %s, error: %s\n", args.imagePath, err)
+		os.Exit(1)
+	} else {
+		args.imagePath = absPath
+	}
 }
 
 // makeDirs creates all directories up to and including the passed directory.

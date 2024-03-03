@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func Test1(t *testing.T) {
+func TestCaching(t *testing.T) {
 	for i := 0; i < 10000; i++ {
 		pr := pullrequest.NewPullRequest("org", "image", strconv.Itoa(i), "")
 		mh := upstream.ManifestHolder{

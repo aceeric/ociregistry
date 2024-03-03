@@ -1,4 +1,4 @@
-SERVER_VERSION := 1.2.0
+SERVER_VERSION := 1.3.0
 DATETIME       := $(shell date -u +%Y-%m-%dT%T.%2NZ)
 REGISTRY       := quay.io
 ORG            := appzygy
@@ -7,6 +7,12 @@ ROOT           := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 .PHONY : all
 all:
 	@echo Run 'make help' to see a list of available targets
+
+.PHONY: test
+test:
+	go test -count=1 ociregistry/cmd ociregistry/impl/extractor ociregistry/impl/helpers ociregistry/impl/memcache\
+	  ociregistry/impl/preload ociregistry/impl/pullrequest ociregistry/impl/serialize ociregistry/impl/upstream\
+	  ociregistry/impl | column -t
 
 .PHONY: oapi-codegen
 oapi-codegen:
@@ -39,6 +45,8 @@ help:
 export HELPTEXT
 define HELPTEXT
 This make file provides the following targets:
+
+test          Runs the unit tests
 
 oapi-codegen  Generates go code in the 'api' directory from the 'ociregistry.yaml'
               open API schema in the project root, and from configuration files in

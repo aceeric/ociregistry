@@ -1,36 +1,31 @@
 package upstream
 
 import (
-	"fmt"
 	"ociregistry/impl/pullrequest"
+	"ociregistry/mock"
 	"os"
 	"testing"
 	"time"
 )
 
-func Test1(t *testing.T) {
+func TestGet(t *testing.T) {
 	d, _ := os.MkdirTemp("", "")
+	server, mi := mock.Server()
+	defer server.Close()
 	defer os.RemoveAll(d)
-	pr := pullrequest.NewPullRequest("", "pause", "3.8", "registry.k8s.io")
-	mh, err := Get(pr, d, 60000)
+	pr := pullrequest.NewPullRequest("", "hello-world", "latest", mi.Url)
+	_, err := Get(pr, d, 60000)
 	if err != nil {
 		t.Fail()
 	}
-	fmt.Printf("%+v", mh)
-}
-
-func Test2(t *testing.T) {
-	d, _ := os.MkdirTemp("", "")
-	defer os.RemoveAll(d)
-	pr := pullrequest.NewPullRequest("", "pause", "sha256:f5944f2d1daf66463768a1503d0c8c5e8dde7c1674d3f85abc70cef9c7e32e95", "registry.k8s.io")
-	mh, err := Get(pr, d, 60000)
+	pr = pullrequest.NewPullRequest("", "hello-world", mi.ImageManifestDigest, mi.Url)
+	_, err = Get(pr, d, 60000)
 	if err != nil {
 		t.Fail()
 	}
-	fmt.Printf("%+v", mh)
 }
 
-func Test3(t *testing.T) {
+func TestEnqueueing(t *testing.T) {
 	ch := make(chan bool)
 	var cnt = 0
 	go func() {
@@ -53,13 +48,4 @@ func Test3(t *testing.T) {
 	if cnt != 2 {
 		t.Fail()
 	}
-}
-
-func Test4(t *testing.T) {
-	pr := pullrequest.NewPullRequest("appzygy", "ociregistry", "1.0.0", "quay.io")
-	d, err := CraneHead(pr.Url())
-	if err != nil {
-		t.Fail()
-	}
-	fmt.Printf("%+v\n", d)
 }

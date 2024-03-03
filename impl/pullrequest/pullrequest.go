@@ -28,6 +28,44 @@ func NewPullRequest(org, image, reference, remote string) PullRequest {
 	}
 }
 
+// docker.io/hello-world:latest
+// docker.io/library/hello-world@sha256:...
+func NewPullRequestFromUrl(url string) (PullRequest, error) {
+	parts := strings.Split(url, "/")
+	remote := parts[0]
+	org := ""
+	img := ""
+	ref := ""
+	if len(parts) == 2 {
+		org = ""
+		img = parts[1]
+	} else if len(parts) == 3 {
+		org = parts[1]
+		img = parts[2]
+	} else {
+		return PullRequest{}, fmt.Errorf("unable to parse image url: %s", url)
+	}
+	for idx, sep := range []string{"@", ":", ""} {
+		if idx == 2 {
+			return PullRequest{}, fmt.Errorf("unable to parse image url: %s", url)
+		}
+		if strings.Contains(img, sep) {
+			tmp := strings.Split(img, sep)
+			img = tmp[0]
+			ref = tmp[1]
+			break
+		}
+	}
+
+	return PullRequest{
+		PullType:  typeFromRef(ref),
+		Org:       org,
+		Image:     img,
+		Reference: ref,
+		Remote:    remote,
+	}, nil
+}
+
 func (pr *PullRequest) Url() string {
 	separator := ":"
 	if strings.HasPrefix(pr.Reference, "sha256:") {

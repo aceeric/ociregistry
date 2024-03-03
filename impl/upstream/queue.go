@@ -35,7 +35,7 @@ var (
 )
 
 // Get gets fat manifests, image manifests, and image blobs from an
-// upstream registry.
+// upstream registry based on the passed 'PullRequest'
 func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (ManifestHolder, error) {
 	imageUrl := pr.Url()
 	ch := make(chan bool)

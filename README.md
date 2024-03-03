@@ -1,4 +1,4 @@
-# Pull-only Pull-through Caching OCI Distribution Server
+# Pull-only, Pull-through Caching OCI Distribution Server
 
 This project is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 
@@ -99,7 +99,7 @@ You will notice that the manifest list and the image manifest are now being retu
 
 ## Quick Start 2 - in your Kubernetes cluster
 
-Follow the instructions at the GitHub pages link: https://aceeric.github.io/ociregistry-helm/ociregistry/
+Install from ArtifactHub: https://artifacthub.io/packages/helm/ociregistry/ociregistry
 
 ## Design
 
@@ -114,7 +114,7 @@ Narrative:
 3. The server checks the local cache and if the image is in cache it is returned from cache.
 4. If the image is not in cache, the server calls embedded [Google Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/doc/crane.md) Go code to pull the image from the upstream registry. The way the server knows which upstream to pull from is: containerd appends a query parameter to each API call. (More on this below.)
 5. The Google Crane code pulls the image from the upstream registry and returns it to the server.
-6. The server adds the image to cache for the next pull.
+6. The server adds the image to cache for the next pull, and returns the image to the caller.
 
 
 ## API Implementation
@@ -165,13 +165,13 @@ The _resolve_ capability tells containerd that a HEAD request to the server with
 After restarting containerd, you can confirm visually that is is mirroring by running the following command on a cluster host:
 
 ```
-crictl pull quay.io/appzygy/ociregistry:1.0.0
+crictl pull quay.io/appzygy/ociregistry:1.3.0
 ```
 
 Enable `debug` logging on the pull-through registry server and you will see the traffic from containerd. Example:
 
 ```
-echo server HEAD:/v2/appzygy/ociregistry/manifests/1.0.0?ns=quay.io status=200 latency=2.664780196s host=192.168.0.49:8080 ip=192.168.0.49
+echo server HEAD:/v2/appzygy/ociregistry/manifests/1.3.0?ns=quay.io status=200 latency=2.664780196s host=192.168.0.49:8080 ip=192.168.0.49
 ```
 
 Notice the `?ns=quay.io` query parameter appended to the API call. The pull-through server uses this to determine which upstream registry to get images from.
@@ -267,23 +267,36 @@ mTLS can be implemented **with** and **without** remote server cert validation a
 
 The following options are supported:
 
+### To run as a server
+
 | Option | Default | Meaning |
 |-|-|-|
-| `--log-level`   | error                | Valid values: trace, debug, info, warn, error |
-| `--image-path`  | /var/lib/ociregistry | The root directory of the image store |
-| `--config-path` | Empty                | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to 1-way HTTPS using the OS Trust store to validate the remote registry certs. |
-| `--port`        | 8080                 | Server port. E.g. `crane pull localhost:8080 foo.tar` |
-| `--load-images` | n/a                  | See _Pre-loading the registry_ below |
-| `--arch`        | n/a                  | used with `--load-images` |
-| `--os`          | n/a                  | used with `--load-images` |
+| `--preload-images` | n/a | Loads images enumerated in the specified file into cache at startup and then continues to serve. (See _Pre-loading the registry_ below) |
+| `--port`| 8080 | Server port. E.g. `crane pull localhost:8080/foo:v1.2.3 foo.tar` |
+
+### To run as a CLI
+
+| Option | Default | Meaning |
+|-|-|-|
+| `--load-images` | n/a | Loads images enumerated in the specified file into cache and then exits. (See _Pre-loading the registry_ below) |
+| `--list-cache` | n/a | Lists the cached images and exits |
+| `--version` | n/a | Displays the version and exits |
+
+### Common
+
+| Option | Default | Meaning |
+|-|-|-|
+| `--image-path`  | /var/lib/ociregistry | The root directory of the image and metadata store |
+| `--log-level`   | error | Valid values: trace, debug, info, warn, error |
+| `--config-path` | Empty | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to 1-way HTTPS using the OS Trust store to validate the remote registry certs. |
 | `--pull-timeout`| 60000 (one minute)   | Time in milliseconds to wait for an upstream registry |
-| `--list-cache`  | n/a                  | Lists the images in the cache and then exits |
-| `--version`     | n/a                  |  Displays the version and then exits |
+| `--arch`        | n/a | used with `--load-images` and `--preload-images` |
+| `--os`          | n/a | used with `--load-images` and `--preload-images` |
 
 
 ## Pre-loading the registry
 
-Pre-loading supports the air-gapped use case of populating the registry in a connected environment, and then moving it into an air-gapped environment. The registry normally runs as a service. But  you can also run it as a CLI to pre-load itself. To do this, you create a file with a list of image references. Example:
+Pre-loading supports the air-gapped use case of populating the registry in a connected environment, and then moving it into an air-gapped environment. The registry normally runs as a service. But  you can also run it as a CLI to pre-load itself and you can start it with the `--preload-images` arg to pre-load images as part of starting up when running as a service or a k8s workload. To do this, you create a file with a list of image references. Example:
 
 ```
 cat <<EOF >| imagelist
@@ -321,7 +334,13 @@ Once you've configured your image list file, then:
 bin/server --image-path=/var/ociregistry/images --log-level=info --load-images=$PWD/imagelist --arch=amd64 --os=linux
 ```
 
-The registry executable will populate the cache and then exit.
+The registry executable will populate the cache and then exit. Or:
+
+```
+bin/server --image-path=/var/ociregistry/images --log-level=info --preload-images=$PWD/imagelist --arch=amd64 --os=linux
+```
+
+In the example above, the server will populate the cache as a startup activity and then continue to run and serve images.
 
 ## File system structure
 

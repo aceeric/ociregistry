@@ -11,10 +11,10 @@ Flags:
 
 	  To run as a server:
 
-	    --port string
-		    Port for server. Defaults to 8080
 	    --preload-images
 		    Loads images enumerated in the specified file into cache at startup and then continues to serve
+	    --port string
+		    Port for server. Defaults to 8080
 
 	  To run as a CLI:
 

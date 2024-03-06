@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func Test1(t *testing.T) {
+func TestUnarchive(t *testing.T) {
 	d, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(d)
 	Extract("test.tgz", d, false)

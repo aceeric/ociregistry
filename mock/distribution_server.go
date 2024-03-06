@@ -1,11 +1,14 @@
 package mock
 
 import (
+	"crypto/tls"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -15,19 +18,50 @@ var (
 	imageManifest []byte
 	d2c9          = `{"architecture":"amd64","config":{"Env":["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],"Cmd":["/hello"],"WorkingDir":"/","ArgsEscaped":true,"OnBuild":null},"created":"2023-05-02T16:49:27Z","history":[{"created":"2023-05-02T16:49:27Z","created_by":"COPY hello / # buildkit","comment":"buildkit.dockerfile.v0"},{"created":"2023-05-02T16:49:27Z","created_by":"CMD [\"/hello\"]","comment":"buildkit.dockerfile.v0","empty_layer":true}],"os":"linux","rootfs":{"type":"layers","diff_ids":["sha256:ac28800ec8bb38d5c35b49d45a6ac4777544941199075dff8c4eb63e093aa81e"]}}`
 	c1ec          []byte
+	re            = regexp.MustCompile(`https://|http://`)
 )
 
-// ManifestInfo hold some info that supports the unit tests
+// ManifestInfo holds some info that supports the unit tests
 type ManifestInfo struct {
+	// the url without a scheme, e.g.: 'localhost:54321'
 	Url                 string
 	ImageManifestDigest string
 }
 
-// Server runs an OCI distribution server that only allows pulling and
-// only serves docker.io/hello-world:latest. Built by running 'crane pull -v'
-// and transcribing the log into the handler function along with the files
-// in the 'testfiles' dir and the variable values above.
-func Server() (*httptest.Server, ManifestInfo) {
+// MockParams supports different configurations for the mock OCI
+// Distribution Server
+type MockParams struct {
+	Auth      AuthType
+	Scheme    SchemeType
+	TlsConfig *tls.Config
+	CliAuth   tls.ClientAuthType
+}
+
+// SchemeType specifies http or https
+type SchemeType string
+
+const (
+	HTTP  SchemeType = "http"
+	HTTPS SchemeType = "https"
+)
+
+type AuthType string
+
+const (
+	BASIC AuthType = "basic auth"
+	NONE  AuthType = "no auth"
+)
+
+// NewMockParams returns a 'MockParams' instance from the passed args.
+func NewMockParams(auth AuthType, scheme SchemeType) MockParams {
+	return MockParams{
+		Auth:   auth,
+		Scheme: scheme,
+	}
+}
+
+// Server runs the OCI distribution server.
+func Server(params MockParams) (*httptest.Server, ManifestInfo) {
 	var err error
 	testFiles := testFilesDir()
 	imageManifest, err = os.ReadFile(filepath.Join(testFiles, "imageManifest"))
@@ -39,11 +73,30 @@ func Server() (*httptest.Server, ManifestInfo) {
 		panic(err)
 	}
 	gmtTimeLoc := time.FixedZone("GMT", 0)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// support docker.io/library/hello-world:latest and docker.io/hello-world:latest the same way
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := strings.Replace(r.URL.Path, "/library/", "/", 1)
 		if p == "/v2/" {
-			w.WriteHeader(http.StatusOK)
+			if params.Auth == NONE {
+				w.WriteHeader(http.StatusOK)
+			} else {
+				authUrl := `Bearer realm="%s://%s/v2/auth",service="registry.docker.io"`
+				w.Header().Set("Content-Length", "87")
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Date", time.Now().In(gmtTimeLoc).Format(http.TimeFormat))
+				w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
+				w.Header().Set("Www-Authenticate", fmt.Sprintf(authUrl, params.Scheme, r.Host))
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte(`{"errors":[{"code":"UNAUTHORIZED","message":"authentication required","detail":null}]}`))
+			}
+		} else if p == "/v2/auth" {
+			if params.Auth == BASIC {
+				if r.Header.Get("Authorization") == "" {
+					w.WriteHeader(http.StatusUnauthorized)
+				}
+			}
+			w.Header().Set("Content-Length", "19")
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"token":"FROBOZZ"}`))
 		} else if p == "/v2/hello-world/manifests/latest" {
 			w.Header().Set("Content-Length", "9125")
 			w.Header().Set("Content-Type", "application/vnd.oci.image.index.v1+json")
@@ -72,16 +125,23 @@ func Server() (*httptest.Server, ManifestInfo) {
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
+	if params.Scheme == HTTPS {
+		server.TLS = params.TlsConfig
+		server.TLS.ClientAuth = params.CliAuth
+		server.StartTLS()
+	} else {
+		server.Start()
+	}
 	return server, ManifestInfo{
-		Url:                 strings.Replace(server.URL, "http://", "", 1),
+		Url:                 re.ReplaceAllString(server.URL, ""),
 		ImageManifestDigest: "sha256:e2fc4e5012d16e7fe466f5291c476431beaa1f9b90a5c2125b493ed28e2aba57",
 	}
 }
 
 // testFilesDir finds the directory that this file is in becuase the
-// mock registry server could be used from other test directories.
+// mock registry server could be used from other test directories but it
+// needs files in this directory.
 func testFilesDir() string {
-
 	for d, _ := os.Getwd(); d != "/"; d = filepath.Dir(d) {
 		if _, err := os.Stat(filepath.Join(d, "go.mod")); err == nil {
 			return filepath.Join(d, "mock/testfiles")

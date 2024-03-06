@@ -94,8 +94,9 @@ var mfst = `{
 	]
  }`
 
-func Test1(t *testing.T) {
+func TestSaveLoadCompare(t *testing.T) {
 	td, _ := os.MkdirTemp("", "")
+	defer os.RemoveAll(td)
 	mhOut := upstream.ManifestHolder{
 		Pr:        pullrequest.PullRequest{},
 		ImageUrl:  "registry.k8s.io/pause:3.8",
@@ -131,12 +132,9 @@ func Test1(t *testing.T) {
 	}
 }
 
-// TODO this test doing something wierd - seems to go away
-// after mh, exists := memcache.IsCached(pr) and not exec the
-// remainder of the test in debug mode but in run mode it DOES
-// run the entire test...
-func Test2(t *testing.T) {
+func TestSaveLoadAddToCache(t *testing.T) {
 	td, _ := os.MkdirTemp("", "")
+	defer os.RemoveAll(td)
 	pr := pullrequest.NewPullRequest("foo", "bar", "baz", "frobozz")
 	mhOut := upstream.ManifestHolder{
 		Pr:        pr,
@@ -162,7 +160,7 @@ func Test2(t *testing.T) {
 	}
 }
 
-func Test3(t *testing.T) {
+func TestNotCached(t *testing.T) {
 	pr := pullrequest.PullRequest{}
 	mh, exists := memcache.IsCached(pr)
 	if exists {

@@ -7,15 +7,11 @@ import (
 	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 )
-
-var dlmCln = regexp.MustCompile("[/:]+")
-var dlmAt = regexp.MustCompile("[/@]+")
 
 // Preload loads the manifest and blob cache at the passed 'imagePath' location from
 // the list of images enumerated in the passed 'imageListFile' arg. If an image is already

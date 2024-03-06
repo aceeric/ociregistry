@@ -19,7 +19,8 @@ const (
 	imgPath = "img"
 )
 
-// CacheEntryHandler defines a function that can operator on a 'ManifestHolder' instance
+// CacheEntryHandler defines a function that can act on a 'ManifestHolder' instance
+// from the metadata cache
 type CacheEntryHandler func(upstream.ManifestHolder) error
 
 // MhFromFileSystem gets a 'ManifestHolder' from the file system at the passed path.

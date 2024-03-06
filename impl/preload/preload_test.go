@@ -120,7 +120,7 @@ func TestManifestHolder(t *testing.T) {
 
 func TestPreload(t *testing.T) {
 	globals.ConfigureLogging("error")
-	server, mi := mock.Server()
+	server, mi := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
 	defer server.Close()
 	d, err := os.MkdirTemp("", "")
 	if err != nil {

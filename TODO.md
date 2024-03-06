@@ -2,6 +2,7 @@
 
 # TODO
 
+- TLS in mock server
 - Support upstream encoded into image url in case its not possible to configure containerd. E.g.:
   - `image: in-cluster-mirror:8181/gcr.io/google-containers/echoserver:1.10`
   - requires doubling the API...

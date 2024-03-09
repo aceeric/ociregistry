@@ -368,7 +368,6 @@ Manifests are all stored by digest. The program uses a data structure called a `
 │   └── models
 ├── bin
 ├── cmd
-├── hack
 ├── impl
 │   ├── extractor
 │   ├── globals

@@ -1,6 +1,0 @@
----
-- name: localhost:5000
-  description: No auth (anonymous), HTTP
-  auth: {}
-  tls: {}
-

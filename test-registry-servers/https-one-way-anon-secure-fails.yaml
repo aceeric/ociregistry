@@ -1,3 +1,0 @@
----
-- name: localhost:8443
-  description: No auth, HTTPS, 1-way, no TLS config so unable to verify server cert from OS trust store

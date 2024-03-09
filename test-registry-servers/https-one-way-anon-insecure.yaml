@@ -1,5 +1,0 @@
----
-- name: localhost:8443
-  description: No auth, HTTPS, 1-way, insecure
-  tls:
-    insecure_skip_verify: true

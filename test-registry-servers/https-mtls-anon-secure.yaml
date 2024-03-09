@@ -1,7 +1,0 @@
----
-- name: localhost:8444
-  description: No auth, HTTPS, mTLS
-  tls:
-    ca:   nginx/certs/ca.crt
-    cert: nginx/certs/localhost.crt
-    key:  nginx/certs/localhost.key

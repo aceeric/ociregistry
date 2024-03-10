@@ -12,7 +12,7 @@ The goals of the project are:
 1. Implement one use case
 2. Be simple
 
-## Quick Start 1 - on your desktop
+## Quick Start - On Your Desktop
 
 After git cloning the project:
 
@@ -25,9 +25,9 @@ This command compiles the server and creates a binary called `server` in the `bi
 
 ### Run the server
 
-You provide an image storage location with the `--image-path` arg
+You provide an image storage location with the `--image-path` arg. If the directory doesn't exist the server will create it. The default is `/var/lib/ociregistry` but to kick the tires it makes more sense to use the system temp directory:
 ```
-mkdir /tmp/images && bin/server --image-path /tmp/images
+bin/server --image-path /tmp/images
 ```
 
 ### Result
@@ -97,7 +97,7 @@ The manifest list was saved in: `images/fat/4afe5bf0ee...` and the image manifes
 
 You will notice that the manifest list and the image manifest are now being returned from cache.
 
-## Quick Start 2 - in your Kubernetes cluster
+## Quick Start - In Your Kubernetes Cluster
 
 Install from ArtifactHub: https://artifacthub.io/packages/helm/ociregistry/ociregistry
 
@@ -116,32 +116,9 @@ Narrative:
 5. The Google Crane code pulls the image from the upstream registry and returns it to the server.
 6. The server adds the image to cache for the next pull, and returns the image to the caller.
 
-
-## API Implementation
-
-The OCI Distribution API is built by first creating an Open API spec using Swagger. See `ociregistry.yaml` in the project root. Then the [oapi-codegen](https://github.com/deepmap/oapi-codegen) tool is used to generate the API code and model code using configuration in the `api` directory. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/deepmap/oapi-codegen/tree/master/examples/petstore-expanded/echo) example.
-
-The key components of the API scaffolding supported by OAPI-Codegen are shown below:
-
-```shell
-​```
-├── api
-│   ├── models
-│   │   └──models.gen.go (generated)
-│   ├── models.cfg.yaml (modeled from pet store)
-│   ├── ociregistry.gen.go (generated)
-│   └── server.cfg.yaml (modeled from pet store)
-├── cmd
-│   └── ociregistry.go (this is the server - which embeds the Echo server)
-└── ociregistry.yaml (the openapi spec built with swagger)
-​```
-```
-
-I elected to use the [Echo](https://echo.labstack.com/) option to run the API.
-
 ## Configuring `containerd`
 
-The following shows how to configure containerd in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry. This has been tested with containerd v1.7.6:
+The following shows how to configure containerd in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry. This has been tested with containerd v1.7.x:
 
 Add a `config_path` entry to `/etc/containerd/config.toml` to tell containerd to load all registry mirror configurations from that directory:
 
@@ -162,7 +139,7 @@ Then create a configuration directory and file that tells containerd to pull fro
 
 The _resolve_ capability tells containerd that a HEAD request to the server with a manifest will return a manifest digest. The _pull_ capability indicates to containerd that the image can be pulled.
 
-After restarting containerd, you can confirm visually that is is mirroring by running the following command on a cluster host:
+After restarting containerd, you can confirm visually that containerd is mirroring by running the following command on a cluster host:
 
 ```
 crictl pull quay.io/appzygy/ociregistry:1.3.0
@@ -288,7 +265,7 @@ The following options are supported:
 |-|-|-|
 | `--image-path`  | /var/lib/ociregistry | The root directory of the image and metadata store |
 | `--log-level`   | error | Valid values: trace, debug, info, warn, error |
-| `--config-path` | Empty | Path a file providing remote registry auth and TLS config. If empty then every upstream will be tried with anonymous HTTP access failing over to 1-way HTTPS using the OS Trust store to validate the remote registry certs. |
+| `--config-path` | Empty | Path and file providing remote registry auth and TLS config formatted as described above. If empty then every upstream will be tried with anonymous HTTP access failing over to 1-way HTTPS using the OS Trust store to validate the remote registry certs. (I.e. works fine for `docker.io`) |
 | `--pull-timeout`| 60000 (one minute)   | Time in milliseconds to wait for an upstream registry |
 | `--arch`        | n/a | used with `--load-images` and `--preload-images` |
 | `--os`          | n/a | used with `--load-images` and `--preload-images` |
@@ -312,21 +289,28 @@ docker.io/kubernetesui/dashboard-web:v1.0.0
 EOF
 ```
 
-(You can also use the `@sha256:nnn` ref format instead in addition to the `:tag` format.) The key point here is to specify the _fat_ manifest in the list. (When you pull by tag, you get the fat manifest.) Pullers implement the following sequence:
+A typical image pull sequence is:
 
-1. HEAD the manifest by tag
-2. Receive digest of the manifest in a response header (or Not Found)
-3. GET the same (fat) manifest by digest
-4. Pick an image manifest digest from the list of manifests in the _fat_ manifest received in step 2
-5. GET the image manifest by digest
-6. GET the blobs for the image
+| Step|Client|Server|
+|-|-|-|
+| 1. | HEAD the manifest by tag, e.g. `registry.k8s.io/pause:3.8` ||
+| 2. || Send the digest of the manifest in a response header (or *404 Not Found*) |
+| 3. | GET the manifest by digest ||
+| 4. || Send a manifest list (a _fat_ manifest) listing all available manifests |
+| 5. | Pick an image manifest digest from the list of manifests in the _fat_ manifest matching the desired OS and architecture ||
+| 6. | GET the image manifest by digest ||
+| 7. || Send the image manifest |
+| 8. | GET the blobs for the image ||
+| 9. || Send the blobs |
 
-To support this, the registry server caches both the fat manifest and the image manifest. (Two manifests for every one pull.) The pre-loader does the same so you need to provide the tags or digest of the fat manifest in your list. You should understand though that - if you cache a fat manifest by digest and later run a workload in an air-gapped environment that attempts to get the fat manifest by tag, the registry will not know the tag and so will not be able to provide that image.
+To support this, the server caches both the fat manifest and the image manifest. (Two manifests for every one pull.) The pre-loader does the same so you need to provide the tags or digest of the fat manifest in your list.
+
+>  Gotcha: If you cache a fat manifest by digest and later run a workload in an air-gapped environment that attempts to get the fat manifest by tag, the registry will not know the tag and so will not be able to provide that image.
 
 The pre-loader logic is similar to the client pull logic:
 
 1. Get the fat manifest by tag from the upstream registry and cache it
-2. Pick the digest from the image manifest list in the fat manifest that matches the requested architecture and os
+2. Pick the digest from the image manifest list in the fat manifest that matches the requested architecture and OS
 3. Get the image manifest by digest and the blobs and cache them.
 
 Once you've configured your image list file, then:
@@ -334,17 +318,19 @@ Once you've configured your image list file, then:
 bin/server --image-path=/var/ociregistry/images --log-level=info --load-images=$PWD/imagelist --arch=amd64 --os=linux
 ```
 
-The registry executable will populate the cache and then exit. Or:
+The registry executable will populate the cache and then exit.
+
+Or to do the same thing as a startup and leave the server running:
 
 ```
 bin/server --image-path=/var/ociregistry/images --log-level=info --preload-images=$PWD/imagelist --arch=amd64 --os=linux
 ```
 
-In the example above, the server will populate the cache as a startup activity and then continue to run and serve images.
+In the second example, the server populates the cache as a startup task and then continues to run and serve images.
 
 ## File system structure
 
-State is exclusively persisted to the file system. Let's say you run the server with `--image-path=/var/ociregistry/images`. Then:
+State is persisted to the file system. Let's say you run the server with `--image-path=/var/ociregistry/images`. Then:
 
 ```
 .../images
@@ -359,13 +345,15 @@ State is exclusively persisted to the file system. Let's say you run the server 
 3. `img` stores the image manifests
 3. `pulls` is temp storage for image downloads that should be empty unless a pull is in progress
 
-Manifests are all stored by digest. The program uses a data structure called a `ManifestHolder` to hold all the image metadata and the actual manifest from the upstream registry. These are simply serialized to the file system as JSON. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
+Manifests are all stored by digest. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
+
+The program uses a data structure called a `ManifestHolder` to hold all the image metadata and the actual manifest from the upstream registry. These are simply serialized to the file system as JSON. (So you can find and inspect them if needed for troubleshooting with `grep`, `cat`, and `jq`.) 
 
 ## Code structure
 
 ```
+project root
 ├── api
-│   └── models
 ├── bin
 ├── cmd
 ├── impl
@@ -376,14 +364,50 @@ Manifests are all stored by digest. The program uses a data structure called a `
 │   ├── preload
 │   ├── pullrequest
 │   ├── serialize
-│   └── upstream
-│       ├── v1oci
-│       └── v2docker
+│   ├── upstream
+│   │   ├── v1oci
+│   │   └── v2docker
+│   ├── handlers.go
+│   └── ociregistry.go
 └── mock
 ```
 
-1. `api` is mostly generated by `oapi-codegen`.
-2. `bin` has the compiled server
-3. `cmd` is the entry point
-4. `impl` has the implementation of the server
-5. `mock` runs a mock OCI Distribution server for unit testing
+| Package | Description |
+|-|-|
+| `api`  | Mostly generated by `oapi-codegen`. |
+| `bin`  | Has the compiled server |
+| `cmd`  | Entry point |
+| `impl` | Has the implementation of the server |
+| `impl.extractor` | Extracts blobs from downloaded image tarballs |
+| `impl.globals` | Globals and the logging implementation (uses [Logrus](https://github.com/sirupsen/logrus)) |
+| `impl.helpers` | Helpers. |
+| `impl.memcache` | The in-memory representation of the image metadata. If a "typical" image manifest is about 3K, and two manifests are cached per image then a cache with 100 images would consume 3000 x 2 x 100 bytes, or 600K.  |
+| `impl.preload` | Implements the pre-load capability. |
+| `impl.pullrequest` | Abstracts an image pull. |
+| `impl.serialize` | Reads/writes from/to the file system. |
+| `impl.upstream` | Talks to the upstream registries. |
+| `impl.handlers.go` | Has the code for the subset of the OCI Distribution Server API spec that the server implements. |
+| `impl.ociregistry.go` | A veneer that the embedded [Echo](https://echo.labstack.com/) server calls that simply delegates to `impl.handlers.go`. See the next section - _API Implementation_ for some details on the REST API. |
+| `mock` | Runs a mock OCI Distribution server used by the unit tests |
+
+## API Implementation
+
+The OCI Distribution API is built by first creating an Open API spec using Swagger. See `ociregistry.yaml` in the project root. Then the [oapi-codegen](https://github.com/deepmap/oapi-codegen) tool is used to generate the API code and the Model code using configuration in the `api` directory. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/deepmap/oapi-codegen/tree/master/examples/petstore-expanded/echo) example.
+
+The key components of the API scaffolding supported by OAPI-Codegen are shown below:
+
+```shell
+​```
+├── api
+│   ├── models
+│   │   └──models.gen.go (generated)
+│   ├── models.cfg.yaml (modeled from pet store)
+│   ├── ociregistry.gen.go (generated)
+│   └── server.cfg.yaml (modeled from pet store)
+├── cmd
+│   └── ociregistry.go (this is the server - which embeds the Echo server)
+└── ociregistry.yaml (the openapi spec built with swagger)
+​```
+```
+
+I elected to use the _Echo_ option to run the API.

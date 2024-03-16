@@ -289,19 +289,9 @@ docker.io/kubernetesui/dashboard-web:v1.0.0
 EOF
 ```
 
-A typical image pull sequence is:
+By way of background, a typical image pull sequence is:
 
-| Step|Client|Server|
-|-|-|-|
-| 1. | HEAD the manifest by tag, e.g. `registry.k8s.io/pause:3.8` ||
-| 2. || Send the digest of the manifest in a response header (or *404 Not Found*) |
-| 3. | GET the manifest by digest ||
-| 4. || Send a manifest list (a _fat_ manifest) listing all available manifests |
-| 5. | Pick an image manifest digest from the list of manifests in the _fat_ manifest matching the desired OS and architecture ||
-| 6. | GET the image manifest by digest ||
-| 7. || Send the image manifest |
-| 8. | GET the blobs for the image ||
-| 9. || Send the blobs |
+![design](resources/pull-seq-diagram.png)
 
 To support this, the server caches both the fat manifest and the image manifest. (Two manifests for every one pull.) The pre-loader does the same so you need to provide the tags or digest of the fat manifest in your list.
 

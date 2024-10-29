@@ -14,13 +14,16 @@ import (
 )
 
 // Preload loads the manifest and blob cache at the passed 'imagePath' location from
-// the list of images enumerated in the passed 'imageListFile' arg. If an image is already
-// present in cache, it is skipped. Otherwise the image is pulled from the upstream using
-// the upstream registry encoded into the file entry. For example:
+// the list of images enumerated in the file identified by the passed 'imageListFile'
+// arg. If an image is already present in cache, it is skipped. Otherwise the image is
+// pulled from the upstream using the upstream registry encoded into the file entry.
+// Here is a example of what one entry in the file identified by the 'imageListFile'
+// arg should look like. It's a standard repository URL. If you can 'docker pull' it,
+// then it should be valid in the file.
 //
 //	'registry.k8s.io/metrics-server/metrics-server:v0.6.2'
 //
-// The platform architecture and OS are used to select an image from a "fat" manifest
+// The platform architecture and OS args are used to select an image from a "fat" manifest
 // that contains a list of images. IMPORTANT: each item in the list MUST begin with
 // a remote registry ref - i.e. to the left of the first forward slash
 func Preload(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int) error {
@@ -38,6 +41,7 @@ func Preload(imageListFile string, imagePath string, platformArch string, platfo
 		if len(line) == 0 || strings.HasPrefix(line, "#") {
 			continue
 		}
+		log.Debugf("pulling image: %s", line)
 		cnt, err := preloadOneImage(line, imagePath, platformArch, platformOs, pullTimeout)
 		if err != nil {
 			return err
@@ -54,6 +58,9 @@ func Preload(imageListFile string, imagePath string, platformArch string, platfo
 // manifest that matches the passed platform architecture and OS and also downloads that image
 // manifest and the blobs for that image. So this function can perform zero, one, or two
 // pulls from the upstream registry. The number of pulls is returned to the caller.
+//
+// If the image can't be pulled then a log entry is emanated but the function does not return
+// an error.
 func preloadOneImage(imageUrl string, imagePath string, platformArch string, platformOs string, pullTimeout int) (int, error) {
 	itemcnt := 0
 	pr, err := pullrequest.NewPullRequestFromUrl(imageUrl)
@@ -64,7 +71,8 @@ func preloadOneImage(imageUrl string, imagePath string, platformArch string, pla
 	log.Infof("head remote: %s", pr.Url())
 	d, err := upstream.CraneHead(pr.Url())
 	if err != nil {
-		return 0, err
+		log.Errorf("Error: %s", err)
+		return itemcnt, nil
 	}
 	isImageManifest := upstream.IsImageManifest(string(d.MediaType))
 	mh, found := serialize.MhFromFileSystem(d.Digest.Hex, isImageManifest, imagePath)
@@ -77,11 +85,14 @@ func preloadOneImage(imageUrl string, imagePath string, platformArch string, pla
 	} else {
 		mh, err = upstream.Get(pr, imagePath, pullTimeout)
 		if err != nil {
-			return 0, err
+			log.Errorf("Error: %s", err)
+			return itemcnt, nil
 		}
 		err = serialize.ToFilesystem(mh, imagePath)
 		if err != nil {
-			return 0, err
+			log.Errorf("Error: %s", err)
+			// if we can't write the the file system we're probably not in good shape to keep running
+			return itemcnt, err
 		}
 		itemcnt++
 	}
@@ -93,7 +104,8 @@ func preloadOneImage(imageUrl string, imagePath string, platformArch string, pla
 	// and see if an *image* manifest is cached for that digest
 	digest, err := getImageManifestDigest(mh, platformArch, platformOs)
 	if err != nil {
-		return 0, err
+		log.Errorf("Error: %s", err)
+		return itemcnt, nil
 	}
 	mh, found = serialize.MhFromFileSystem(digest, true, imagePath)
 	if found {
@@ -109,11 +121,13 @@ func preloadOneImage(imageUrl string, imagePath string, platformArch string, pla
 	log.Infof("get remote: %s", pr.Url())
 	mh, err = upstream.Get(pr, imagePath, pullTimeout)
 	if err != nil {
-		return 0, err
+		log.Errorf("Error: %s", err)
+		return itemcnt, nil
 	}
 	err = serialize.ToFilesystem(mh, imagePath)
 	if err != nil {
-		return 0, err
+		log.Errorf("Error: %s", err)
+		return itemcnt, err
 	}
 	itemcnt++
 	return itemcnt, nil

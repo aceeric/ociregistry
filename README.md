@@ -400,4 +400,4 @@ The key components of the API scaffolding supported by OAPI-Codegen are shown be
 ​```
 ```
 
-I elected to use the _Echo_ option to run the API.
+I elected to use the [Echo](https://echo.labstack.com/) option to run the API.

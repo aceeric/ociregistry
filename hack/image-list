@@ -10,6 +10,6 @@ docker.io/hello-world:latest
 docker.io/infoblox/dnstools:latest
 docker.io/kubernetesui/dashboard:v2.7.0
 docker.io/openebs/provisioner-localpv:3.5.0
-quay.io/appzygy/ociregistry:1.0.0
+quay.io/appzygy/ociregistry:1.2.0
 quay.io/cilium/cilium:v1.15.1
 registry.k8s.io/pause:3.8

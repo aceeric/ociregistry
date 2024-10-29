@@ -254,12 +254,12 @@ func parseTestConfiguration(testConfig testConfiguration, clientCertFile, client
 func doOneGet(mp mock.MockParams, ce cfgEntry, expectPass expectType) expectType {
 	d, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(d)
-	server, mi := mock.Server(mp)
+	server, url := mock.Server(mp)
 	defer server.Close()
-	ce.Name = mi.Url
+	ce.Name = url
 	config = make(map[string]cfgEntry)
-	config[mi.Url] = ce
-	pr := pullrequest.NewPullRequest("", "hello-world", "latest", mi.Url)
+	config[url] = ce
+	pr := pullrequest.NewPullRequest("", "hello-world", "latest", url)
 	_, err := Get(pr, d, 60000)
 	if err != nil && expectPass {
 		return FAIL

@@ -55,6 +55,7 @@ func main() {
 
 	globals.ConfigureLogging(args.logLevel)
 
+	// these commands exit the program upon completion if run (e.g. --help)
 	cliCommands(args)
 
 	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)

@@ -86,7 +86,7 @@ func (pr *PullRequest) isByDigest() bool {
 }
 
 // calico/node:v1.23.0 becomes "calico/node/v1.23.0 and"
-// hello-world:v1.0.0 becomes "/hello-world/v1.0.0"
+// hello-world:v1.0.0 becomes "hello-world/v1.0.0"
 // foo/bar@sha256:a15f3c... becomes "foo/bar/sha256:a15f3c..."
 func (pr *PullRequest) Id() string {
 	return fmt.Sprintf("%s/%s/%s", pr.Org, pr.Image, pr.Reference)

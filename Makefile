@@ -12,7 +12,7 @@ all:
 test:
 	go test -count=1 ociregistry/cmd ociregistry/impl/extractor ociregistry/impl/helpers ociregistry/impl/memcache\
 	  ociregistry/impl/preload ociregistry/impl/pullrequest ociregistry/impl/serialize ociregistry/impl/upstream\
-	  ociregistry/impl
+	  ociregistry/impl ociregistry/mock
 
 .PHONY: oapi-codegen
 oapi-codegen:

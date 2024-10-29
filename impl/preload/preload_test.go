@@ -120,14 +120,14 @@ func TestManifestHolder(t *testing.T) {
 
 func TestPreload(t *testing.T) {
 	globals.ConfigureLogging("error")
-	server, mi := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
+	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
 	defer server.Close()
 	d, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fail()
 	}
 	defer os.RemoveAll(d)
-	cnt, err := preloadOneImage(mi.Url+"/hello-world:latest", d, "amd64", "linux", 1000)
+	cnt, err := preloadOneImage(url+"/hello-world:latest", d, "amd64", "linux", 1000)
 	// count is 2 because one manifest list and one image
 	if err != nil || cnt != 2 {
 		t.Fail()

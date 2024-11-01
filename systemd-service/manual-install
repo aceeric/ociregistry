@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 #
-# Once you've locally built the executable you can install it as a systemd
-# service using this script. Run this script from the root of the cloned
-# repository. I use it this way to run the server on my desktop and then I
-# configure my local Kubernetes cluster to mirror to my desktop.
+# Once you've locally built the executable using 'make desktop' you can
+# install it as a systemd service using this script. Run this script from
+# the root of the cloned repository. I use it this way to run the server
+# on my desktop and then I configure my local Kubernetes cluster to
+# mirror to my desktop.
 #
 
 if [[ $(id -u) -ne 0 ]]; then

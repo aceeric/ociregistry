@@ -32,6 +32,7 @@ type cmdLine struct {
 	os            string
 	pullTimeout   int
 	listCache     bool
+	concurrent    int
 	version       bool
 	buildVer      string
 	buildDtm      string
@@ -61,7 +62,7 @@ func main() {
 	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
 
 	if args.preloadImages != "" {
-		err := preload.Preload(args.preloadImages, args.imagePath, args.arch, args.os, args.pullTimeout)
+		err := preload.Preload(args.preloadImages, args.imagePath, args.arch, args.os, args.pullTimeout, args.concurrent)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error preloading images: %s\n", err)
 			os.Exit(1)
@@ -125,8 +126,9 @@ func parseCmdline() cmdLine {
 	flag.StringVar(&args.port, "port", "8080", "Port for server. Defaults to 8080")
 	flag.StringVar(&args.loadImages, "load-images", "", "Loads images enumerated in the specified file into cache and then exits")
 	flag.StringVar(&args.preloadImages, "preload-images", "", "Loads images enumerated in the specified file into cache at startup and then continues to serve")
-	flag.StringVar(&args.arch, "arch", "amd64", "Architecture for the --load-images and --preload-images arg")
-	flag.StringVar(&args.os, "os", "linux", "Operating system for the --load-images and --preload-images arg")
+	flag.StringVar(&args.arch, "arch", "amd64", "Architecture for the --load-images and --preload-images args")
+	flag.StringVar(&args.os, "os", "linux", "Operating system for the --load-images and --preload-images args")
+	flag.IntVar(&args.concurrent, "concurrent", 1, "Specify --concurrent=n for --load-images and --preload-images args to use multiple goroutines")
 	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "Max time in millis to pull an image from an upstream. Defaults to one minute")
 	flag.BoolVar(&args.listCache, "list-cache", false, "Lists the cached images and exits")
 	flag.BoolVar(&args.version, "version", false, "Displays the version and exits")

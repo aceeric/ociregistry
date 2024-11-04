@@ -2,15 +2,48 @@ package preload
 
 import (
 	"bufio"
-	"fmt"
-	"ociregistry/impl/pullrequest"
-	"ociregistry/impl/serialize"
-	"ociregistry/impl/upstream"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+)
+
+// resultType defines a type for the 'result' struct
+type resultType int
+
+const (
+	SUCCESS resultType = iota
+	ERROR
+)
+
+// The result struct holds the result of an image pull. The 'count' field is the
+// number of images pulled for an image URL. Since a typical image pull will result
+// in a fat manifest (list of images), as well as a single image for os and arch, a
+// typical successful image pull will grab two objects from the upstream distribution
+// server.
+type result struct {
+	rt    resultType
+	count int
+	err   error
+}
+
+var (
+	// wg references all running 'loadImage' goroutines
+	wg sync.WaitGroup
+	// taskChan implements the concurrency throttle: limiting the number of concurrent
+	// 'loadImage' goroutines
+	taskChan chan bool
+	// resultChan is used by the 'loadImage' goroutine to communicate the outcome of
+	// an image pull
+	resultChan chan result
+	// receiverChan is used to terminate the 'resultReceiver' goroutine
+	receiverChan = make(chan bool)
+	// readerChan is used by the 'resultReceiver' goroutine to indicate that a loader
+	// goroutine has encountered a fatal error and the entire image load operation
+	// should stop
+	readerChan = make(chan error)
 )
 
 // Preload loads the manifest and blob cache at the passed 'imagePath' location from
@@ -26,132 +59,117 @@ import (
 // The platform architecture and OS args are used to select an image from a "fat" manifest
 // that contains a list of images. IMPORTANT: each item in the list MUST begin with
 // a remote registry ref - i.e. to the left of the first forward slash
-func Preload(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int) error {
+func Preload(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int, concurrent int) error {
 	start := time.Now()
 	log.Infof("loading images from file: %s", imageListFile)
-	itemcnt := 0
+	taskChan = make(chan bool, concurrent)
+	resultChan = make(chan result, concurrent)
+
 	f, err := os.Open(imageListFile)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
+
+	itemcnt := 0
+	go resultReceiver(&itemcnt)
+
+	var loadError error
+SCANNER:
+	// read throug the file a line at a time - each line is an image URL
 	for scanner.Scan() {
 		line := strings.TrimSpace(string(scanner.Bytes()))
 		if len(line) == 0 || strings.HasPrefix(line, "#") {
 			continue
 		}
-		log.Debugf("pulling image: %s", line)
-		cnt, err := preloadOneImage(line, imagePath, platformArch, platformOs, pullTimeout)
-		if err != nil {
-			return err
+		select {
+		// concurrency throttle
+		case taskChan <- true:
+			log.Infof("start image loader for: %s", line)
+			wg.Add(1)
+			go loadImage(line, imagePath, platformArch, platformOs, pullTimeout, &wg)
+		// fatal error in image loader - abort
+		case loadError = <-readerChan:
+			log.Debug("received STOP on readerChan")
+			break SCANNER
 		}
-		itemcnt += cnt
 	}
+
+	log.Debug("wait loaders")
+	wg.Wait()
+
+	log.Debug("before select")
+	select {
+	// in case an image load error occurs before the loop above completed,
+	// clear the channel.
+	case <-readerChan:
+	default:
+		break
+	}
+
+	log.Debug("done waiting for loaders - stop receiver")
+	receiverChan <- true
 	log.Infof("loaded %d images to the file system cache in %s", itemcnt, time.Since(start))
+	if loadError == nil {
+		log.Info("no errors encountered")
+	} else {
+		log.Errorf("image pull aborted with error: %s", loadError)
+	}
+	close(taskChan)
+	close(resultChan)
+	close(receiverChan)
+	close(readerChan)
 	return nil
 }
 
-// preloadOneImage loads the image specified by the 'imageUrl' arg (e.g.: docker.io/foo:latest)
-// into the cache, if not already cached. If already cached, nothing happens. In the case where the
-// image url specifies a manifest list, the function retrieves from the manifest list the image
-// manifest that matches the passed platform architecture and OS and also downloads that image
-// manifest and the blobs for that image. So this function can perform zero, one, or two
-// pulls from the upstream registry. The number of pulls is returned to the caller.
-//
-// If the image can't be pulled then a log entry is emanated but the function does not return
-// an error.
-func preloadOneImage(imageUrl string, imagePath string, platformArch string, platformOs string, pullTimeout int) (int, error) {
-	itemcnt := 0
-	pr, err := pullrequest.NewPullRequestFromUrl(imageUrl)
-	if err != nil {
-		return 0, fmt.Errorf("unable to parse image ref: %s", imageUrl)
-	}
-	// first HEAD could be a manifest list or an image manifest
-	log.Infof("head remote: %s", pr.Url())
-	d, err := upstream.CraneHead(pr.Url())
-	if err != nil {
-		log.Errorf("Error: %s", err)
-		return itemcnt, nil
-	}
-	isImageManifest := upstream.IsImageManifest(string(d.MediaType))
-	mh, found := serialize.MhFromFileSystem(d.Digest.Hex, isImageManifest, imagePath)
-	if found {
-		t := "image list"
-		if isImageManifest {
-			t = "image"
+// resultReceiver reads from the 'resultChan' channel which is written to by the 'loadImage'
+// goroutines. It watches for errors and - if an image load returns a non-nil error - it is
+// presumed to be fatal. In that case the function sends the error on the 'readerChan'
+// channel. This goroutine is signaled on the 'receiverChan' channel to stop it. As each
+// image load completes, and reports the number of images pulled, this function tallies that
+// to the passed 'itemcnt' arg.
+func resultReceiver(itemcnt *int) {
+	log.Debug("result receiver start")
+OUTER:
+	for {
+		select {
+		case r := <-resultChan:
+			*itemcnt += r.count
+			if r.err != nil {
+				log.Debugf("error: %s - signal readerChan", r.err)
+				readerChan <- r.err
+				log.Debug("after signal readerChan")
+			}
+		case <-receiverChan:
+			log.Debug("receiver signaled on receiverChan")
+			break OUTER
 		}
-		log.Infof("%s manifest already cached for: %s", t, pr.Url())
-	} else {
-		mh, err = upstream.Get(pr, imagePath, pullTimeout)
-		if err != nil {
-			log.Errorf("Error: %s", err)
-			return itemcnt, nil
-		}
-		err = serialize.ToFilesystem(mh, imagePath)
-		if err != nil {
-			log.Errorf("Error: %s", err)
-			// if we can't write the the file system we're probably not in good shape to keep running
-			return itemcnt, err
-		}
-		itemcnt++
 	}
-	if mh.IsImageManifest() {
-		// it's possible that the server will not return a manifest list
-		return itemcnt, nil
-	}
-	// get the digest from the manifest list for the platform & os of interest
-	// and see if an *image* manifest is cached for that digest
-	digest, err := getImageManifestDigest(mh, platformArch, platformOs)
-	if err != nil {
-		log.Errorf("Error: %s", err)
-		return itemcnt, nil
-	}
-	mh, found = serialize.MhFromFileSystem(digest, true, imagePath)
-	if found {
-		log.Infof("image manifest already cached for: %s", pr.Url())
-		return itemcnt, nil
-	}
-	pr = pullrequest.NewPullRequest(pr.Org, pr.Image, digest, pr.Remote)
-	mh, found = serialize.MhFromFileSystem(digest, true, imagePath)
-	if found {
-		log.Infof("image manifest already cached for: %s", pr.Url())
-		return itemcnt, nil
-	}
-	log.Infof("get remote: %s", pr.Url())
-	mh, err = upstream.Get(pr, imagePath, pullTimeout)
-	if err != nil {
-		log.Errorf("Error: %s", err)
-		return itemcnt, nil
-	}
-	err = serialize.ToFilesystem(mh, imagePath)
-	if err != nil {
-		log.Errorf("Error: %s", err)
-		return itemcnt, err
-	}
-	itemcnt++
-	return itemcnt, nil
+	log.Debug("result receiver exit")
 }
 
-// getImageManifestDigest uses the passed platform architecture and os to select a
-// manifest from the manifest list wrapped in the passed 'ManifestHolder'. If found,
-// then  the digest is returned. If not found then the empty string and an error are
-// returned.
-func getImageManifestDigest(mh upstream.ManifestHolder, platformArch, platformOs string) (string, error) {
-	if mh.Type == upstream.V2dockerManifestList {
-		for _, m := range mh.V2dockerManifestList.Manifests {
-			if m.Platform.Architecture == platformArch && m.Platform.OS == platformOs {
-				return m.Digest, nil
-			}
-		}
-	} else if mh.Type == upstream.V1ociIndex {
-		for _, m := range mh.V1ociIndex.Manifests {
-			if m.Platform.Architecture == platformArch && m.Platform.Os == platformOs {
-				return m.Digest, nil
-			}
-		}
-	} else {
-		return "", fmt.Errorf("unexpected manifest type for url %s", mh.ImageUrl)
+// The loadImage goroutine is a simple wrapper around 'preloadOneImage' with some concurrency
+// handling. The result of the pull is sent to the 'resultChan' channel.
+func loadImage(imageUrl string, imagePath string, platformArch string, platformOs string, pullTimeout int, wg *sync.WaitGroup) {
+	log.Debugf("enter load image: %s", imageUrl)
+	defer wg.Done()
+	cnt, err := preloadOneImage(imageUrl, imagePath, platformArch, platformOs, pullTimeout)
+	resultChan <- newResult(cnt, err)
+	// concurrency throttle - allow another  'loadImage' goroutine
+	<-taskChan
+	log.Debugf("leave load image: %s", imageUrl)
+}
+
+// newResult creates a 'result' struct from the passed args
+func newResult(count int, err error) result {
+	r := result{
+		rt:    SUCCESS,
+		count: count,
+		err:   err,
 	}
-	return "", fmt.Errorf("no manifest found for url %s matching arch=%s and os=%s", mh.ImageUrl, platformArch, platformOs)
+	if err != nil {
+		r.rt = ERROR
+	}
+	return r
 }

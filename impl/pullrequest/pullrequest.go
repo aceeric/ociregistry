@@ -18,6 +18,7 @@ type PullRequest struct {
 	Remote    string `json:"remote"`
 }
 
+// NewPullRequest returns a 'PullRequest' struct from the passed args
 func NewPullRequest(org, image, reference, remote string) PullRequest {
 	return PullRequest{
 		PullType:  typeFromRef(reference),

@@ -87,6 +87,8 @@ func Extract(tarfile string, imagePath string, deleteAfter bool) error {
 	return nil
 }
 
+// deleteFile deletes file 'f' if 'shouldDelete' is true, otherwise does
+// nothing.
 func deleteFile(f string, shouldDelete bool) {
 	if shouldDelete {
 		os.Remove(f)

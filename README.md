@@ -40,7 +40,7 @@ Started: 2024-02-17 20:49:56.516302625 -0500 EST (port 8080)
 
 ### In another terminal
 
-Curl a manifest list. Note the `ns` query parameter in the URL which tells the server to go to that upstream if the image isn't already locally cached (this is exactly how `containerd` does it):
+Curl a manifest list. Note the `ns` query parameter in the URL which tells the server to go to that upstream if the image isn't already locally cached (this is exactly how `containerd` does it when you configure it to mirror):
 
 ```
 curl localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io | jq
@@ -264,11 +264,12 @@ The following options are supported:
 | Option | Default | Meaning |
 |-|-|-|
 | `--image-path`  | /var/lib/ociregistry | The root directory of the image and metadata store |
+| `--concurrent`  | 1 | The number of concurrent goroutines for `--load-images` and `--preload-images` |
 | `--log-level`   | error | Valid values: trace, debug, info, warn, error |
 | `--config-path` | Empty | Path and file providing remote registry auth and TLS config formatted as described above. If empty then every upstream will be tried with anonymous HTTP access failing over to 1-way HTTPS using the OS Trust store to validate the remote registry certs. (I.e. works fine for `docker.io`) |
-| `--pull-timeout`| 60000 (one minute)   | Time in milliseconds to wait for an upstream registry |
-| `--arch`        | n/a | used with `--load-images` and `--preload-images` |
-| `--os`          | n/a | used with `--load-images` and `--preload-images` |
+| `--pull-timeout`| 60000 (one minute)   | Time in milliseconds to wait for a pull to complete from an upstream distribution server |
+| `--arch`        | n/a | Arhitecture - used with `--load-images` and `--preload-images` |
+| `--os`          | n/a | OS - used with `--load-images` and `--preload-images` |
 
 
 ## Pre-loading the registry
@@ -289,6 +290,34 @@ docker.io/kubernetesui/dashboard-web:v1.0.0
 EOF
 ```
 
+Once you've configured your image list file, then:
+```
+bin/server --image-path=/var/ociregistry/images --log-level=info --load-images=$PWD/imagelist --arch=amd64 --os=linux
+```
+
+The registry executable will populate the cache and then exit.
+
+Or to do the same thing as a startup and leave the server running to serve the loaded images
+```
+bin/server --image-path=/var/ociregistry/images --log-level=info --preload-images=$PWD/imagelist --arch=amd64 --os=linux
+```
+
+In the second example, the server populates the cache as a startup task and then continues to run and serve images.
+
+## Load and Pre-Load Concurrency
+
+The server supports concurrency on loading and pre-loading. By default, only a single image at a time is loaded. In other words omitting the `--concurrent` arg is the same as specifying `--concurrent=1`. One thing to be aware of is the balance between concurrency and network utilization. Using a large number of goroutines also requires increasing the pull timeout since the concurrency increases network utilization. For example in desktop testing, the following command has been tested wihtout experiencing image pull timeouts:
+```
+bin/server --log-level=debug --image-path=/tmp/frobozz\
+  --load-images=./hack/image-list\
+  --pull-timeout=200000\
+  --concurrent=100
+```
+
+The example above runs 100 concurrent goroutines but needs to increase the timeout to 200000 milliseconds to consistently avoid timeouts. Pull timeouts are logged as an error.
+
+## Image pull
+
 By way of background, a typical image pull sequence is:
 
 ![design](resources/pull-seq-diagram.png)
@@ -303,27 +332,12 @@ The pre-loader logic is similar to the client pull logic:
 2. Pick the digest from the image manifest list in the fat manifest that matches the requested architecture and OS
 3. Get the image manifest by digest and the blobs and cache them.
 
-Once you've configured your image list file, then:
-```
-bin/server --image-path=/var/ociregistry/images --log-level=info --load-images=$PWD/imagelist --arch=amd64 --os=linux
-```
-
-The registry executable will populate the cache and then exit.
-
-Or to do the same thing as a startup and leave the server running:
-
-```
-bin/server --image-path=/var/ociregistry/images --log-level=info --preload-images=$PWD/imagelist --arch=amd64 --os=linux
-```
-
-In the second example, the server populates the cache as a startup task and then continues to run and serve images.
-
 ## File system structure
 
-State is persisted to the file system. Let's say you run the server with `--image-path=/var/ociregistry/images`. Then:
+State is persisted to the file system. Let's say you run the server with `--image-path=/var/ociregistry/images`, which is the default. Then:
 
 ```
-.../images
+/var/ociregistry/images
 ├── blobs
 ├── fat
 ├── img
@@ -333,7 +347,7 @@ State is persisted to the file system. Let's say you run the server with `--imag
 1. `blobs` are where the blobs are stored
 2. `fat` is where the fat manifests are stored: the manifests with lists of image manifests
 3. `img` stores the image manifests
-3. `pulls` is temp storage for image downloads that should be empty unless a pull is in progress
+3. `pulls` is temp storage for image downloads that should be empty unless a pull is in progress. (If a pull times out - the corrupted tar remains in this directory.)
 
 Manifests are all stored by digest. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
 
@@ -365,11 +379,11 @@ project root
 | Package | Description |
 |-|-|
 | `api`  | Mostly generated by `oapi-codegen`. |
-| `bin`  | Has the compiled server |
-| `cmd`  | Entry point |
-| `impl` | Has the implementation of the server |
-| `impl.extractor` | Extracts blobs from downloaded image tarballs |
-| `impl.globals` | Globals and the logging implementation (uses [Logrus](https://github.com/sirupsen/logrus)) |
+| `bin`  | Has the compiled server after `make desktop`. |
+| `cmd`  | Entry point. |
+| `impl` | Has the implementation of the server. |
+| `impl.extractor` | Extracts blobs from downloaded image tarballs. |
+| `impl.globals` | Globals and the logging implementation (uses [Logrus](https://github.com/sirupsen/logrus)). |
 | `impl.helpers` | Helpers. |
 | `impl.memcache` | The in-memory representation of the image metadata. If a "typical" image manifest is about 3K, and two manifests are cached per image then a cache with 100 images would consume 3000 x 2 x 100 bytes, or 600K.  |
 | `impl.preload` | Implements the pre-load capability. |
@@ -378,7 +392,7 @@ project root
 | `impl.upstream` | Talks to the upstream registries. |
 | `impl.handlers.go` | Has the code for the subset of the OCI Distribution Server API spec that the server implements. |
 | `impl.ociregistry.go` | A veneer that the embedded [Echo](https://echo.labstack.com/) server calls that simply delegates to `impl.handlers.go`. See the next section - _API Implementation_ for some details on the REST API. |
-| `mock` | Runs a mock OCI Distribution server used by the unit tests |
+| `mock` | Runs a mock OCI Distribution server used by the unit tests. |
 
 ## API Implementation
 
@@ -387,17 +401,15 @@ The OCI Distribution API is built by first creating an Open API spec using Swagg
 The key components of the API scaffolding supported by OAPI-Codegen are shown below:
 
 ```shell
-​```
 ├── api
 │   ├── models
-│   │   └──models.gen.go (generated)
-│   ├── models.cfg.yaml (modeled from pet store)
+│   │   └──models.gen.go   (generated)
+│   ├── models.cfg.yaml    (modeled from pet store)
 │   ├── ociregistry.gen.go (generated)
-│   └── server.cfg.yaml (modeled from pet store)
+│   └── server.cfg.yaml    (modeled from pet store)
 ├── cmd
-│   └── ociregistry.go (this is the server - which embeds the Echo server)
-└── ociregistry.yaml (the openapi spec built with swagger)
-​```
+│   └── ociregistry.go     (this is the server - which embeds the Echo server)
+└── ociregistry.yaml       (the openapi spec built with swagger)
 ```
 
 I elected to use the [Echo](https://echo.labstack.com/) option to run the API.

@@ -8,6 +8,7 @@ import (
 	"ociregistry/impl/pullrequest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"time"
 
@@ -17,7 +18,6 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/uuid"
 )
 
 var (
@@ -43,6 +43,11 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 	var err error = nil
 	// a goroutine because it signals the outer function so must run independently
 	go func(imageUrl string, ch chan bool) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Errorf("panic in queue.get: %s", err)
+			}
+		}()
 		if enqueueGet(imageUrl, ch) == alreadyEnqueued {
 			return
 		}
@@ -61,16 +66,25 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 			log.Debugf("downloading image %s", imageUrl)
 			tarfile, ierr := craneDownloadImg(imageUrl, descriptor, imagePath)
 			if ierr != nil {
+				log.Errorf("error downloading tarball %s for image %s: %s", tarfile, imageUrl, err)
 				err = ierr
 				return
+			} else {
+				log.Debugf("no error returned from craneDownloadImg for image %s", imageUrl)
 			}
 			mh.Tarfile = tarfile
+			log.Debugf("extracting image tarball %s for image %s", tarfile, imageUrl)
 			err = extractor.Extract(tarfile, imagePath, true)
+			if err != nil {
+				log.Errorf("error extracting image tarball %s for image %s: %s", tarfile, imageUrl, err)
+			}
 		}
 	}(imageUrl, ch)
 	select {
 	case <-ch:
+		log.Debugf("waiter signaled for image %s", imageUrl)
 	case <-time.After(time.Duration(waitMillis) * time.Millisecond):
+		err = fmt.Errorf("timeout exceeded pulling image %s", imageUrl)
 	}
 	mh.Pr = pr
 	mh.ImageUrl = imageUrl
@@ -191,11 +205,21 @@ func craneDownloadImg(imageUrl string, d *remote.Descriptor, imagePath string) (
 			return "", err
 		}
 	}
-	imageTar = filepath.Join(imageTar, uuid.New().String()+".tar")
+	imageTar = filepath.Join(imageTar, tarName(d.Digest.Hex))
 	img, err := d.Image()
 	if err != nil {
 		return "", err
 	}
 	log.Debugf("save image to %s", imageTar)
+	if _, err := os.Stat(imageTar); err == nil {
+		log.Warnf("image tarfile already exists: %s", imageTar)
+	}
 	return imageTar, crane.Save(img, imageUrl, imageTar)
+}
+
+// tarName concats the passed digest with a uuid and the system time and returns it with a
+// ".tar" extension.
+func tarName(digest string) string {
+	currentTimestamp := time.Now().UnixNano()
+	return digest + "." + strconv.FormatInt(currentTimestamp, 10) + ".tar"
 }

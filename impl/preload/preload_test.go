@@ -128,7 +128,7 @@ func TestPreload(t *testing.T) {
 	}
 	defer os.RemoveAll(d)
 	cnt, err := preloadOneImage(url+"/hello-world:latest", d, "amd64", "linux", 1000)
-	// count is 2 because one manifest list and one image
+	// count is 2 because one manifest list and one image manifest
 	if err != nil || cnt != 2 {
 		t.Fail()
 	}

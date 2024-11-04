@@ -13,7 +13,17 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Preload loads the manifest and blob cache at the passed 'imagePath' location from
+// Preload just looks at the 'concurrent' arg and if it specifies a value, then it invokes the concurrent
+// image loader, else invokes the serial image loader.
+func Preload(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int, concurrent int) error {
+	if concurrent != 0 {
+		return PreloadConcurrent(imageListFile, imagePath, platformArch, platformOs, pullTimeout, concurrent)
+	} else {
+		return PreloadSerial(imageListFile, imagePath, platformArch, platformOs, pullTimeout)
+	}
+}
+
+// PreloadSerial loads the manifest and blob cache at the passed 'imagePath' location from
 // the list of images enumerated in the file identified by the passed 'imageListFile'
 // arg. If an image is already present in cache, it is skipped. Otherwise the image is
 // pulled from the upstream using the upstream registry encoded into the file entry.
@@ -26,7 +36,7 @@ import (
 // The platform architecture and OS args are used to select an image from a "fat" manifest
 // that contains a list of images. IMPORTANT: each item in the list MUST begin with
 // a remote registry ref - i.e. to the left of the first forward slash
-func Preload(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int) error {
+func PreloadSerial(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int) error {
 	start := time.Now()
 	log.Infof("loading images from file: %s", imageListFile)
 	itemcnt := 0

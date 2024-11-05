@@ -43,6 +43,11 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 	var err error = nil
 	// a goroutine because it signals the outer function so must run independently
 	go func(imageUrl string, ch chan bool) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Errorf("panic in queue.get: %s", err)
+			}
+		}()
 		if enqueueGet(imageUrl, ch) == alreadyEnqueued {
 			return
 		}
@@ -77,7 +82,9 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 	}(imageUrl, ch)
 	select {
 	case <-ch:
+		log.Debugf("waiter signaled for image %s", imageUrl)
 	case <-time.After(time.Duration(waitMillis) * time.Millisecond):
+		err = fmt.Errorf("timeout exceeded pulling image %s", imageUrl)
 	}
 	mh.Pr = pr
 	mh.ImageUrl = imageUrl

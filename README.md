@@ -264,6 +264,7 @@ The following options are supported:
 | Option | Default | Meaning |
 |-|-|-|
 | `--image-path`  | /var/lib/ociregistry | The root directory of the image and metadata store |
+| `--concurrent`  | 1 | The number of concurrent goroutines for `--load-images` and `--preload-images` |
 | `--log-level`   | error | Valid values: trace, debug, info, warn, error |
 | `--config-path` | Empty | Path and file providing remote registry auth and TLS config formatted as described above. If empty then every upstream will be tried with anonymous HTTP access failing over to 1-way HTTPS using the OS Trust store to validate the remote registry certs. (I.e. works fine for `docker.io`) |
 | `--pull-timeout`| 60000 (one minute)   | Time in milliseconds to wait for an upstream registry |

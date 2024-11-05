@@ -128,7 +128,7 @@ func parseCmdline() cmdLine {
 	flag.StringVar(&args.preloadImages, "preload-images", "", "Loads images enumerated in the specified file into cache at startup and then continues to serve")
 	flag.StringVar(&args.arch, "arch", "amd64", "Architecture for the --load-images and --preload-images args")
 	flag.StringVar(&args.os, "os", "linux", "Operating system for the --load-images and --preload-images args")
-	flag.IntVar(&args.concurrent, "concurrent", 0, "Specify --concurrent=n for --load-images and --preload-images args to use goroutines")
+	flag.IntVar(&args.concurrent, "concurrent", 1, "Specify --concurrent=n for --load-images and --preload-images args to use multiple goroutines")
 	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "Max time in millis to pull an image from an upstream. Defaults to one minute")
 	flag.BoolVar(&args.listCache, "list-cache", false, "Lists the cached images and exits")
 	flag.BoolVar(&args.version, "version", false, "Displays the version and exits")

@@ -9,17 +9,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// PRCache is a synchronized in-memory representation of all cached manifests.
+// PRCache has a synchronization object and a map of cached manifests
 type PRCache struct {
 	sync.Mutex
 	pullRequestCache map[string]upstream.ManifestHolder
 }
 
-var (
-	prCache = PRCache{
-		pullRequestCache: make(map[string]upstream.ManifestHolder),
-	}
-)
+// prCache is the synchronized in-memory representation of all cached manifests.
+var prCache = PRCache{
+	pullRequestCache: make(map[string]upstream.ManifestHolder),
+}
 
 // IsCached checks the cache for the passed PR and if found returns true
 // and the associated manifest holder, else returns false and an empty

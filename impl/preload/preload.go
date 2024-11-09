@@ -58,7 +58,8 @@ var (
 //
 // The platform architecture and OS args are used to select an image from a "fat" manifest
 // that contains a list of images. IMPORTANT: each item in the list MUST begin with
-// a remote registry ref - i.e. to the left of the first forward slash
+// a remote registry ref - i.e. to the left of the first forward slash. (docker.io is
+// not inferred.)
 func Preload(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int, concurrent int) error {
 	start := time.Now()
 	log.Infof("loading images from file: %s", imageListFile)
@@ -124,11 +125,11 @@ SCANNER:
 }
 
 // resultReceiver reads from the 'resultChan' channel which is written to by the 'loadImage'
-// goroutines. It watches for errors and - if an image load returns a non-nil error - it is
+// goroutine(s). It watches for errors and - if an image load returns a non-nil error - it is
 // presumed to be fatal. In that case the function sends the error on the 'readerChan'
 // channel. This goroutine is signaled on the 'receiverChan' channel to stop it. As each
 // image load completes, and reports the number of images pulled, this function tallies that
-// to the passed 'itemcnt' arg.
+// to the passed 'itemcnt' pointer.
 func resultReceiver(itemcnt *int) {
 	log.Debug("result receiver start")
 OUTER:

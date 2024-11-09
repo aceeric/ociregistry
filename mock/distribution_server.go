@@ -61,10 +61,8 @@ func NewMockParams(auth AuthType, scheme SchemeType) MockParams {
 	}
 }
 
-// Server runs the OCI distribution server. It returns a ref to the server, and a
+// Server runs the mock OCI distribution server. It returns a ref to the server, and a
 // server url (without the scheme).
-
-// instance that supports unit tests.
 func Server(params MockParams) (*httptest.Server, string) {
 	var err error
 	testFilesDir := getTestFilesDir()

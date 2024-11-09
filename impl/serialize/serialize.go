@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	// where the "fat" manifests reside (the manifests that are lists of image manifests)
+	// fatPath is the subdirectory under the image cache root where the "fat" manifests are
+	// stored (meaning the manifests that are lists of image manifests)
 	fatPath = "fat"
-	// where the image manifests reside
+	// imgPath is the subdirectory under the image cache root where the image manifests are stored
 	imgPath = "img"
 )
 

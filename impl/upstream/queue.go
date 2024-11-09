@@ -82,7 +82,7 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 	}(imageUrl, ch)
 	select {
 	case <-ch:
-		log.Debugf("waiter signaled for image %s", imageUrl)
+		log.Debugf("waiter was signaled for image %s", imageUrl)
 	case <-time.After(time.Duration(waitMillis) * time.Millisecond):
 		err = fmt.Errorf("timeout exceeded pulling image %s", imageUrl)
 	}
@@ -148,7 +148,8 @@ func enqueueGet(imageUrl string, ch chan bool) bool {
 	return exists
 }
 
-// doneGet signals all waiters for the passed image URL.
+// doneGet signals all waiters for the passed image URL using the channels that
+// are associated with the passed URL as populated by 'enqueueGet'.
 func doneGet(imageUrl string) {
 	ps.mu.Lock()
 	chans, exists := ps.pullMap[imageUrl]

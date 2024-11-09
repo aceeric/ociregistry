@@ -14,6 +14,7 @@ const srch = `.*sha256:([a-f0-9]{64}).*`
 
 var re = regexp.MustCompile(srch)
 
+// ConfigureLogging sets the logger level
 func ConfigureLogging(level string) {
 	log.SetLevel(xlatLogLevel(level))
 	//log.SetFormatter(&log.JSONFormatter{})
@@ -21,6 +22,7 @@ func ConfigureLogging(level string) {
 	//log.SetReportCaller(true)
 }
 
+// xlatLogLevel translates the passed 'level' string to a logger const
 func xlatLogLevel(level string) log.Level {
 	switch strings.ToUpper(level) {
 	case "DEBUG":
@@ -37,6 +39,7 @@ func xlatLogLevel(level string) log.Level {
 	return log.FatalLevel
 }
 
+// GetEchoLoggingFunc gets the distribution server logging function
 func GetEchoLoggingFunc() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {

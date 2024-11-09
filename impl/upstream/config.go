@@ -52,8 +52,9 @@ var (
 // then nothing is done and no remote registry configs are defined.
 // The result of this will be that every remote registry will be
 // accessed anonymously. The function loops forever checking the config
-// file for changes every 'chkSeconds' seconds. A fully-populated
-// configuration entry looks like so:
+// file for changes every 'chkSeconds' seconds. The passed file may contain
+// multiple entries (it is a yaml list.) A fully-populated configuration
+// for one entry looks like so:
 //
 //	---
 //	- name: localhost:5001
@@ -198,7 +199,7 @@ func configFor(registry string) ([]remote.Option, error) {
 }
 
 // configEntryFor returns a configuration entry from the config map that
-// matches the passed 'registry', or and empy config if no matching entry
+// matches the passed 'registry', or and empty config if no matching entry
 // exists.
 func configEntryFor(registry string) (cfgEntry, error) {
 	mu.Lock()

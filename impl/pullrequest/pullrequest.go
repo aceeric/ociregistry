@@ -5,17 +5,21 @@ import (
 	"strings"
 )
 
+// pullType allows to differentiate a pull by tag vs. digest.
+type pullType int
+
 const (
-	byTag int = iota
+	byTag pullType = iota
 	byDigest
 )
 
+// PullRequest has the individual components of an image pull
 type PullRequest struct {
-	PullType  int    `json:"pullType"`
-	Org       string `json:"org"`
-	Image     string `json:"image"`
-	Reference string `json:"reference"`
-	Remote    string `json:"remote"`
+	PullType  pullType `json:"pullType"`
+	Org       string   `json:"org"`
+	Image     string   `json:"image"`
+	Reference string   `json:"reference"`
+	Remote    string   `json:"remote"`
 }
 
 // NewPullRequest returns a 'PullRequest' struct from the passed args
@@ -29,8 +33,9 @@ func NewPullRequest(org, image, reference, remote string) PullRequest {
 	}
 }
 
-// docker.io/hello-world:latest
-// docker.io/library/hello-world@sha256:...
+// NewPullRequestFromUrl parses the passed image url (e.g. docker.io/hello-world:latest,
+// or docker.io/library/hello-world@sha256:...) into a 'PullRequest' struct. The url
+// MUST begin with a registry ref (e.g. quay.io) - it is not inferred.
 func NewPullRequestFromUrl(url string) (PullRequest, error) {
 	parts := strings.Split(url, "/")
 	remote := parts[0]
@@ -57,7 +62,6 @@ func NewPullRequestFromUrl(url string) (PullRequest, error) {
 			break
 		}
 	}
-
 	return PullRequest{
 		PullType:  typeFromRef(ref),
 		Org:       org,
@@ -67,6 +71,7 @@ func NewPullRequestFromUrl(url string) (PullRequest, error) {
 	}, nil
 }
 
+// Url formats the instance as an image reference like 'quay.io/appzygy/ociregistry:1.5.0'
 func (pr *PullRequest) Url() string {
 	separator := ":"
 	if strings.HasPrefix(pr.Reference, "sha256:") {
@@ -78,37 +83,24 @@ func (pr *PullRequest) Url() string {
 	return fmt.Sprintf("%s/%s/%s%s%s", pr.Remote, pr.Org, pr.Image, separator, pr.Reference)
 }
 
-func (pr *PullRequest) isByTag() bool {
-	return pr.PullType == byTag
-}
-
-func (pr *PullRequest) isByDigest() bool {
-	return pr.PullType == byDigest
-}
-
-// calico/node:v1.23.0 becomes "calico/node/v1.23.0 and"
-// hello-world:v1.0.0 becomes "hello-world/v1.0.0"
-// foo/bar@sha256:a15f3c... becomes "foo/bar/sha256:a15f3c..."
+// Id formats the instance as a slash-separated compound key. E.g. url 'calico/node:v1.23.0'
+// becomes key 'calico/node/v1.23.0' and url 'hello-world:v1.0.0' becomes key 'hello-world/v1.0.0'.
+// For SHA-based pulls, 'foo/bar@sha256:a15f3c...' becomes key 'foo/bar/sha256:a15f3c...'.
 func (pr *PullRequest) Id() string {
 	return fmt.Sprintf("%s/%s/%s", pr.Org, pr.Image, pr.Reference)
 }
 
+// IdDigest is like 'Id' except it only operates on digest pulls. E.g. 'foo/bar@sha256:a15f3c...'
+// is returned as key 'foo/bar/sha256:a15f3c...'.
 func (pr *PullRequest) IdDigest(digest string) string {
 	return fmt.Sprintf("%s/%s/%s", pr.Org, pr.Image, digest)
 }
 
-func ByTag() int {
-	return byTag
-}
-
-func ByDigest() int {
-	return byDigest
-}
-
-func typeFromRef(ref string) int {
+// typeFromRef looks at the passed 'ref' and if it's a digest ref then returns
+// 'byDigest' else returns 'byTag'.
+func typeFromRef(ref string) pullType {
 	if strings.HasPrefix(ref, "sha256:") {
-		return ByDigest()
+		return byDigest
 	}
-	return ByTag()
-
+	return byTag
 }

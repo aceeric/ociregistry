@@ -118,7 +118,7 @@ func getImageManifestDigest(mh upstream.ManifestHolder, platformArch, platformOs
 	return "", fmt.Errorf("no manifest found for url %s matching arch=%s and os=%s", mh.ImageUrl, platformArch, platformOs)
 }
 
-// PreloadDeprecated is deprecated. (It is the original non-concurrent pre-load.)
+// PreloadDeprecated is deprecated and will be removed. (It is the original non-concurrent pre-load.)
 func PreloadDeprecated(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int) error {
 	start := time.Now()
 	log.Infof("loading images from file: %s", imageListFile)

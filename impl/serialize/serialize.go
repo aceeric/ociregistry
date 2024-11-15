@@ -60,14 +60,14 @@ func ToFilesystem(mh upstream.ManifestHolder, imagePath string) error {
 	}
 	fname := filepath.Join(imagePath, subdir, mh.Digest)
 	if err := os.MkdirAll(filepath.Dir(fname), 0755); err != nil {
-		log.Errorf("unable to create directory %s", filepath.Dir(fname))
+		log.Errorf("unable to create directory %s, error: %s", filepath.Dir(fname), err)
 	}
 	_, err := os.Stat(fname)
 	if err != nil {
 		mb, _ := json.Marshal(mh)
 		err = os.WriteFile(fname, mb, 0755)
 		if err != nil {
-			log.Errorf("error serializing manifest for %s", mh.ImageUrl)
+			log.Errorf("error serializing manifest for %s, error: %s", mh.ImageUrl, err)
 		}
 		return err
 	} else {

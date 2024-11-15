@@ -1,4 +1,4 @@
-FROM golang:1.22 AS build
+FROM golang:1.23.3 AS build
 ARG SERVER_VERSION
 ARG DATETIME
 

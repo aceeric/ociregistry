@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"ociregistry/impl/extractor"
-	"ociregistry/impl/globals"
 	"ociregistry/impl/pullrequest"
 	"os"
 	"path/filepath"
@@ -19,6 +18,11 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
+
+// pullsDir is the subdirectory under the image cache directory where in-progress
+// image pulls are temporarily staged
+//
+const pullsDir = "pulls"
 
 var (
 	// ps is a synchronized map of pulls in progress so that if multiple
@@ -200,7 +204,7 @@ func CraneHead(imageUrl string) (*v1.Descriptor, error) {
 // craneDownloadImg downloads an image tarball to the "pulls" drectory under
 // the passed 'imagePath' directory, or returns an error if unable to do so.
 func craneDownloadImg(imageUrl string, d *remote.Descriptor, imagePath string) (string, error) {
-	var imageTar = filepath.Join(imagePath, globals.PullsDir)
+	var imageTar = filepath.Join(imagePath, pullsDir)
 	if _, err := os.Stat(imageTar); err != nil {
 		if err := os.MkdirAll(imageTar, 0755); err != nil {
 			return "", err

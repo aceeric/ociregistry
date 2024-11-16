@@ -25,9 +25,9 @@ This command compiles the server and creates a binary called `server` in the `bi
 
 ### Run the server
 
-You provide an image storage location with the `--image-path` arg. If the directory doesn't exist the server will create it. The default is `/var/lib/ociregistry` but to kick the tires it makes more sense to use the system temp directory:
+You provide an image storage location with the `--image-path` arg. If the directory doesn't exist the server will create it. The default is `/var/lib/ociregistry` but to kick the tires it makes more sense to use the system temp directory. By default the server listens on `8080`. If you have something running that is bound to the port, specify --port. We'll specify it explicitly here with the default:
 ```
-bin/server --image-path /tmp/images
+bin/server --image-path /tmp/images --port 8080
 ```
 
 ### Result
@@ -95,7 +95,18 @@ The manifest list was saved in: `images/fat/4afe5bf0ee...` and the image manifes
 
 ### Stop and restart the server and repeat
 
-You will notice that the manifest list and the image manifest are now being returned from cache.
+This time run with debug logging to see more about what the server is doing:
+
+```
+bin/server --image-path /tmp/images --port 8080 --log-level debug
+```
+
+Run the same two curl commands. You will notice that the manifest list and the image manifest are now being returned from cache. You can see this in the logs:
+
+```
+DEBU[0010] serving manifest from cache: registry.k8s.io/kube-scheduler:v1.29.1
+DEBU[0148] serving manifest from cache: registry.k8s.io/kube-scheduler@sha256:019d7877...
+```
 
 ## Quick Start - In Your Kubernetes Cluster
 
@@ -268,7 +279,7 @@ The following options are supported:
 | `--log-level`   | error | Valid values: trace, debug, info, warn, error |
 | `--config-path` | Empty | Path and file providing remote registry auth and TLS config formatted as described above. If empty then every upstream will be tried with anonymous HTTP access failing over to 1-way HTTPS using the OS Trust store to validate the remote registry certs. (I.e. works fine for `docker.io`) |
 | `--pull-timeout`| 60000 (one minute)   | Time in milliseconds to wait for a pull to complete from an upstream distribution server |
-| `--arch`        | n/a | Arhitecture - used with `--load-images` and `--preload-images` |
+| `--arch`        | n/a | Architecture - used with `--load-images` and `--preload-images` |
 | `--os`          | n/a | OS - used with `--load-images` and `--preload-images` |
 
 
@@ -306,7 +317,7 @@ In the second example, the server populates the cache as a startup task and then
 
 ## Load and Pre-Load Concurrency
 
-The server supports concurrency on loading and pre-loading. By default, only a single image at a time is loaded. In other words omitting the `--concurrent` arg is the same as specifying `--concurrent=1`. One thing to be aware of is the balance between concurrency and network utilization. Using a large number of goroutines also requires increasing the pull timeout since the concurrency increases network utilization. For example in desktop testing, the following command has been tested wihtout experiencing image pull timeouts:
+The server supports concurrency on loading and pre-loading. By default, only a single image at a time is loaded. In other words omitting the `--concurrent` arg is the same as specifying `--concurrent=1`. One thing to be aware of is the balance between concurrency and network utilization. Using a large number of goroutines also requires increasing the pull timeout since the concurrency increases network utilization. For example in desktop testing, the following command has been tested without experiencing image pull timeouts:
 ```
 bin/server --log-level=debug --image-path=/tmp/frobozz\
   --load-images=./hack/image-list\
@@ -351,7 +362,7 @@ State is persisted to the file system. Let's say you run the server with `--imag
 
 Manifests are all stored by digest. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
 
-The program uses a data structure called a `ManifestHolder` to hold all the image metadata and the actual manifest from the upstream registry. These are simply serialized to the file system as JSON. (So you can find and inspect them if needed for troubleshooting with `grep`, `cat`, and `jq`.) 
+The program uses a data structure called a `ManifestHolder` to hold all the image metadata and the actual manifest from the upstream registry. These are simply serialized to the file system as JSON. (So you can find and inspect them if needed for troubleshooting with `grep`, `cat`, and `jq`.)
 
 ## Code structure
 

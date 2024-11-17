@@ -16,8 +16,8 @@ The goals of the project are:
 
 **Table of Contents**
 
-- [Quick Start - Desktop](#quick-start-desktop)
-- [Quick Start - Kubernetes](#quick-start-kubernetes)
+- [Quick Start - Desktop](#quick-start---desktop)
+- [Quick Start - Kubernetes](#quick-start---kubernetes)
 - [Configuring `containerd`](#configuring-containerd)
 - [Configuring the Server](#configuring-the-server)
 - [Command Line Options](#command-line-options)

@@ -18,6 +18,7 @@ type OciRegistry struct {
 	pullTimeout int
 }
 
+// NewOciRegistry creates and returns an OciRegistry struct from the passed args
 func NewOciRegistry(imagePath string, pullTimeout int) OciRegistry {
 	return OciRegistry{
 		imagePath:   imagePath,

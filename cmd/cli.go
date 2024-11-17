@@ -18,8 +18,10 @@ var cmdList []cliCmd = []cliCmd{preloadCache, listCache, showVer}
 // cliCommands loops through the 'cmdList' array and provides each command with the passed
 // 'cmdLine'. If the command executes (meaning the command line matched what the command needs
 // on the command line) then the command is expected to return true in the first arg. In that
-// case the function terminates the running process using 'os.Exit()'. This implements using the
-// server binary as a CLI rather than as a distribution server.
+// case the function terminates the running process using 'os.Exit()' and will therefore not
+// return. If the function returns then that means none of the CLI commands supported by the
+// server were invoked. This implements using the server binary as a CLI rather than as a
+// distribution server.
 func cliCommands(args cmdLine) {
 	for _, f := range cmdList {
 		ran, err := f(args)

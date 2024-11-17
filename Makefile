@@ -20,12 +20,12 @@ oapi-codegen:
 	oapi-codegen -config $(ROOT)/api/models.cfg.yaml $(ROOT)/ociregistry.yaml
 
 .PHONY: desktop
-desktop: oapi-codegen
+desktop:
 	CGO_ENABLED=0 go build -ldflags "-X 'main.buildVer=$(SERVER_VERSION)' -X 'main.buildDtm=$(DATETIME)'"\
 	 -a -o $(ROOT)/bin/server $(ROOT)/cmd/*.go
 
 .PHONY: image
-image: oapi-codegen
+image:
 	docker buildx build --tag $(REGISTRY)/$(ORG)/ociregistry:$(SERVER_VERSION)\
 	 --build-arg SERVER_VERSION=$(SERVER_VERSION)\
 	 --build-arg DATETIME=$(DATETIME)\

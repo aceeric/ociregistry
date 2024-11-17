@@ -2,22 +2,22 @@
 
 This project is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 
-1. It exclusively provides _pull_ capability. You can't push images to it, it doesn't support the `/v2/_catalog` endpoint, etc.
+1. It exclusively provides _pull_ capability. You can't push images to it, it doesn't support the `/v2/_catalog` endpoint, etc. (Though you can pre-load it. More on that below.)
 2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public; supporting the following types of access: anonymous, basic auth, HTTP, HTTPS, one-way TLS, and mTLS.
 
-This OCI distribution server is intended to satisfy one use case: the need for a Kubernetes caching pull-through registry that enables a k8s cluster to run reliably in an air-gapped network or in a network with intermittent/degraded connectivity to upstream registries. (However, it also nicely mitigates rate-limiting issues when doing local Kubernetes development.)
+This OCI distribution server is intended to satisfy one use case: the need for a Kubernetes caching pull-through registry that enables a k8s cluster to run reliably in disrupted, disconnected, intermittent and low-bandwidth (DDIL) edge environments. (However, it also nicely mitigates rate-limiting issues when doing local Kubernetes development.)
 
 The goals of the project are:
 
 1. Implement one use case
-2. Be simple
+2. Be simple and reliable
 
 ## Quick Start - On Your Desktop
 
 After git cloning the project:
 
 ### Build the server
-```
+```shell
 make desktop
 ```
 
@@ -25,13 +25,13 @@ This command compiles the server and creates a binary called `server` in the `bi
 
 ### Run the server
 
-You provide an image storage location with the `--image-path` arg. If the directory doesn't exist the server will create it. The default is `/var/lib/ociregistry` but to kick the tires it makes more sense to use the system temp directory. By default the server listens on `8080`. If you have something running that is bound to the port, specify --port. We'll specify it explicitly here with the default:
-```
+You provide an image storage location with the `--image-path` arg. If the directory doesn't exist the server will create it. The default is `/var/lib/ociregistry` but to kick the tires it makes more sense to use the system temp directory. By default the server listens on `8080`. If you have something running that is already bound to the port, specify `--port`. We'll specify it explicitly here with the default:
+```shell
 bin/server --image-path /tmp/images --port 8080
 ```
 
 ### Result
-```
+```shell
 ----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
 Started: 2024-02-17 20:49:56.516302625 -0500 EST (port 8080)
@@ -40,14 +40,14 @@ Started: 2024-02-17 20:49:56.516302625 -0500 EST (port 8080)
 
 ### In another terminal
 
-Curl a manifest list. Note the `ns` query parameter in the URL which tells the server to go to that upstream if the image isn't already locally cached (this is exactly how `containerd` does it when you configure it to mirror):
+Curl a manifest list. Note the `ns` query parameter in the URL which tells the server to go to that upstream if the image isn't already locally cached. This is exactly how `containerd` does it when you configure it to mirror:
 
-```
+```shell
 curl localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io | jq
 ```
 
 ### Result
-```
+```json
   "schemaVersion": 2,
   "mediaType": "application/vnd.docker.distribution.manifest.list.v2+json",
   "manifests": [
@@ -67,18 +67,19 @@ curl localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io | jq
 
 Pick the first manifest from the list above - the `amd64/linux` manifest:
 
-```
+```shell
 curl localhost:8080/v2/kube-scheduler/manifests/sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c?ns=registry.k8s.io | jq
 ```
 
 ### Inspect the files created by the two curl calls
 
-```
+```shell
 find /tmp/images
 ```
 
 ### Result:
-```images
+```shell
+images
 images/blobs
 images/blobs/4873874c08efc72e9729683a83ffbb7502ee729e9a5ac097723806ea7fa13517
 images/blobs/fcb6f6d2c9986d9cd6a2ea3cc2936e5fc613e09f1af9042329011e43057f3265
@@ -95,15 +96,15 @@ The manifest list was saved in: `images/fat/4afe5bf0ee...` and the image manifes
 
 ### Stop and restart the server and repeat
 
-This time run with debug logging to see more about what the server is doing:
+This time run with debug logging for more visibility into what the server is doing:
 
-```
+```shell
 bin/server --image-path /tmp/images --port 8080 --log-level debug
 ```
 
 Run the same two curl commands. You will notice that the manifest list and the image manifest are now being returned from cache. You can see this in the logs:
 
-```
+```shell
 DEBU[0010] serving manifest from cache: registry.k8s.io/kube-scheduler:v1.29.1
 DEBU[0148] serving manifest from cache: registry.k8s.io/kube-scheduler@sha256:019d7877...
 ```
@@ -112,24 +113,11 @@ DEBU[0148] serving manifest from cache: registry.k8s.io/kube-scheduler@sha256:01
 
 Install from ArtifactHub: https://artifacthub.io/packages/helm/ociregistry/ociregistry
 
-## Design
-
-The following image describes the design:
-
-![design](resources/design.jpg)
-
-Narrative:
-
-1. A client initiates an image pull. In this case: containerd. The image pull consists of a series of REST API calls.
-2. The API calls are handled by the REST API, which implements a portion of the [OCI Distribution Spec](https://github.com/opencontainers/distribution-spec). The API is just a veneer that delegates to the server implementation.
-3. The server checks the local cache and if the image is in cache it is returned from cache.
-4. If the image is not in cache, the server calls embedded [Google Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/doc/crane.md) Go code to pull the image from the upstream registry. The way the server knows which upstream to pull from is: containerd appends a query parameter to each API call. (More on this below.)
-5. The Google Crane code pulls the image from the upstream registry and returns it to the server.
-6. The server adds the image to cache for the next pull, and returns the image to the caller.
+> See [Kubernetes considerations](#kubernetes-considerations) for important things to be aware of to support your edge Kubernetes cluster
 
 ## Configuring `containerd`
 
-The following shows how to configure containerd in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry. This has been tested with containerd v1.7.x:
+This section shows how to configure containerd in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry. This has been tested with containerd v1.7.x:
 
 Add a `config_path` entry to `/etc/containerd/config.toml` to tell containerd to load all registry mirror configurations from that directory:
 
@@ -140,7 +128,7 @@ Add a `config_path` entry to `/etc/containerd/config.toml` to tell containerd to
    ...
 ```
 
-Then create a configuration directory and file that tells containerd to pull from the caching pull-through registry server. This is an example for `_default_` which indicates that **all** images should be mirrored. The file is `/etc/containerd/certs.d/_default/hosts.toml`. In this example, the caching pull-through registry server is running on `192.168.0.49:8080`:
+Then create a configuration directory and file that tells containerd to pull from the caching pull-through registry server. This is an example for `_default` which indicates that **all** images should be mirrored. The file is `/etc/containerd/certs.d/_default/hosts.toml`. In this example, the caching pull-through registry server is running on `192.168.0.49:8080`:
 
 ```shell
 [host."http://192.168.0.49:8080"]
@@ -152,23 +140,23 @@ The _resolve_ capability tells containerd that a HEAD request to the server with
 
 After restarting containerd, you can confirm visually that containerd is mirroring by running the following command on a cluster host:
 
-```
+```shell
 crictl pull quay.io/appzygy/ociregistry:1.3.0
 ```
 
 Enable `debug` logging on the pull-through registry server and you will see the traffic from containerd. Example:
 
-```
+```shell
 echo server HEAD:/v2/appzygy/ociregistry/manifests/1.3.0?ns=quay.io status=200 latency=2.664780196s host=192.168.0.49:8080 ip=192.168.0.49
 ```
 
-Notice the `?ns=quay.io` query parameter appended to the API call. The pull-through server uses this to determine which upstream registry to get images from.
+Notice the `?ns=quay.io` query parameter appended to the API call. This query parameter is added by containerd. The pull-through server uses this to determine which upstream registry to get images from.
 
 ## Configuring the OCI Registry Server
 
 The OCI Registry server may need configuration information to connect to upstream registries. If run with no upstream registry config, it will attempt anonymous plain HTTP access. Many OCI Distribution servers will reject HTTP and fail over to HTTPS. Then you're in the realm of TLS and PKI. Some servers require auth as well. To address all of these concerns the OCI Registry server accepts an optional command line parameter `--config-path` which identifies a configuration file in the following format:
 
-```
+```yaml
 - name: upstream one
   description: foo
   auth: {}
@@ -182,7 +170,7 @@ The OCI Registry server may need configuration information to connect to upstrea
 
 The configuration file is a yaml list of upstream registry entries. Each entry supports the following configuration structure:
 
-```
+```yaml
 - name: my-upstream (or my-upstream:PORT)
   description: Something that makes sense to you (or omit it - it is optional)
   auth:
@@ -201,35 +189,35 @@ The `tls` section can implement multiple scenarios:
 
 1. One-way insecure TLS, in which client certs are not provided to the remote, and the remote server cert is not validated:
 
-   ```
+   ```yaml
    tls:
      insecure_skip_verify: true
    ```
 
 2. One-way **secure** TLS, in which client certs are not provided to the remote, and the remote server cert **is** validated using the OS trust store:
 
-   ```
+   ```yaml
    tls:
      insecure_skip_verify: false (or simply omit since it defaults to false)
    ```
 
 3. One-way **secure** TLS, in which client certs are not provided to the remote, and the remote server cert is validate using a **provided** CA cert:
 
-   ```
+   ```yaml
    tls:
      ca: /my/ca.crt
    ```
 
 4. mTLS (client certs are provided to the remote):
 
-   ```
+   ```yaml
    tls:
      cert: /my/client.cert
      key: /my/client.key
    ```
 mTLS can be implemented **with** and **without** remote server cert validation as described above in the various one-way TLS scenarios. Examples:
 
-   ```
+   ```yaml
    - name foo.bar.1.io
      description: mTLS, don't verify server cert
      tls:
@@ -287,7 +275,7 @@ The following options are supported:
 
 Pre-loading supports the air-gapped use case of populating the registry in a connected environment, and then moving it into an air-gapped environment. The registry normally runs as a service. But  you can also run it as a CLI to pre-load itself and you can start it with the `--preload-images` arg to pre-load images as part of starting up when running as a service or a k8s workload. To do this, you create a file with a list of image references. Example:
 
-```
+```shell
 cat <<EOF >| imagelist
 quay.io/jetstack/cert-manager-cainjector:v1.11.2
 quay.io/jetstack/cert-manager-controller:v1.11.2
@@ -302,14 +290,14 @@ EOF
 ```
 
 Once you've configured your image list file, then:
-```
+```shell
 bin/server --image-path=/var/ociregistry/images --log-level=info --load-images=$PWD/imagelist --arch=amd64 --os=linux
 ```
 
 The registry executable will populate the cache and then exit.
 
-Or to do the same thing as a startup and leave the server running to serve the loaded images
-```
+Or to do the same thing as a startup task and leave the server running to serve the loaded images
+```shell
 bin/server --image-path=/var/ociregistry/images --log-level=info --preload-images=$PWD/imagelist --arch=amd64 --os=linux
 ```
 
@@ -318,14 +306,14 @@ In the second example, the server populates the cache as a startup task and then
 ## Load and Pre-Load Concurrency
 
 The server supports concurrency on loading and pre-loading. By default, only a single image at a time is loaded. In other words omitting the `--concurrent` arg is the same as specifying `--concurrent=1`. One thing to be aware of is the balance between concurrency and network utilization. Using a large number of goroutines also requires increasing the pull timeout since the concurrency increases network utilization. For example in desktop testing, the following command has been tested without experiencing image pull timeouts:
-```
+```shell
 bin/server --log-level=debug --image-path=/tmp/frobozz\
   --load-images=./hack/image-list\
   --pull-timeout=200000\
-  --concurrent=100
+  --concurrent=50
 ```
 
-The example above runs 100 concurrent goroutines but needs to increase the timeout to 200000 milliseconds to consistently avoid timeouts. Pull timeouts are logged as an error.
+The example above runs 50 concurrent goroutines but needs to increase the timeout to 200000 milliseconds to consistently avoid timeouts. Pull timeouts are logged as an error.
 
 ## Image pull
 
@@ -335,7 +323,7 @@ By way of background, a typical image pull sequence is:
 
 To support this, the server caches both the fat manifest and the image manifest. (Two manifests for every one pull.) The pre-loader does the same so you need to provide the tags or digest of the fat manifest in your list.
 
->  Gotcha: If you cache a fat manifest by digest and later run a workload in an air-gapped environment that attempts to get the fat manifest by tag, the registry will not know the tag and so will not be able to provide that image.
+>  **Gotcha**: If you cache a fat manifest by digest and later run a workload in an air-gapped environment that attempts to get the fat manifest by tag, the registry will not know the tag and so will not be able to provide that image from cache.
 
 The pre-loader logic is similar to the client pull logic:
 
@@ -345,9 +333,9 @@ The pre-loader logic is similar to the client pull logic:
 
 ## File system structure
 
-State is persisted to the file system. Let's say you run the server with `--image-path=/var/ociregistry/images`, which is the default. Then:
+While the server is running, state is persisted to the file system. Let's say you run the server with `--image-path=/var/ociregistry/images`, which is the default. Then:
 
-```
+```shell
 /var/ociregistry/images
 ├── blobs
 ├── fat
@@ -364,9 +352,25 @@ Manifests are all stored by digest. When the server starts it loads everything i
 
 The program uses a data structure called a `ManifestHolder` to hold all the image metadata and the actual manifest from the upstream registry. These are simply serialized to the file system as JSON. (So you can find and inspect them if needed for troubleshooting with `grep`, `cat`, and `jq`.)
 
+## Design
+
+The following image describes the design of the project:
+
+![design](resources/design.jpg)
+
+Narrative:
+
+1. A client (in this case - containerd) initiates an image pull. The image pull consists of a series of REST API calls. The API calls are handled by the server REST API, which implements a portion of the [OCI Distribution Spec](https://github.com/opencontainers/distribution-spec).
+2. The API is just a veneer that delegates to the server implementation.
+3. The server checks the local cache and if the image is in cache it is immediately returned from cache.
+4. If the image is not in cache, the server calls the embedded [Google Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/doc/crane.md) code to pull the image from the upstream registry. The server knows which upstream to pull from because containerd appends a query parameter (e.g. `?ns=registry.k8s.io`) to each API call.
+5. The Google Crane code pulls the image from the upstream registry and returns it to the server.
+6. The server adds the image to cache and returns the image to the caller from the newly updated cache.
+
 ## Code structure
 
-```
+The source code is organized as shown:
+```shell
 project root
 ├── api
 ├── bin
@@ -396,7 +400,7 @@ project root
 | `impl.extractor` | Extracts blobs from downloaded image tarballs. |
 | `impl.globals` | Globals and the logging implementation (uses [Logrus](https://github.com/sirupsen/logrus)). |
 | `impl.helpers` | Helpers. |
-| `impl.memcache` | The in-memory representation of the image metadata. If a "typical" image manifest is about 3K, and two manifests are cached per image then a cache with 100 images would consume 3000 x 2 x 100 bytes, or 600K.  |
+| `impl.memcache` | The in-memory representation of the image metadata. If a "typical" image manifest is about 3K, and two manifests are cached per image then a cache with 100 images would consume 3000 x 2 x 100 bytes, or 600K of RAM. (The blobs are not stored in memory.) |
 | `impl.preload` | Implements the pre-load capability. |
 | `impl.pullrequest` | Abstracts an image pull. |
 | `impl.serialize` | Reads/writes from/to the file system. |
@@ -424,3 +428,26 @@ The key components of the API scaffolding supported by OAPI-Codegen are shown be
 ```
 
 I elected to use the [Echo](https://echo.labstack.com/) option to run the API.
+
+## Kubernetes considerations
+
+As stated above, one main objective of the project is to support running Kubernetes in DDIL edge environments. To accomplish this, you will likely adopt one of two approaches:
+
+1. Stand the cluster up in a connected environment, pre-load the distribution server with all required images, then disconnect and ship the cluster to its edge location.
+2. Ship the cluster to its edge location and pre-load the distribution server there using stable comms. If comms are later degraded or lost then the required images remain cached.
+
+There are two general ways to run the distribution server in support of this objective. These are now discussed.
+
+### As a Kubernetes Workload
+
+Using the helm chart described above in this guide you can install the server as a Kubernetes `Deployment`, and configure containerd on each Node to access the distribution server on a `NodePort`. In order to make this work, two things are needed:
+
+1. The cluster needs persistent storage that is redundant and reliable. This means that when you down the cluster, ship it, and start it up at the edge, the persistent storage has to come up with the image cache intact.
+2. You need a tarball of the distribution server image available in the edge environment for the following reason: when you start the cluster for the first time, if containerd has been configured to pull from the distribution server, the distribution server image may not be in cache and so that Pod won't start. This is a classic deadlock scenario. Therefore your cluster startup procedure will be to start Kubernetes and then load the distribution server image tarball into each cluster's containerd cache. Now Kubernetes can start the distribution server workload which in turn can serve images from its cache. Ideally your Kubernetes distribution of choice will support the ability to pre-load containerd from a image tarballs at a configuration file system location.
+
+### As a `systemd` Service
+
+You can also run the distribution server as a systemd service on one of the cluster nodes. This avoids the deadlock scenario associated with running the distribution server as a Kubernetes workload because the service will come up when the cluster instances are started and will therefore immediately be available to serve cached images.
+
+The risk is that the image cache only exists on one cluster instance. If this instance is lost, then the cluster is down until comms are re-established. This can be mitigated by replicating the cache across multiple cluster nodes. There are multiple tools available to support this. For example [Syncthing](https://syncthing.net/) could be run on each node to ensure that each node has a full copy of the image cache. If the node running the distribution server is lost then the other nodes can have their containerd configuration modified to point to any one of the other nodes, and the distribution server systemd service can be started on that node.
+

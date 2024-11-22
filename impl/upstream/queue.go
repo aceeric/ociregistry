@@ -21,8 +21,9 @@ import (
 
 // pullsDir is the subdirectory under the image cache directory where in-progress
 // image pulls are temporarily staged
-//
 const pullsDir = "pulls"
+
+type enqueueResult bool
 
 var (
 	// ps is a synchronized map of pulls in progress so that if multiple
@@ -35,7 +36,8 @@ var (
 	}{
 		pullMap: make(map[string][]chan bool),
 	}
-	alreadyEnqueued bool = true
+	isEnqueued  enqueueResult = true
+	notEnqueued enqueueResult = false
 )
 
 // Get gets fat manifests, image manifests, and image blobs from an
@@ -52,7 +54,7 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 				log.Errorf("panic in queue.get: %s", err)
 			}
 		}()
-		if enqueueGet(imageUrl, ch) == alreadyEnqueued {
+		if enqueueGet(imageUrl, ch) == isEnqueued {
 			return
 		}
 		defer doneGet(imageUrl)
@@ -133,14 +135,14 @@ func isImageDescriptor(d *remote.Descriptor) bool {
 
 // enqueueGet enqueues an upstream registry get request for the passed
 // 'imageUrl'. If there are no other requesters, then the function returns
-// false - meaning the caller is the first requester and therefore will have
+// 'notEnqueued' - meaning the caller is the first requester and therefore will have
 // to actaully pull the image. If a request was previously enqueued for the
-// image url then true is returned meaning the caller should simply wait for
+// image url then 'isEnqueued' is returned meaning the caller should simply wait for
 // a signal on the passed channel which signifies that the prior caller has
 // pulled the image and added it to the cache and so this caller can access
 // the cached image. In all cases, all callers will be signalled on the passed
 // channel when the image is pulled and available in cache.
-func enqueueGet(imageUrl string, ch chan bool) bool {
+func enqueueGet(imageUrl string, ch chan bool) enqueueResult {
 	ps.mu.Lock()
 	chans, exists := ps.pullMap[imageUrl]
 	if exists {
@@ -149,7 +151,10 @@ func enqueueGet(imageUrl string, ch chan bool) bool {
 		ps.pullMap[imageUrl] = []chan bool{ch}
 	}
 	ps.mu.Unlock()
-	return exists
+	if exists {
+		return isEnqueued
+	}
+	return notEnqueued
 }
 
 // doneGet signals all waiters for the passed image URL using the channels that
@@ -172,9 +177,9 @@ func doneGet(imageUrl string) {
 }
 
 // cranePull gets any defined upstream registry configuration associated with the
-// registry in the passed URL, and packages it for the Google Crane code embedded in the
-// project, then calls Google Crane to get the object behind the URL which will be either
-// a manifest list, or an image manifest.
+// registry in the passed URL (i.e. auth, tls), and packages it for the Google Crane code
+// embedded in the project, then calls Google Crane to get the object behind the URL which
+// will be either a manifest list, or an image manifest.
 func cranePull(imageUrl string) (*remote.Descriptor, error) {
 	ref, err := name.ParseReference(imageUrl, make([]name.Option, 0)...)
 	if err != nil {

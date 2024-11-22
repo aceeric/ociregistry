@@ -176,10 +176,10 @@ func TestEnqueueing(t *testing.T) {
 		<-ch
 		cnt++
 	}()
-	if enqueueGet("foo", ch) == alreadyEnqueued {
+	if enqueueGet("foo", ch) == isEnqueued {
 		t.Fail()
 	}
-	if enqueueGet("foo", ch) != alreadyEnqueued {
+	if enqueueGet("foo", ch) != isEnqueued {
 		t.Fail()
 	}
 	doneGet("foo")

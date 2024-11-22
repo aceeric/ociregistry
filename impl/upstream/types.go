@@ -34,7 +34,7 @@ type ManifestHolder struct {
 	Type                 ManifestType            `json:"type"`
 	V1ociIndex           v1oci.Index             `json:"v1.oci.index"`
 	V1ociDescriptor      v1oci.Descriptor        `json:"v1.oci.descriptor"`
-	V2dockerManifestList v2docker.ManifestList   `json:"v2.docker.manifesList"`
+	V2dockerManifestList v2docker.ManifestList   `json:"v2.docker.manifestList"`
 	V2dockerManifest     v2docker.Manifest       `json:"v2.docker.Manifest"`
 }
 

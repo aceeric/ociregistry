@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"errors"
 	"net/http"
 	. "ociregistry/api/models"
 	"ociregistry/impl/helpers"
@@ -10,6 +11,7 @@ import (
 	"ociregistry/impl/upstream"
 	"os"
 	"strconv"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -115,8 +117,29 @@ func (r *OciRegistry) pullAndCache(pr pullrequest.PullRequest) (upstream.Manifes
 	if err != nil {
 		return mh, err
 	}
-	memcache.AddToCache(pr, mh, true)
-	go serialize.ToFilesystem(mh, r.imagePath)
+	if mh.Digest != "" {
+		memcache.AddToCache(pr, mh, true)
+		go serialize.ToFilesystem(mh, r.imagePath)
+	} else {
+		// when the digest is empty, the there was a parallel Get, and our process was not done - we should fallback to the cache now
+		log.Debugf("fallback to cache for %s", pr.Id())
+		return r.fallbackToCache(pr)
+	}
+
+	return mh, nil
+}
+
+func (r *OciRegistry) fallbackToCache(pr pullrequest.PullRequest) (upstream.ManifestHolder, error) {
+	var mh upstream.ManifestHolder
+	var found bool
+	// Do 5 retries until parallel process finishes writing the cache
+	for i := 0; i < 5 && !found; i++ {
+		time.Sleep(100 * time.Millisecond)
+		mh, found = memcache.IsCached(pr)
+	}
+	if !found {
+		return mh, errors.New("fallback to cache failed")
+	}
 	return mh, nil
 }
 

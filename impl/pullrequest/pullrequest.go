@@ -71,7 +71,7 @@ func NewPullRequestFromUrl(url string) (PullRequest, error) {
 	}, nil
 }
 
-// Url formats the instance as an image reference like 'quay.io/appzygy/ociregistry:1.5.0'
+// Url formats the instance as an image reference like 'quay.io/appzygy/ociregistry:n.n.n'
 func (pr *PullRequest) Url() string {
 	separator := ":"
 	if strings.HasPrefix(pr.Reference, "sha256:") {

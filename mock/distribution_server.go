@@ -29,6 +29,7 @@ type MockParams struct {
 	Scheme    SchemeType
 	TlsConfig *tls.Config
 	CliAuth   tls.ClientAuthType
+	DelayMs   int
 }
 
 // SchemeType specifies http or https
@@ -87,6 +88,10 @@ func Server(params MockParams) (*httptest.Server, string) {
 
 	gmtTimeLoc := time.FixedZone("GMT", 0)
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// delayMs supports simulating slow links or large images
+		if params.DelayMs != 0 {
+			time.Sleep(time.Duration(params.DelayMs) * time.Millisecond)
+		}
 		p := strings.Replace(r.URL.Path, "/library/", "/", 1)
 		if p == "/v2/" {
 			if params.Auth == NONE {

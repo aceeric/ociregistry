@@ -1,6 +1,7 @@
 package upstream
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -51,7 +52,7 @@ func TestCfg(t *testing.T) {
 		time.Sleep(time.Second * time.Duration(2))
 		entry, err := configEntryFor(name)
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Fail()
 		}
 		if entry.Description != descriptions[i] ||
 			entry.Auth.User != users[i] ||
@@ -62,4 +63,17 @@ func TestCfg(t *testing.T) {
 			t.Fail()
 		}
 	}
+}
+
+// configEntryFor returns a configuration entry from the config map that
+// matches the passed 'registry', or and empty config if no matching entry
+// exists.
+func configEntryFor(registry string) (cfgEntry, error) {
+	mu.Lock()
+	regCfg, exists := config[registry]
+	mu.Unlock()
+	if !exists {
+		return cfgEntry{}, errors.New("no entry in configuration for registry: " + registry)
+	}
+	return regCfg, nil
 }

@@ -102,7 +102,6 @@ func TestManifestHolder(t *testing.T) {
 		Digest:    "f5944f2d1daf66463768a1503d0c8c5e8dde7c1674d3f85abc70cef9c7e32e95",
 		Size:      2761,
 		Bytes:     []byte{},
-		Tarfile:   "/frobozz",
 		Type:      upstream.V2dockerManifestList,
 	}
 	err := json.Unmarshal([]byte(mfst), &mh.V2dockerManifestList)

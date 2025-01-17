@@ -1,6 +1,9 @@
 package pullrequest
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 type parsetest struct {
 	url         string
@@ -27,5 +30,18 @@ func TestPRs(t *testing.T) {
 		} else if !url.shouldParse && err == nil {
 			t.Fail()
 		}
+	}
+}
+
+func TestDigestPr(t *testing.T) {
+	digest := "sha256:123"
+	pr, err := NewPullRequestFromUrl(fmt.Sprintf("foo.io/frobozz@%s", digest))
+	if err != nil {
+		t.Fail()
+	}
+	prId := pr.Id()
+	prIdDigest := pr.IdDigest(digest)
+	if prId != prIdDigest {
+		t.Fail()
 	}
 }

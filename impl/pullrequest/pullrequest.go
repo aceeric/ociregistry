@@ -84,8 +84,9 @@ func (pr *PullRequest) Url() string {
 }
 
 // Id formats the instance as a slash-separated compound key. E.g. url 'calico/node:v1.23.0'
-// becomes key 'calico/node/v1.23.0' and url 'hello-world:v1.0.0' becomes key 'hello-world/v1.0.0'.
-// For SHA-based pulls, 'foo/bar@sha256:a15f3c...' becomes key 'foo/bar/sha256:a15f3c...'.
+// becomes key '/calico/node/v1.23.0' and url 'hello-world:v1.0.0' becomes key '/hello-world/v1.0.0'.
+// For SHA-based pulls, 'foo/bar@sha256:a15f3c...' becomes key 'foo/bar/sha256:a15f3c...'. Note
+// that if there is no org, the Id begins with a forward slash character.
 func (pr *PullRequest) Id() string {
 	return fmt.Sprintf("%s/%s/%s", pr.Org, pr.Image, pr.Reference)
 }

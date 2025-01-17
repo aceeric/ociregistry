@@ -197,16 +197,3 @@ func configFor(registry string) ([]remote.Option, error) {
 	mu.Unlock()
 	return opts, nil
 }
-
-// configEntryFor returns a configuration entry from the config map that
-// matches the passed 'registry', or and empty config if no matching entry
-// exists.
-func configEntryFor(registry string) (cfgEntry, error) {
-	mu.Lock()
-	regCfg, exists := config[registry]
-	mu.Unlock()
-	if !exists {
-		return cfgEntry{}, errors.New("no entry in configuration for registry: " + registry)
-	}
-	return regCfg, nil
-}

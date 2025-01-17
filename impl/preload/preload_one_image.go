@@ -1,14 +1,10 @@
 package preload
 
 import (
-	"bufio"
 	"fmt"
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
-	"os"
-	"strings"
-	"time"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -116,31 +112,4 @@ func getImageManifestDigest(mh upstream.ManifestHolder, platformArch, platformOs
 		return "", fmt.Errorf("unexpected manifest type for url %s", mh.ImageUrl)
 	}
 	return "", fmt.Errorf("no manifest found for url %s matching arch=%s and os=%s", mh.ImageUrl, platformArch, platformOs)
-}
-
-// PreloadDeprecated is deprecated and will be removed. (It is the original non-concurrent pre-load.)
-func PreloadDeprecated(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int) error {
-	start := time.Now()
-	log.Infof("loading images from file: %s", imageListFile)
-	itemcnt := 0
-	f, err := os.Open(imageListFile)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(string(scanner.Bytes()))
-		if len(line) == 0 || strings.HasPrefix(line, "#") {
-			continue
-		}
-		log.Debugf("pulling image: %s", line)
-		cnt, err := preloadOneImage(line, imagePath, platformArch, platformOs, pullTimeout)
-		if err != nil {
-			return err
-		}
-		itemcnt += cnt
-	}
-	log.Infof("loaded %d images to the file system cache in %s", itemcnt, time.Since(start))
-	return nil
 }

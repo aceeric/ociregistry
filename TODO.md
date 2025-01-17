@@ -1,5 +1,15 @@
 # IN PROGRESS
 
+- use issues
+- Implement HEAD /v2/
+  WARN[0054] echo server HEAD:/v2/ status=405 latency=3.434µs host=localhost:8088 ip=127.0.0.1 
+- preload has confusing message "loaded 106 images to the file system cache " doesn't actually
+  match the image count
+- handler pullAndCache has a problem. The mem cache is updated outside of a "transaction"
+  that pulls the image so - multiple pulls could overlap. upstream.Get should take an optional
+  func pointer that updates the in-mem cache BEFORE the puller goroutine signals waiters.
+- doneGet - refactor like imgpull
+
 # TODO
 
 - Support upstream encoded into image url in case its not possible to configure containerd. E.g.:

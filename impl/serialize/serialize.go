@@ -52,26 +52,25 @@ func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (up
 }
 
 // ToFilesystem serializes the passed 'ManifestHolder' to the file system at
-// the passed image path.
+// the passed image path. If the file already exists, no action is taken.
 func ToFilesystem(mh upstream.ManifestHolder, imagePath string) error {
 	var subdir = fatPath
 	if mh.IsImageManifest() {
 		subdir = imgPath
 	}
 	fname := filepath.Join(imagePath, subdir, mh.Digest)
+	if _, err := os.Stat(fname); err == nil {
+		log.Infof("manifest already in cache %s", fname)
+		return nil
+	}
 	if err := os.MkdirAll(filepath.Dir(fname), 0755); err != nil {
 		log.Errorf("unable to create directory %s, error: %s", filepath.Dir(fname), err)
-	}
-	_, err := os.Stat(fname)
-	if err != nil {
-		mb, _ := json.Marshal(mh)
-		err = os.WriteFile(fname, mb, 0755)
-		if err != nil {
-			log.Errorf("error serializing manifest for %s, error: %s", mh.ImageUrl, err)
-		}
 		return err
-	} else {
-		log.Infof("manifest already in cache %s", fname)
+	}
+	mb, _ := json.Marshal(mh)
+	if err := os.WriteFile(fname, mb, 0755); err != nil {
+		log.Errorf("error serializing manifest for %s, error: %s", mh.ImageUrl, err)
+		return err
 	}
 	return nil
 }

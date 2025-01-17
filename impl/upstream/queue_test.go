@@ -14,6 +14,8 @@ import (
 	"ociregistry/mock"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sync"
 	"testing"
 	"time"
 )
@@ -167,9 +169,41 @@ func TestCreateCerts(t *testing.T) {
 	}
 }
 
+// Two concurrent pulls for exactly the same image should return identical results
+func TestConcurrentPulls(t *testing.T) {
+	d, _ := os.MkdirTemp("", "")
+	defer os.RemoveAll(d)
+	server, url := mock.Server(mock.MockParams{Auth: mock.NONE, Scheme: mock.HTTP, DelayMs: 1000})
+	defer server.Close()
+	pr := pullrequest.NewPullRequest("", "hello-world", "latest", url)
+	var mh1, mh2 ManifestHolder
+	var err1, err2 error
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		mh1, err1 = Get(pr, d, 60000)
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		mh2, err2 = Get(pr, d, 60000)
+	}()
+	wg.Wait()
+	if err1 != nil || err2 != nil {
+		t.Fail()
+	}
+	if !reflect.DeepEqual(mh1, mh2) {
+		t.Fail()
+	}
+}
+
 func TestEnqueueing(t *testing.T) {
-	ch := make(chan bool)
+	ch := make(chan ManifestHolder)
+	dummyMh := ManifestHolder{}
 	var cnt = 0
+	// channels will be written by doneGet
 	go func() {
 		<-ch
 		cnt++
@@ -182,7 +216,7 @@ func TestEnqueueing(t *testing.T) {
 	if enqueueGet("foo", ch) != isEnqueued {
 		t.Fail()
 	}
-	doneGet("foo")
+	doneGet("foo", &dummyMh)
 	if len(ps.pullMap) != 0 {
 		t.Fail()
 	}

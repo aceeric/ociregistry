@@ -32,9 +32,9 @@ var (
 	// the pull is complete.
 	ps = struct {
 		mu      sync.Mutex
-		pullMap map[string][]chan bool
+		pullMap map[string][]chan ManifestHolder
 	}{
-		pullMap: make(map[string][]chan bool),
+		pullMap: make(map[string][]chan ManifestHolder),
 	}
 	isEnqueued  enqueueResult = true
 	notEnqueued enqueueResult = false
@@ -44,11 +44,11 @@ var (
 // upstream registry based on the passed 'PullRequest'
 func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (ManifestHolder, error) {
 	imageUrl := pr.Url()
-	ch := make(chan bool)
+	ch := make(chan ManifestHolder)
 	var mh = ManifestHolder{}
 	var err error = nil
 	// a goroutine because it signals the outer function so must run independently
-	go func(imageUrl string, ch chan bool) {
+	go func(imageUrl string, ch chan ManifestHolder) {
 		defer func() {
 			if err := recover(); err != nil {
 				log.Errorf("panic in queue.get: %s", err)
@@ -57,7 +57,7 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 		if enqueueGet(imageUrl, ch) == isEnqueued {
 			return
 		}
-		defer doneGet(imageUrl)
+		defer doneGet(imageUrl, &mh)
 		descriptor, ierr := cranePull(imageUrl)
 		if ierr != nil {
 			err = ierr
@@ -78,7 +78,6 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 			} else {
 				log.Debugf("no error returned from craneDownloadImg for image %s", imageUrl)
 			}
-			mh.Tarfile = tarfile
 			log.Debugf("extracting image tarball %s for image %s", tarfile, imageUrl)
 			err = extractor.Extract(tarfile, imagePath, true)
 			if err != nil {
@@ -87,7 +86,7 @@ func Get(pr pullrequest.PullRequest, imagePath string, waitMillis int) (Manifest
 		}
 	}(imageUrl, ch)
 	select {
-	case <-ch:
+	case mh = <-ch:
 		log.Debugf("waiter was signaled for image %s", imageUrl)
 	case <-time.After(time.Duration(waitMillis) * time.Millisecond):
 		err = fmt.Errorf("timeout exceeded pulling image %s", imageUrl)
@@ -142,13 +141,13 @@ func isImageDescriptor(d *remote.Descriptor) bool {
 // pulled the image and added it to the cache and so this caller can access
 // the cached image. In all cases, all callers will be signalled on the passed
 // channel when the image is pulled and available in cache.
-func enqueueGet(imageUrl string, ch chan bool) enqueueResult {
+func enqueueGet(imageUrl string, ch chan ManifestHolder) enqueueResult {
 	ps.mu.Lock()
 	chans, exists := ps.pullMap[imageUrl]
 	if exists {
 		ps.pullMap[imageUrl] = append(chans, ch)
 	} else {
-		ps.pullMap[imageUrl] = []chan bool{ch}
+		ps.pullMap[imageUrl] = []chan ManifestHolder{ch}
 	}
 	ps.mu.Unlock()
 	if exists {
@@ -159,7 +158,7 @@ func enqueueGet(imageUrl string, ch chan bool) enqueueResult {
 
 // doneGet signals all waiters for the passed image URL using the channels that
 // are associated with the passed URL as populated by 'enqueueGet'.
-func doneGet(imageUrl string) {
+func doneGet(imageUrl string, mh *ManifestHolder) {
 	ps.mu.Lock()
 	chans, exists := ps.pullMap[imageUrl]
 	if exists {
@@ -169,7 +168,7 @@ func doneGet(imageUrl string) {
 					log.Errorf("attempt to write to closed channel pulling %s", imageUrl)
 				}
 			}()
-			ch <- true
+			ch <- *mh
 		}
 		delete(ps.pullMap, imageUrl)
 	}

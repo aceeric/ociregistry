@@ -104,7 +104,6 @@ func TestSaveLoadCompare(t *testing.T) {
 		Digest:    "9001185023633d17a2f98ff69b6ff2615b8ea02a825adffa40422f51dfdcde9d",
 		Size:      2761,
 		Bytes:     []byte{},
-		Tarfile:   "/frobozz",
 		Type:      upstream.V2dockerManifestList,
 	}
 	err := json.Unmarshal([]byte(mfst), &mhOut.V2dockerManifestList)
@@ -143,7 +142,6 @@ func TestSaveLoadAddToCache(t *testing.T) {
 		Digest:    "9001185023633d17a2f98ff69b6ff2615b8ea02a825adffa40422f51dfdcde9d",
 		Size:      2761,
 		Bytes:     []byte{},
-		Tarfile:   "/frobozz",
 		Type:      upstream.V2dockerManifestList,
 	}
 	ToFilesystem(mhOut, td)

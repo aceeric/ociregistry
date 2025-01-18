@@ -62,9 +62,15 @@ func NewMockParams(auth AuthType, scheme SchemeType) MockParams {
 	}
 }
 
-// Server runs the mock OCI distribution server. It returns a ref to the server, and a
-// server url (without the scheme).
+// Server simply calls ServerWithCallback with no callback function
 func Server(params MockParams) (*httptest.Server, string) {
+	return ServerWithCallback(params, nil)
+}
+
+// ServerWithCallback runs the mock OCI distribution server. It returns a ref to the server, and a
+// server url (without the scheme). If a callback function is passed, it is called on each
+// method invocation of the server's 'HandlerFunc'.
+func ServerWithCallback(params MockParams, callback *func(string)) (*httptest.Server, string) {
 	var err error
 	testFilesDir := getTestFilesDir()
 
@@ -88,6 +94,9 @@ func Server(params MockParams) (*httptest.Server, string) {
 
 	gmtTimeLoc := time.FixedZone("GMT", 0)
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if callback != nil {
+			(*callback)(r.URL.Path)
+		}
 		// delayMs supports simulating slow links or large images
 		if params.DelayMs != 0 {
 			time.Sleep(time.Duration(params.DelayMs) * time.Millisecond)

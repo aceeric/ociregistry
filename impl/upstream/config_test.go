@@ -3,9 +3,12 @@ package upstream
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"testing"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var cfg = `
@@ -19,6 +22,10 @@ var cfg = `
     ca: %s
     cert: %s
     key: %s`
+
+func init() {
+	log.SetOutput(io.Discard)
+}
 
 func TestCfg(t *testing.T) {
 	names := []string{"t1", "t2"}

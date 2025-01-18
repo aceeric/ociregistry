@@ -14,15 +14,17 @@ import (
 )
 
 type OciRegistry struct {
-	imagePath   string
-	pullTimeout int
+	imagePath        string
+	pullTimeout      int
+	alwaysPullLatest bool
 }
 
 // NewOciRegistry creates and returns an OciRegistry struct from the passed args
-func NewOciRegistry(imagePath string, pullTimeout int) OciRegistry {
+func NewOciRegistry(imagePath string, pullTimeout int, alwaysPullLatest bool) OciRegistry {
 	return OciRegistry{
-		imagePath:   imagePath,
-		pullTimeout: pullTimeout,
+		imagePath:        imagePath,
+		pullTimeout:      pullTimeout,
+		alwaysPullLatest: alwaysPullLatest,
 	}
 }
 

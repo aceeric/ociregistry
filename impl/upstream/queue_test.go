@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"io"
 	"math/big"
 	"net"
 	"ociregistry/impl/pullrequest"
@@ -18,6 +19,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 // CertSetup is just a place to store and return the output of the certsetup
@@ -97,6 +100,10 @@ var fakeOsTrustStoreTests = []testConfiguration{
 	{server: testParams{scheme: mock.HTTPS, auth: mock.NONE, tls: MTLS}, client: testParams{scheme: mock.HTTPS, auth: mock.NONE, tls: MTLS, verify: OSFAKE}, expect: PASS, comment: "ditto"},
 	{server: testParams{scheme: mock.HTTPS, auth: mock.BASIC, tls: ONEWAY}, client: testParams{scheme: mock.HTTPS, auth: mock.BASIC, tls: ONEWAY, verify: OSFAKE}, expect: PASS, comment: "ditto"},
 	{server: testParams{scheme: mock.HTTPS, auth: mock.BASIC, tls: MTLS}, client: testParams{scheme: mock.HTTPS, auth: mock.BASIC, tls: MTLS, verify: OSFAKE}, expect: PASS, comment: "ditto"},
+}
+
+func init() {
+	log.SetOutput(io.Discard)
 }
 
 func TestAllGets(t *testing.T) {

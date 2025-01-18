@@ -22,20 +22,21 @@ import (
 )
 
 type cmdLine struct {
-	logLevel      string
-	imagePath     string
-	port          string
-	configPath    string
-	loadImages    string
-	preloadImages string
-	arch          string
-	os            string
-	pullTimeout   int
-	listCache     bool
-	concurrent    int
-	version       bool
-	buildVer      string
-	buildDtm      string
+	logLevel         string
+	imagePath        string
+	port             string
+	configPath       string
+	loadImages       string
+	preloadImages    string
+	arch             string
+	os               string
+	pullTimeout      int
+	listCache        bool
+	concurrent       int
+	version          bool
+	alwaysPullLatest bool
+	buildVer         string
+	buildDtm         string
 }
 
 const startupBanner = `----------------------------------------------------------------------
@@ -44,7 +45,7 @@ Started: %s (port %s)
 ----------------------------------------------------------------------
 `
 
-// set by the compiler:
+// set by the compiler (see the Makefile):
 var (
 	buildVer string
 	buildDtm string
@@ -78,7 +79,7 @@ func main() {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
-	ociRegistry := impl.NewOciRegistry(args.imagePath, args.pullTimeout)
+	ociRegistry := impl.NewOciRegistry(args.imagePath, args.pullTimeout, args.alwaysPullLatest)
 
 	// Echo router
 	e := echo.New()
@@ -131,6 +132,7 @@ func parseCmdline() cmdLine {
 	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "Max time in millis to pull an image from an upstream. Defaults to one minute")
 	flag.BoolVar(&args.listCache, "list-cache", false, "Lists the cached images and exits")
 	flag.BoolVar(&args.version, "version", false, "Displays the version and exits")
+	flag.BoolVar(&args.alwaysPullLatest, "always-pull-latest", false, "Never cache images pulled with the 'latest' tag")
 	flag.Parse()
 	args.buildDtm = buildDtm
 	args.buildVer = buildVer

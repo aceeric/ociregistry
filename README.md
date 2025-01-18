@@ -266,6 +266,7 @@ The following options are supported:
 |-|-|-|
 | `--preload-images` | n/a | Loads images enumerated in the specified file into cache at startup and then continues to serve. (See _Pre-Loading the registry_ below) |
 | `--port`| 8080 | Server port. E.g. `crane pull localhost:8080/foo:v1.2.3 foo.tar` |
+| `--always-pull-latest` | false | Causes the server to **always** pull from the upstream whenever the `latest` tag is specified for an image. |
 
 ### CLI Options
 

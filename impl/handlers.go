@@ -20,14 +20,22 @@ import (
 func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, verb string, namespace *string) error {
 	remote := parseRemote(ctx, namespace)
 	pr := pullrequest.NewPullRequest(org, image, reference, remote)
-	mh, exists := memcache.IsCached(pr)
+	mh := upstream.ManifestHolder{}
+	exists := false
+	shouldCache := false
+	if pr.Reference == "latest" && r.alwaysPullLatest {
+		log.Debugf("ignoring cache for: %s", pr.Url())
+	} else {
+		mh, exists = memcache.IsCached(pr)
+		shouldCache = true
+	}
 	if exists {
 		log.Debugf("serving manifest from cache: %s", pr.Url())
 	} else if remote == "" {
 		return ctx.NoContent(http.StatusNotFound)
 	} else {
-		log.Debugf("will pull and cache for pr id: %s", pr.Id())
-		imh, err := r.pullAndCache(pr)
+		log.Debugf("will pull for pr id: %s", pr.Id())
+		imh, err := r.pullAndCache(pr, shouldCache)
 		if err != nil {
 			return ctx.NoContent(http.StatusInternalServerError)
 		}
@@ -106,17 +114,20 @@ func parseRemote(ctx echo.Context, namespace *string) string {
 	return ""
 }
 
-// pullAndCache pulls a manifest represented in the passed 'PullRequest' and caches it.
-// If the manifest is an image manifest then the blobs are also downloaded and cached. Upon
-// return from this function, if the manifest is an image manifest, then the server is able
-// to serve the image from cache.
-func (r *OciRegistry) pullAndCache(pr pullrequest.PullRequest) (upstream.ManifestHolder, error) {
+// pullAndCache pulls a manifest represented in the passed 'PullRequest'. If the
+// manifest is an image manifest then the blobs are also downloaded. If 'shouldCache'
+// is true, the image is cached. Otherwise the image is not cached. If cached, then
+// subsequent requests for the image will serve from cache rather than making a trip
+// to the upstream.
+func (r *OciRegistry) pullAndCache(pr pullrequest.PullRequest, shouldCache bool) (upstream.ManifestHolder, error) {
 	mh, err := upstream.Get(pr, r.imagePath, r.pullTimeout)
 	if err != nil {
 		return mh, err
 	}
-	memcache.AddToCache(pr, mh, true)
-	go serialize.ToFilesystem(mh, r.imagePath)
+	if shouldCache {
+		memcache.AddToCache(pr, mh, true)
+		go serialize.ToFilesystem(mh, r.imagePath)
+	}
 	return mh, nil
 }
 

@@ -2,6 +2,7 @@ package serialize
 
 import (
 	"encoding/json"
+	"io"
 	"ociregistry/impl/memcache"
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/upstream"
@@ -9,6 +10,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var mfst = `{
@@ -93,6 +96,10 @@ var mfst = `{
 	   }
 	]
  }`
+
+func init() {
+	log.SetOutput(io.Discard)
+}
 
 func TestSaveLoadCompare(t *testing.T) {
 	td, _ := os.MkdirTemp("", "")

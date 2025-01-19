@@ -25,8 +25,8 @@ var prCache = PRCache{
 // manifest holder
 func IsCached(pr pullrequest.PullRequest) (upstream.ManifestHolder, bool) {
 	prCache.Lock()
+	defer prCache.Unlock()
 	mh, exists := prCache.pullRequestCache[pr.Id()]
-	prCache.Unlock()
 	return mh, exists
 }
 

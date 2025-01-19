@@ -16,6 +16,9 @@ Flags:
 			continues to serve.
 	    --port string
 			Port for server. Defaults to 8080.
+		--always-pull-latest
+			When the 'latest' tag is pulled, don't cache anything. In other words, the server
+			acts like a simple proxy for the 'latest' tag.
 
 	To run as a CLI:
 
@@ -28,9 +31,6 @@ Flags:
 
 	Common:
 
-		--always-pull-latest
-			When the 'latest' tag is pulled, don't cache anything. In other words, the server
-			acts like a simple proxy for the 'latest' tag.
 	    --concurrent int
 			For --load-images and --preload-images, the number of concurrent goroutines
 			to perform the load with. Default is one.

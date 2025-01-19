@@ -2,3 +2,4 @@
 images/
 bin/*
 cmd/__debug_bin*
+prof.out

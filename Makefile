@@ -10,9 +10,11 @@ all:
 
 .PHONY: test
 test:
-	go test -count=1 ociregistry/cmd ociregistry/impl/extractor ociregistry/impl/helpers ociregistry/impl/memcache\
-	  ociregistry/impl/preload ociregistry/impl/pullrequest ociregistry/impl/serialize ociregistry/impl/upstream\
-	  ociregistry/impl ociregistry/mock -v --cover
+	go test -count=1 $(ROOT)/cmd $(ROOT)/impl/... $(ROOT)/mock -v --cover
+
+.PHONY: coverprof
+coverprof: test
+	go tool cover -html=$(ROOT)/prof.out
 
 .PHONY: oapi-codegen
 oapi-codegen:
@@ -46,20 +48,28 @@ export HELPTEXT
 define HELPTEXT
 This make file provides the following targets:
 
-test          Runs the unit tests
+test          Runs the unit tests.
+
+coverprof     Runs the unit tests, then runs 'go tool cover' to show coverage in
+              a browser window.
 
 oapi-codegen  Generates go code in the 'api' directory from the 'ociregistry.yaml'
               open API schema in the project root, and from configuration files in
-			  the 'api' directory.
+              the 'api' directory.
 
-desktop       Builds for desktop testing. After building then: 'bin/server --help'
-              to simply run the server on your desktop for testing purposes.
+desktop       Builds the server binary on your desktop. After building then:
+              'bin/server --help' to simply run the server on your desktop for
+              testing purposes. You can also use the server binary as a systemd
+              service. See the 'systemd-service' directory for more details.
 
 image         Builds the server OCI image and stores it in the local Docker image
               cache.
 
-push          Pushes the image built in the 'image' step to $(REGISTRY).
+push          Pushes the image built in the 'image' step to the '$(REGISTRY)' OCI
+              distribution server, in the '$(ORG)' user/org. Requires the
+              appropriate push permissions, of course.
 
-publish       Invokes oapi-codegen, image, and push.
+publish       Invokes, in order, the 1) oapi-codegen, 2) image, and 3) push
+              targets.
 
 endef

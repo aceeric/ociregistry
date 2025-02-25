@@ -2,6 +2,7 @@ package serialize
 
 import (
 	"encoding/json"
+	"ociregistry/impl/globals"
 	"ociregistry/impl/memcache"
 	"ociregistry/impl/upstream"
 	"os"
@@ -22,7 +23,7 @@ const (
 
 // CacheEntryHandler defines a function that can act on a 'ManifestHolder' instance
 // from the metadata cache
-type CacheEntryHandler func(upstream.ManifestHolder) error
+type CacheEntryHandler func(upstream.ManifestHolder, os.FileInfo) error
 
 // MhFromFileSystem gets a 'ManifestHolder' from the file system at the passed path.
 // If not found, returns an empty 'ManifestHolder' and false, else the 'ManifestHolder'
@@ -81,7 +82,7 @@ func FromFilesystem(imagePath string) error {
 	start := time.Now()
 	log.Infof("load in-mem cache from file system")
 	itemcnt := 0
-	WalkTheCache(imagePath, func(mh upstream.ManifestHolder) error {
+	WalkTheCache(imagePath, func(mh upstream.ManifestHolder, _ os.FileInfo) error {
 		memcache.AddToCache(mh.Pr, mh, false)
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
 		itemcnt++
@@ -112,7 +113,7 @@ func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 			if err != nil {
 				return err
 			}
-			err = handler(mh)
+			err = handler(mh, info)
 			if err != nil {
 				return err
 			}
@@ -123,4 +124,42 @@ func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 		}
 	}
 	return nil
+}
+
+// RmBlob removes the blob with the passed digest. If the blob file does not exist,
+// no error is returned.
+func RmBlob(imagePath string, digest string) error {
+	blobPath := filepath.Join(imagePath, globals.BlobsDir, digest)
+	if _, err := os.Stat(blobPath); err == nil {
+		return os.Remove(blobPath)
+	}
+	return nil
+}
+
+// RmManifest removes the passed manifest. If the manifest file does not exist,
+// no error is returned.
+func RmManifest(imagePath string, mh upstream.ManifestHolder) error {
+	subPath := fatPath
+	if mh.IsImageManifest() {
+		subPath = imgPath
+	}
+	mPath := filepath.Join(imagePath, subPath, mh.Digest)
+	if _, err := os.Stat(mPath); err == nil {
+		return os.Remove(mPath)
+	}
+	return nil
+}
+
+// GetAllBlobs returns a map of blobs with a counter (set to zero). The intent is
+// for the caller to tally blob reference counts into the map.
+func GetAllBlobs(imagePath string) map[string]int {
+	blobMap := make(map[string]int)
+	if entries, err := os.ReadDir(filepath.Join(imagePath, globals.BlobsDir)); err != nil {
+		return nil
+	} else {
+		for _, entry := range entries {
+			blobMap[entry.Name()] = 0
+		}
+	}
+	return blobMap
 }

@@ -32,11 +32,15 @@ type cmdLine struct {
 	os               string
 	pullTimeout      int
 	listCache        bool
+	prune            string
+	pruneBefore      string
+	dryRun           bool
 	concurrent       int
 	version          bool
 	alwaysPullLatest bool
 	buildVer         string
 	buildDtm         string
+	fix              string // DELETEME
 }
 
 const startupBanner = `----------------------------------------------------------------------
@@ -131,8 +135,12 @@ func parseCmdline() cmdLine {
 	flag.IntVar(&args.concurrent, "concurrent", 1, "Specify --concurrent=n for --load-images and --preload-images args to use multiple goroutines")
 	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "Max time in millis to pull an image from an upstream. Defaults to one minute")
 	flag.BoolVar(&args.listCache, "list-cache", false, "Lists the cached images and exits")
+	flag.StringVar(&args.prune, "prune", "", "Prunes from the cache matching comma-separated pattern(s)")
+	flag.StringVar(&args.pruneBefore, "prune-before", "", "Prunes from the cache created earlier than the specified datetime")
+	flag.BoolVar(&args.dryRun, "dry-run", false, "Runs other commands in dry-run mode")
 	flag.BoolVar(&args.version, "version", false, "Displays the version and exits")
 	flag.BoolVar(&args.alwaysPullLatest, "always-pull-latest", false, "Never cache images pulled with the 'latest' tag")
+	flag.StringVar(&args.fix, "fix", "", "Soon to be deleted...") // DELETEME
 	flag.Parse()
 	args.buildDtm = buildDtm
 	args.buildVer = buildVer

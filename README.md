@@ -24,6 +24,7 @@ The goals of the project are:
 - [Pre-Loading the Server](#pre-loading-the-server)
 - [Load and Pre-Load Concurrency](#load-and-pre-load-concurrency)
 - [Image Store](#image-store)
+- [Pruning the cache](#pruning-the-cache)
 - [Design](#design)
 - [Image Pull Sequence Diagram](#image-pull-sequence-diagram)
 - [Code Structure](#code-structure)
@@ -264,7 +265,7 @@ The following options are supported:
 
 | Option | Default | Meaning |
 |-|-|-|
-| `--preload-images` | n/a | Loads images enumerated in the specified file into cache at startup and then continues to serve. (See _Pre-Loading the registry_ below) |
+| `--preload-images` | n/a | Loads images enumerated in the specified file into cache at startup and then continues to serve. (See _Pre-Loading the Server_ below) |
 | `--port`| 8080 | Server port. E.g. `crane pull localhost:8080/foo:v1.2.3 foo.tar` |
 | `--always-pull-latest` | false | Causes the server to **always** pull from the upstream whenever the `latest` tag is specified for an image. |
 
@@ -272,8 +273,11 @@ The following options are supported:
 
 | Option | Default | Meaning |
 |-|-|-|
-| `--load-images` | n/a | Loads images enumerated in the specified file into cache and then exits. (See _Pre-Loading the registry_ below) |
-| `--list-cache` | n/a | Lists the cached images and exits |
+| `--dry-run` | n/a | See _Pruning the cache_ below. |
+| `--load-images` | n/a | Loads images enumerated in the specified file into cache and then exits. (See _Pre-Loading the Server_ below.) |
+| `--list-cache` | n/a | Lists the cached images and exits. See _Listing the image cache_ below. |
+| `--prune` | n/a | See _Pruning the cache_ below. |
+| `--prune-before` | n/a | See _Pruning the cache_ below. |
 | `--version` | n/a | Displays the version and exits |
 
 ### Common Options
@@ -288,6 +292,51 @@ The following options are supported:
 | `--arch`        | n/a | Architecture - used with `--load-images` and `--preload-images` |
 | `--os`          | n/a | OS - used with `--load-images` and `--preload-images` |
 
+## Listing the image cache
+
+The `--list-cache` option lists all the image manifests in the cache.
+
+The output has three columns:
+
+1. The manifest URL, like `docker.io/hello-world:latest`
+2. A literal value `list` or `image` indicating the manifest type
+3. The create date of the corresponding image manifest from the file system. E.g.:
+
+E.g.:
+```shell
+docker.io/library/hello-world:latest              list   2024-03-01T22:17:30
+docker.io/library/hello-world@sha256:e2fc4e50...  image  2024-03-01T22:17:30
+```
+
+In the example, the tagged item is the manifest _list_ (of a multi-platform image), and the item with the digest is the image manifest. To filter, sort and format, use the Linux `grep`, `sort` and `column` utils. Examples are given below:
+
+### Sort by create date, most recent on top
+
+```shell
+bin/server --image-path /var/lib/ociregistry/images --list-cache\
+  | column -t | sort -k3 -r | head
+```
+
+### Sort by URL
+
+```shell
+bin/server --image-path /var/lib/ociregistry/images --list-cache\
+  | column -t | sort
+```
+
+### Find all the `kube-scheduler` images
+
+```shell
+bin/server --image-path /var/lib/ociregistry/images --list-cache\
+  | grep kube-scheduler | column -t
+```
+
+### List everything cached on a given date
+
+```shell
+bin/server --image-path /var/lib/ociregistry/images --list-cache\
+  | grep 2024-03-01 | sort | column -t
+```
 
 ## Pre-Loading the Server
 
@@ -353,6 +402,61 @@ The image store is persisted to the file system. This includes blobs and manifes
 Manifests are all stored by digest. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
 
 The program uses a data structure called a `ManifestHolder` to hold all the image metadata and the actual manifest from the upstream registry. These are simply serialized to the file system as JSON. (So you can find and inspect them if needed for troubleshooting with `grep`, `cat`, and `jq`.)
+
+## Pruning the cache
+
+The compiled binary can be used as a CLI to prune the cache.
+
+> The server must be stopped while pruning because the CLI only manipulates the file system, not the in-memory representation of the cache.
+
+Pruning removes manifest lists, manifests, and possibly blobs (more on blobs below.) Three options support pruning:
+
+### Dry Run
+
+It is strongly recommended to use the `--dry-run` arg to develop your pruning expression. Then remove `--dry-run` to actually prune the cache. When `--dry-run` is specified, the CLI shows you exactly what will be pruned but does not actually modify the file system.
+
+### By Pattern
+
+The `--prune` option accepts a single parameter consisting of one or more patterns separated by commas. The patterns are Golang regular expressions as documented in the [regexp/syntax](https://pkg.go.dev/regexp/syntax) package documentation. The expressions on the command line are passed _directly_ to the Golang `regex` parser _as received from the shell_, and are matched to manifest URLs. As such, shell expansion and escaping must be taken into consideration. Simplicity wins the day here. Examples:
+
+```shell
+bin/server --image-path /var/lib/ociregistry/images --dry-run\
+  --prune kubernetesui/dashboard:v2.7.0
+bin/server --image-path /var/lib/ociregistry/images --dry-run\
+  --prune docker.io
+bin/server --image-path /var/lib/ociregistry/images --dry-run\
+  --prune curl,cilium
+```
+
+### By Date/time
+
+The `--prune-before` option accepts a single parameter consisting of a local date/time in the form `YYYY-MM-DDTHH:MM:SS`. All manifests created **before** that time stamp will be selected. Example:
+
+```shell
+bin/server --image-path /var/lib/ociregistry/images --dry-run\
+  --prune-before 2024-03-01T22:17:31
+```
+
+The intended workflow is to use the CLI with `--list-cache` and sorting as described above to determine desired a cutoff date and then to use that date as an input to the `--prune-before` arg. For example, suppose a number of images were created on and earlier than `2024-03-01T22:17:30`. Then you would specify that time plus one second. E.g.: `--prune-before 2024-03-01T22:17:31`.
+
+### Important to know about pruning
+
+Generally, but not always, image list manifests have tags, and image manifests have digests. This is because in most cases, upstream images are multi-architecture. For example, this command specifies a tag:
+```shell
+bin/server --image-path /var/lib/ociregistry/images --dry-run --prune calico/typha:v3.27.0
+```
+
+In this case, on a Linux/amd64 machine running the server the CLI will find **two** manifests:
+```shell
+docker.io/calico/typha:v3.27.0
+docker.io/calico/typha@sha256:eca01eab...
+```
+
+The first is a multi-arch image list manifest, and the second is the image manifest matching the OS and Architecture that was selected for download. In all cases, only image manifests reference blobs. If your search finds only an image list manifest, the CLI logic will **also** look for cached image manifests (and associated blobs) for the specified image list manifest since that's probably the desired behavior. (The blobs consume the storage.)
+
+### Blob removal
+
+Internally, the CLI begins by building a blob list with ref counts. As each image manifest is removed its referenced blobs have their count decremented. After all manifests are removed, any blob with zero refs is also removed. Removing an image manifest therefore won't remove blobs that are still referenced by un-pruned manifests.
 
 ## Design
 

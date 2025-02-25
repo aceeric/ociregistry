@@ -118,7 +118,7 @@ func manifestHolderFromDescriptor(d *remote.Descriptor) (ManifestHolder, error) 
 		err = json.Unmarshal(d.Manifest, &mh.V1ociIndex)
 	case V1ociManifestMt:
 		mh.Type = V1ociDescriptor
-		err = json.Unmarshal(d.Manifest, &mh.V1ociDescriptor)
+		err = json.Unmarshal(d.Manifest, &mh.V1ociManifest)
 	default:
 		return ManifestHolder{}, fmt.Errorf("unsupported media type: %s", d.Descriptor.MediaType)
 	}

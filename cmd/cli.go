@@ -6,7 +6,7 @@ import (
 	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
 	"os"
-	"slices"
+	"time"
 )
 
 // cliCmd defines a function that can run a command represented by a 'cmdLine' struct
@@ -57,15 +57,27 @@ func listCache(args cmdLine) (bool, error) {
 	if !args.listCache {
 		return false, nil
 	}
-	fmt.Printf("image cache:\n\n")
-	images := []string{}
-	serialize.WalkTheCache(args.imagePath, func(mh upstream.ManifestHolder) error {
-		images = append(images, mh.ImageUrl)
+	images := []struct {
+		ImageUrl     string
+		ManifestType string
+		modtime      time.Time
+	}{}
+	serialize.WalkTheCache(args.imagePath, func(mh upstream.ManifestHolder, info os.FileInfo) error {
+		mt := "list"
+		if mh.IsImageManifest() {
+			mt = "image"
+		}
+		images = append(images, struct {
+			ImageUrl     string
+			ManifestType string
+			modtime      time.Time
+		}{
+			mh.ImageUrl, mt, info.ModTime(),
+		})
 		return nil
 	})
-	slices.Sort(images)
 	for _, img := range images {
-		fmt.Println(img)
+		fmt.Printf("%s %s %s\n", img.ImageUrl, img.ManifestType, img.modtime.Format(time.RFC3339))
 	}
 	return true, nil
 }

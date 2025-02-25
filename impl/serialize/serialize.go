@@ -22,7 +22,7 @@ const (
 
 // CacheEntryHandler defines a function that can act on a 'ManifestHolder' instance
 // from the metadata cache
-type CacheEntryHandler func(upstream.ManifestHolder) error
+type CacheEntryHandler func(upstream.ManifestHolder, os.FileInfo) error
 
 // MhFromFileSystem gets a 'ManifestHolder' from the file system at the passed path.
 // If not found, returns an empty 'ManifestHolder' and false, else the 'ManifestHolder'
@@ -81,7 +81,7 @@ func FromFilesystem(imagePath string) error {
 	start := time.Now()
 	log.Infof("load in-mem cache from file system")
 	itemcnt := 0
-	WalkTheCache(imagePath, func(mh upstream.ManifestHolder) error {
+	WalkTheCache(imagePath, func(mh upstream.ManifestHolder, _ os.FileInfo) error {
 		memcache.AddToCache(mh.Pr, mh, false)
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
 		itemcnt++
@@ -112,7 +112,7 @@ func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 			if err != nil {
 				return err
 			}
-			err = handler(mh)
+			err = handler(mh, info)
 			if err != nil {
 				return err
 			}

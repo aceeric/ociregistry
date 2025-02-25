@@ -264,7 +264,7 @@ The following options are supported:
 
 | Option | Default | Meaning |
 |-|-|-|
-| `--preload-images` | n/a | Loads images enumerated in the specified file into cache at startup and then continues to serve. (See _Pre-Loading the registry_ below) |
+| `--preload-images` | n/a | Loads images enumerated in the specified file into cache at startup and then continues to serve. (See _Pre-Loading the Server_ below) |
 | `--port`| 8080 | Server port. E.g. `crane pull localhost:8080/foo:v1.2.3 foo.tar` |
 | `--always-pull-latest` | false | Causes the server to **always** pull from the upstream whenever the `latest` tag is specified for an image. |
 
@@ -272,8 +272,8 @@ The following options are supported:
 
 | Option | Default | Meaning |
 |-|-|-|
-| `--load-images` | n/a | Loads images enumerated in the specified file into cache and then exits. (See _Pre-Loading the registry_ below) |
-| `--list-cache` | n/a | Lists the cached images and exits |
+| `--load-images` | n/a | Loads images enumerated in the specified file into cache and then exits. (See _Pre-Loading the Server_ below) |
+| `--list-cache` | n/a | Lists the cached images and exits. See _Listing the image cache_ below. |
 | `--version` | n/a | Displays the version and exits |
 
 ### Common Options
@@ -288,6 +288,51 @@ The following options are supported:
 | `--arch`        | n/a | Architecture - used with `--load-images` and `--preload-images` |
 | `--os`          | n/a | OS - used with `--load-images` and `--preload-images` |
 
+## Listing the image cache
+
+The `--list-cache` option lists all the image manifests in the cache.
+
+The output has three columns:
+
+1. The manifest URL, like `docker.io/hello-world:latest`
+2. A literal value `list` or `image` indicating the manifest type
+3. The create date of the corresponding image manifest from the file system. E.g.:
+
+E.g.:
+```shell
+docker.io/library/hello-world:latest              list   2024-03-01T22:17:30-05:00
+docker.io/library/hello-world@sha256:e2fc4e50...  image  2024-03-01T22:17:30-05:00
+```
+
+In the example, the tagged item is the manifest _list_ (of a multi-platform image), and the item with the digest is the image manifest. To filter, sort and format, use the Linux `grep`, `sort` and `column` utils. Examples are given below:
+
+### Sort by create date, most recent on top
+
+```shell
+bin/server --image-path /var/lib/ociregistry/images --list-cache\
+  | column -t | sort -k3 -r | head
+```
+
+### Sort by URL
+
+```shell
+bin/server --image-path /var/lib/ociregistry/images --list-cache\
+  | column -t | sort
+```
+
+### Find all the `kube-scheduler` images
+
+```shell
+bin/server --image-path /var/lib/ociregistry/images --list-cache\
+  | grep kube-scheduler | column -t
+```
+
+### List everything cached on a given date
+
+```shell
+bin/server --image-path /var/lib/ociregistry/images --list-cache\
+  | grep 2024-03-01 | sort | column -t
+```
 
 ## Pre-Loading the Server
 

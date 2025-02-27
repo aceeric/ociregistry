@@ -84,36 +84,15 @@ func listCache(args cmdLine) (bool, error) {
 	return true, nil
 }
 
-//func hack(args cmdLine) bool {
-//	d := []string{
-//		"072a13fa7539abff5e30d352024b982462c9bde02c4835da0526cb70d1571b32",
-//		"4ac9df488c1a0a7dbd4c4dabd67391c92c9704f33f144b999362bfdbec1b9645",
-//		"634495ad47e6330378da8bee68b8d17d77d0cb69af2e8c6b005a65df387f3d52",
-//		"6e75a10070b0fcb0bead763c5118a369bc7cc30dfc1b0749c491bbb21f15c3c7",
-//		"a1fbaea309fa27bad418200539a69cffb4c9336fe1a6b0af23874cd15293c8f8",
-//		"ac3313a42b06f781de83dd48552f096205e3c43d9e41c32388af1e7b9a9a794d",
-//		"e2fc4e5012d16e7fe466f5291c476431beaa1f9b90a5c2125b493ed28e2aba57",
-//	}
-//	for _, dd := range d {
-//		mh, _ := serialize.MhFromFileSystem(dd, true, args.imagePath)
-//		json.Unmarshal(mh.Bytes, &mh.V1ociManifest)
-//		path := "/home/eace/tmp/" + dd
-//		bytes, _ := json.Marshal(mh)
-//		os.WriteFile(path, bytes, 0755)
-//	}
-//	return true
-//}
-
+// pruneCache removes manifests and blobs matching the command line arg '--prune'.
+// E.g.: '--prune cilium:v1.15.1'.
 func pruneCache(args cmdLine) (bool, error) {
 	if args.prune == "" {
 		return false, nil
 	}
 	matches := make(map[string]struct{ mh upstream.ManifestHolder })
-	blobs := make(map[string]int)
 
-	// TODO GOING TO NEED THE FILE INFO AND ALSO ADDED TO MhFromFileSystem !!
-
-	// process comma-separated search patterns like --prune cert-manager,e2e-test-images
+	// handle multiple search expressions separated by comma
 	srchs := []*regexp.Regexp{}
 	for _, ref := range strings.Split(args.prune, ",") {
 		if exp, err := regexp.Compile(ref); err == nil {
@@ -122,21 +101,8 @@ func pruneCache(args cmdLine) (bool, error) {
 			return true, fmt.Errorf("regex did not compile: %q", ref)
 		}
 	}
-
-	// build a list of all manifests that match all searches
+	// build a list of matching manifests
 	serialize.WalkTheCache(args.imagePath, func(mh upstream.ManifestHolder, _ os.FileInfo) error {
-		// if image manifest, tally the blob count
-		if mh.IsImageManifest() {
-			for _, blob := range mh.ManifestBlobs() {
-				if cnt, exists := blobs[blob]; exists {
-					blobs[blob] = cnt + 1
-
-				} else {
-					blobs[blob] = 1
-				}
-			}
-		}
-		// build a list of matching manifests
 		for _, srch := range srchs {
 			if srch.MatchString(mh.ImageUrl) {
 				matches[mh.ImageUrl] = struct {
@@ -146,8 +112,31 @@ func pruneCache(args cmdLine) (bool, error) {
 		}
 		return nil
 	})
+	return true, doPrune(args.imagePath, args.dryRun, matches)
+}
 
-	// for all image *list* manifests in the results, find cached *image* manifests.
+// doPrune removes manifests in the passed 'matches' map, along with any blobs that
+// can safely be removed for the image manifests in the map. A blob can be safely
+// deleted if it is not referenced by any image manifest except the manifest(s)
+// in the map.
+func doPrune(imagePath string, dryRun bool, matches map[string]struct{ mh upstream.ManifestHolder }) error {
+	blobs := make(map[string]int)
+
+	// tally the blob counts into the 'blobs' map
+	serialize.WalkTheCache(imagePath, func(mh upstream.ManifestHolder, _ os.FileInfo) error {
+		if mh.IsImageManifest() {
+			for _, blob := range mh.ManifestBlobs() {
+				if cnt, exists := blobs[blob]; exists {
+					blobs[blob] = cnt + 1
+				} else {
+					blobs[blob] = 1
+				}
+			}
+		}
+		return nil
+	})
+
+	// for all image *list* manifests in the matches, find cached *image* manifests.
 	// Handles the case where a narrow search like '--prune nginx:1.14-4' would find
 	// only a manifest *list*, but the intent is to prune all cached *images*.
 	for _, match := range matches {
@@ -155,7 +144,7 @@ func pruneCache(args cmdLine) (bool, error) {
 			for _, sha256 := range match.mh.ImageManifestDigests() {
 				url := match.mh.Pr.UrlWithDigest(sha256)
 				if _, exists := matches[url]; !exists {
-					if mh, found := serialize.MhFromFileSystem(sha256, true, args.imagePath); found {
+					if mh, found := serialize.MhFromFileSystem(sha256, true, imagePath); found {
 						matches[url] = struct {
 							mh upstream.ManifestHolder
 						}{mh}
@@ -165,39 +154,43 @@ func pruneCache(args cmdLine) (bool, error) {
 		}
 	}
 
-	// for all matching image manifests (that are about to be deletes), decrement
-	// the blob count
+	// for all matching image manifests (that are about to be deleted), decrement
+	// the blob count in the 'blobs' map.
 	for _, match := range matches {
 		if match.mh.IsImageManifest() {
 			for _, blob := range match.mh.ManifestBlobs() {
 				if cnt, exists := blobs[blob]; exists {
 					blobs[blob] = cnt - 1
 				} else {
-					return true, fmt.Errorf("blob %q for manifest %q not found (should never happen)", blob, match.mh.ImageUrl)
+					return fmt.Errorf("blob %q for manifest %q not found (should never happen)", blob, match.mh.ImageUrl)
 				}
 			}
 		}
 	}
 
-	dryRun := ""
-	if args.dryRun {
-		dryRun = " (dry run)"
+	dryRunMsg := ""
+	if dryRun {
+		dryRunMsg = " (dry run)"
 	}
-	fmt.Printf("Prune blobs%s:\n", dryRun)
+	fmt.Printf("Prune blobs%s:\n", dryRunMsg)
 	for blob, cnt := range blobs {
 		if cnt == 0 {
 			fmt.Println(blob)
-			if !args.dryRun {
-				// actually delete blob
+			if !dryRun {
+				if err := serialize.RmBlob(imagePath, blob); err != nil {
+					return err
+				}
 			}
 		}
 	}
-	fmt.Printf("Prune manifests%s:\n", dryRun)
+	fmt.Printf("Prune manifests%s:\n", dryRunMsg)
 	for _, match := range matches {
 		fmt.Printf("%s\n", match.mh.ImageUrl)
-		if !args.dryRun {
-			// actually delete manifest
+		if !dryRun {
+			if err := serialize.RmManifest(imagePath, match.mh); err != nil {
+				return err
+			}
 		}
 	}
-	return true, nil
+	return nil
 }

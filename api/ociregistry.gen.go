@@ -71,6 +71,15 @@ type ServerInterface interface {
 	// (GET /v2/{name}/tags/list)
 	V2GetNameTagsList(ctx echo.Context, name string, params V2GetNameTagsListParams) error
 
+	// (DELETE /v2/{ns}/{org}/{image}/blobs/{digest})
+	V2DeleteNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error
+
+	// (GET /v2/{ns}/{org}/{image}/blobs/{digest})
+	V2GetNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error
+
+	// (HEAD /v2/{ns}/{org}/{image}/blobs/{digest})
+	V2HeadNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error
+
 	// (DELETE /v2/{ns}/{org}/{image}/manifests/{reference})
 	V2DeleteNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error
 
@@ -543,6 +552,126 @@ func (w *ServerInterfaceWrapper) V2GetNameTagsList(ctx echo.Context) error {
 	return err
 }
 
+// V2DeleteNsOrgImageBlobsDigest converts echo context to params.
+func (w *ServerInterfaceWrapper) V2DeleteNsOrgImageBlobsDigest(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "ns" -------------
+	var ns string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "ns", runtime.ParamLocationPath, ctx.Param("ns"), &ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
+	// ------------- Path parameter "org" -------------
+	var org string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "org", runtime.ParamLocationPath, ctx.Param("org"), &org)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter org: %s", err))
+	}
+
+	// ------------- Path parameter "image" -------------
+	var image string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "image", runtime.ParamLocationPath, ctx.Param("image"), &image)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter image: %s", err))
+	}
+
+	// ------------- Path parameter "digest" -------------
+	var digest string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "digest", runtime.ParamLocationPath, ctx.Param("digest"), &digest)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digest: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.V2DeleteNsOrgImageBlobsDigest(ctx, ns, org, image, digest)
+	return err
+}
+
+// V2GetNsOrgImageBlobsDigest converts echo context to params.
+func (w *ServerInterfaceWrapper) V2GetNsOrgImageBlobsDigest(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "ns" -------------
+	var ns string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "ns", runtime.ParamLocationPath, ctx.Param("ns"), &ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
+	// ------------- Path parameter "org" -------------
+	var org string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "org", runtime.ParamLocationPath, ctx.Param("org"), &org)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter org: %s", err))
+	}
+
+	// ------------- Path parameter "image" -------------
+	var image string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "image", runtime.ParamLocationPath, ctx.Param("image"), &image)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter image: %s", err))
+	}
+
+	// ------------- Path parameter "digest" -------------
+	var digest string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "digest", runtime.ParamLocationPath, ctx.Param("digest"), &digest)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digest: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.V2GetNsOrgImageBlobsDigest(ctx, ns, org, image, digest)
+	return err
+}
+
+// V2HeadNsOrgImageBlobsDigest converts echo context to params.
+func (w *ServerInterfaceWrapper) V2HeadNsOrgImageBlobsDigest(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "ns" -------------
+	var ns string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "ns", runtime.ParamLocationPath, ctx.Param("ns"), &ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
+	// ------------- Path parameter "org" -------------
+	var org string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "org", runtime.ParamLocationPath, ctx.Param("org"), &org)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter org: %s", err))
+	}
+
+	// ------------- Path parameter "image" -------------
+	var image string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "image", runtime.ParamLocationPath, ctx.Param("image"), &image)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter image: %s", err))
+	}
+
+	// ------------- Path parameter "digest" -------------
+	var digest string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "digest", runtime.ParamLocationPath, ctx.Param("digest"), &digest)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digest: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.V2HeadNsOrgImageBlobsDigest(ctx, ns, org, image, digest)
+	return err
+}
+
 // V2DeleteNsOrgImageManifestsReference converts echo context to params.
 func (w *ServerInterfaceWrapper) V2DeleteNsOrgImageManifestsReference(ctx echo.Context) error {
 	var err error
@@ -989,6 +1118,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.PUT(baseURL+"/v2/:name/blobs/uploads/:reference", wrapper.V2PutNameBlobsUploadsReference)
 	router.GET(baseURL+"/v2/:name/referrers/:digest", wrapper.V2GetNameReferrersDigest)
 	router.GET(baseURL+"/v2/:name/tags/list", wrapper.V2GetNameTagsList)
+	router.DELETE(baseURL+"/v2/:ns/:org/:image/blobs/:digest", wrapper.V2DeleteNsOrgImageBlobsDigest)
+	router.GET(baseURL+"/v2/:ns/:org/:image/blobs/:digest", wrapper.V2GetNsOrgImageBlobsDigest)
+	router.HEAD(baseURL+"/v2/:ns/:org/:image/blobs/:digest", wrapper.V2HeadNsOrgImageBlobsDigest)
 	router.DELETE(baseURL+"/v2/:ns/:org/:image/manifests/:reference", wrapper.V2DeleteNsOrgImageManifestsReference)
 	router.GET(baseURL+"/v2/:ns/:org/:image/manifests/:reference", wrapper.V2GetNsOrgImageManifestsReference)
 	router.HEAD(baseURL+"/v2/:ns/:org/:image/manifests/:reference", wrapper.V2HeadNsOrgImageManifestsReference)
@@ -1006,21 +1138,21 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+yaT1PbOhDAv4pnz8Z2Au8dfOMB815meMBQ2kuHg5A3tmZsSUhyaOrxd+/IiUsTYpM4",
-	"CZTUJzzIu9L+9o9WigvAbwYVJ+m5oBrConSB8bGAsAAquCHUzP4ZoaaKScMEhxBu8jQ9EjydOtI+mUSJ",
-	"PE4cSmjCeOwojJk2agoupIwi12j1cZIhhHAqCU3QGXoBuJCrFEJIjJGh7z89PXmkGvWEiv25qPYvR2cX",
-	"V58ujoZe4CUmS6F0wTCTWm3XZyPndj6dc+RcS+SnNyPnuNI+QaVnCx54gRdYOSGRE8kghGMv8I7BBUlM",
-	"Yi0Hf240x8po+6oi1uBRBCGczQdcUKilsAuzLw2DwAIqy9IFfzKsdMS4Qv7L8BzHJE+bNLhw8vwwWNBJ",
-	"cpO06D21w9YORTI0qDSEXwtg1uwESYQK3Jq91SQU+16JVwt5zJnCCEKjcnRB0wQzYicxU2kFtFGMx1CW",
-	"7lzjY46VX+cKNRUSoYsgqgmj7aL3zaQWARUsIzGW/kMqHrRfRCxGbUorEmGKBld7w46MrOA/Vuy8Emrg",
-	"aGPkee3VbJ3oLeqJ6inXV/QSybBGclI//DVj4zbFy79oPr7ZwYLZ1lob66vM/Q9JdHj2LkV+Rjgbozba",
-	"LxSOUSGnuH4C/F9L39aybwpI/TLrTlIh6JwTH5JEQ4nlGvaeUz2vBV4yXxldN7k5pDwbNNQiO029Cecy",
-	"FSSqBKTQq6kIba5INqvLn+fvr8Oj+rMDh/8szBtLZiLnnQTHSmTQiXZjeWvlv7wdNJe/ZU9sFqKdXbKf",
-	"CD15mZnE0GRlFNqBgzL+RUc4+Pv1+vSBCXTP7pbS1p5j1UIVqsXDRnty3dYyG7SgO+LaoQNtgEqUYWNC",
-	"zd1Udj67taM1JNZ+ymZbRjvROxLrS7ZvlMtdQpeyn5KNI7GRki79Qqi43L73v9LXKt6mMak6pm2DU6h4",
-	"B1oO6yzSe2Z/ntnslNN74i090dKf9H548/Pcwi6z+d1q7bBN791+L8jvd0nb8+tYs3twr3aRu2kgtyzJ",
-	"fefXnPR/MNL3uc7uwb/LvXiPfZ2GrHSrH8xrEM9fTejQ9wVl9QcXPpHMnwyhvC9/BAAA///cA9pK2iEA",
-	"AA==",
+	"H4sIAAAAAAAC/+yaTXOzNhCA/wqzZwLYSXvglibvtJ5Jk0ya9tLJQYE1aAYkRRJOXYb/3hE2df0BsWU7",
+	"qf1yChOxK+2zH1rJlIB/aZSMZLc8UhCWlQuUjTmEJUScaRLp2T9jVJGkQlPOIITHIssuOMumjjBPOpW8",
+	"SFInIlFKWeJITKjScgouZDRCptDoYyRHCOFakChFZ+gF4EIhMwgh1VqEvv/+/u6RetTjMvHnosq/G918",
+	"u//t28XQC7xU5xlULmiqM6Pt4WbkPM2ncy6cB4Hs+nHkXNbaJyjVbMEDL/ACI8cFMiIohHDpBd4luCCI",
+	"To3l4M+NZlgbbV6VxBg8iiGEm/mACxKV4GZh5qVhEBhAVVW54E+GtY4EN8j/MbzFMSmyNg0uXC0eBks6",
+	"SaHTDr3XZtjYIUmOGqWC8M8SqDE7RRKjBLdhbzRxSf+uxeuFvBVUYgyhlgW6oKIUc2Im0VNhBJSWlCVQ",
+	"Ve5c41uBtV/nClXEBYKNIMoJjbpFX9pJLQMqaU4SrPzXjL8qv4xpgkpXRiTGDDVu9oYZGRnBn4zYbS3U",
+	"wtHEyGLt9WxW9Jb1xM2U2ytaRzJskFw1Dz/M2Lht8fIz6tM3O1gy21hrYn2Tub8gic/P3pXIzwmjY1Ra",
+	"+aXEMUpkEW6fAL820k+N7KcCkv+Z9SCpEFjnxEmSaCmxTMHRc6rntcRLFBuj67HQ55Rng5ZaZKZpNuFC",
+	"ZJzEtYDgajMVrvQ9yWd1+ff5+9vwqP8cwOH/FuadJXNeMCvBseQ5WNFuLW+d/Fe3g/byt+qJ3ULU2iXH",
+	"idCr9cwkOko3RqEZOCvj1zrCwY8f16cTJmCf3R2lrTvH6oVKlMuHje7kempkdmhBD8TVogNtgUqkpmMS",
+	"6eepsD67daPVJFF+RmdbRjfRZ5KoO3pslKtdgk3Zz8jOkdhKSVV+yWVS7XHqvVcPMrE6E9U90r7hyGVy",
+	"AC2nfwrv3fC1twI9/8+6pVgvWtYXFgunWZ6mztB3/48LlN4zx/OMbWHrPXF8T3Qcqno/fPol1J6tsW1H",
+	"0Pe0s02g52dZs3twH3aRh2kg9yzJfefXnvTfMdKv+Q2uB/8lP+b12LdpyCq3/sqnAbH41EuFvs8j2nwl",
+	"5hNB/ckQqpfqnwAAAP//o8GxUY8mAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

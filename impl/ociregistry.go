@@ -44,6 +44,10 @@ func (r *OciRegistry) V2Default(ctx echo.Context) error {
 	return r.handleV2Default(ctx)
 }
 
+// note to self on these blob getters: in the handler everything except the digest is ignored because
+// since the blob is content addressable storage the only thing that is needed is the digest. The other
+// segments are just in the API because clients will expect those endpoints
+
 // GET /v2/{image}/blobs/{digest}
 func (r *OciRegistry) V2GetImageBlobsDigest(ctx echo.Context, image string, digest string) error {
 	return r.handleV2GetOrgImageBlobsDigest(ctx, "", image, digest)
@@ -51,6 +55,11 @@ func (r *OciRegistry) V2GetImageBlobsDigest(ctx echo.Context, image string, dige
 
 // GET /v2/{org}/{image}/blobs/{digest}
 func (r *OciRegistry) V2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
+	return r.handleV2GetOrgImageBlobsDigest(ctx, org, image, digest)
+}
+
+// GET /v2/{ns}/{org}/{image}/blobs/{digest}
+func (r *OciRegistry) V2GetNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error {
 	return r.handleV2GetOrgImageBlobsDigest(ctx, org, image, digest)
 }
 
@@ -98,7 +107,15 @@ func (r *OciRegistry) V2GetNsOrgImageManifestsReference(ctx echo.Context, ns str
 
 // unimplemented methods of the OCI distribution spec
 
+func (r *OciRegistry) V2HeadNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
 func (r *OciRegistry) V2HeadOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
+func (r *OciRegistry) V2HeadImageBlobsDigest(ctx echo.Context, image string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -118,11 +135,11 @@ func (r *OciRegistry) V2PutNameBlobsUploadsReference(ctx echo.Context, name stri
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
+func (r *OciRegistry) V2PutNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
+func (r *OciRegistry) V2PutOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -134,11 +151,7 @@ func (r *OciRegistry) V2GetNameTagsList(ctx echo.Context, name string, params V2
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteImageBlobsDigest(ctx echo.Context, image string, digest string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
-}
-
-func (r *OciRegistry) V2DeleteImageManifestsReference(ctx echo.Context, image string, reference string) error {
+func (r *OciRegistry) V2DeleteNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -146,7 +159,7 @@ func (r *OciRegistry) V2DeleteOrgImageBlobsDigest(ctx echo.Context, org string, 
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
+func (r *OciRegistry) V2DeleteImageBlobsDigest(ctx echo.Context, image string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -154,7 +167,11 @@ func (r *OciRegistry) V2DeleteNsOrgImageManifestsReference(ctx echo.Context, ns 
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2HeadImageBlobsDigest(ctx echo.Context, image string, digest string) error {
+func (r *OciRegistry) V2DeleteOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
+func (r *OciRegistry) V2DeleteImageManifestsReference(ctx echo.Context, image string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 

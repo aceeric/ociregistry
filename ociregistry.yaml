@@ -73,6 +73,117 @@ paths:
           content: {}
         '401':
           description:
+  /v2/{ns}/{org}/{image}/blobs/{digest}:
+    get:
+      tags: []
+      summary:
+      description:
+      operationId: v2-get-ns-org-image-blobs-digest
+      parameters:
+      - name: ns
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: org
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description:
+          content: {}
+        '404':
+          description:
+    head:
+      tags: []
+      summary:
+      description:
+      operationId: v2-head-ns-org-image-blobs-digest
+      parameters:
+      - name: ns
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: org
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description:
+          content: {}
+        '404':
+          description:
+    delete:
+      tags: []
+      summary:
+      description:
+      operationId: v2-delete-ns-org-image-blobs-digest
+      parameters:
+      - name: ns
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: org
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description:
+          content: {}
+        '404':
+          description:
+        '405':
+          description:
   /v2/{org}/{image}/blobs/{digest}:
     get:
       tags: []

@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"ociregistry/impl/preload"
 	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -23,7 +25,7 @@ type match struct {
 }
 
 // cmdList is a list of CLI commands
-var cmdList []cliCmd = []cliCmd{preloadCache, listCache, showVer, prunePattern, pruneBefore}
+var cmdList []cliCmd = []cliCmd{preloadCache, listCache, showVer, prunePattern, pruneBefore, fix}
 
 // cliCommands loops through the 'cmdList' array and provides each command with the passed
 // 'cmdLine'. If the command executes (meaning the command line matched what the command needs
@@ -226,4 +228,20 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 		}
 	}
 	return nil
+}
+
+// DELETEME
+func fix(args cmdLine) (bool, error) {
+	if args.fix == "" {
+		return false, nil
+	}
+	mh, found := serialize.MhFromFileSystem(args.fix, true, args.imagePath)
+	if !found {
+		return true, fmt.Errorf("manifest not found for digest: %q", args.fix)
+	}
+	json.Unmarshal(mh.Bytes, &mh.V1ociManifest)
+	path := filepath.Join(args.imagePath, "img", args.fix)
+	bytes, _ := json.Marshal(mh)
+	os.WriteFile(path, bytes, 0755)
+	return true, nil
 }

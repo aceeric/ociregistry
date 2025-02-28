@@ -40,6 +40,7 @@ type cmdLine struct {
 	alwaysPullLatest bool
 	buildVer         string
 	buildDtm         string
+	fix              string // DELETEME
 }
 
 const startupBanner = `----------------------------------------------------------------------
@@ -139,6 +140,7 @@ func parseCmdline() cmdLine {
 	flag.BoolVar(&args.dryRun, "dry-run", false, "Runs other commands in dry-run mode")
 	flag.BoolVar(&args.version, "version", false, "Displays the version and exits")
 	flag.BoolVar(&args.alwaysPullLatest, "always-pull-latest", false, "Never cache images pulled with the 'latest' tag")
+	flag.StringVar(&args.fix, "fix", "", "Soon to be deleted...") // DELETEME
 	flag.Parse()
 	args.buildDtm = buildDtm
 	args.buildVer = buildVer

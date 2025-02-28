@@ -6,6 +6,7 @@ package impl
 import (
 	"net/http"
 	. "ociregistry/api/models"
+	"strings"
 
 	_ "crypto/sha256"
 	_ "crypto/sha512"
@@ -43,6 +44,15 @@ func (r *OciRegistry) V2Default(ctx echo.Context) error {
 	return r.handleV2Default(ctx)
 }
 
+// HEAD /v2/
+func (r *OciRegistry) V2HeadDefault(ctx echo.Context) error {
+	return r.handleV2HeadDefault(ctx)
+}
+
+// note regarding these blob getters: in the handler everything except the digest is ignored because
+// since the blob is content addressable storage the only thing that is needed is the digest. The other
+// segments are just in the API because clients will expect those endpoints
+
 // GET /v2/{image}/blobs/{digest}
 func (r *OciRegistry) V2GetImageBlobsDigest(ctx echo.Context, image string, digest string) error {
 	return r.handleV2GetOrgImageBlobsDigest(ctx, "", image, digest)
@@ -53,6 +63,11 @@ func (r *OciRegistry) V2GetOrgImageBlobsDigest(ctx echo.Context, org string, ima
 	return r.handleV2GetOrgImageBlobsDigest(ctx, org, image, digest)
 }
 
+// GET /v2/{ns}/{org}/{image}/blobs/{digest}
+func (r *OciRegistry) V2GetNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error {
+	return r.handleV2GetOrgImageBlobsDigest(ctx, org, image, digest)
+}
+
 // HEAD /v2/{image}/manifests/{reference}
 func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image string, reference string, params V2HeadImageManifestsReferenceParams) error {
 	return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodHead, params.Ns)
@@ -60,7 +75,18 @@ func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image stri
 
 // HEAD /v2/{org}/{image}/manifests/{reference}
 func (r *OciRegistry) V2HeadOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2HeadOrgImageManifestsReferenceParams) error {
+	if strings.Contains(org, ".") {
+		// if /v2/docker.io/hello-world/manifests/latest then org is a namespace
+		ns := org
+		return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodHead, &ns)
+	}
 	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodHead, params.Ns)
+}
+
+// HEAD /v2/{ns}/{org}/{image}/manifests/{reference}
+func (r *OciRegistry) V2HeadNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
+	_ns := ns
+	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodHead, &_ns)
 }
 
 // GET /v2/{image}/manifests/{reference}
@@ -70,12 +96,31 @@ func (r *OciRegistry) V2GetImageManifestsReference(ctx echo.Context, image strin
 
 // GET /v2/{org}/{image}/manifests/{reference}
 func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2GetOrgImageManifestsReferenceParams) error {
+	if strings.Contains(org, ".") {
+		// if /v2/docker.io/hello-world/manifests/latest then org is a namespace
+		ns := org
+		return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodGet, &ns)
+	}
 	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodGet, params.Ns)
+}
+
+// GET /v2/{ns}/{org}/{image}/manifests/{reference}
+func (r *OciRegistry) V2GetNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
+	_ns := ns
+	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodGet, &_ns)
 }
 
 // unimplemented methods of the OCI distribution spec
 
+func (r *OciRegistry) V2HeadNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
 func (r *OciRegistry) V2HeadOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
+func (r *OciRegistry) V2HeadImageBlobsDigest(ctx echo.Context, image string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -95,6 +140,10 @@ func (r *OciRegistry) V2PutNameBlobsUploadsReference(ctx echo.Context, name stri
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
+func (r *OciRegistry) V2PutNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
 func (r *OciRegistry) V2PutOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
@@ -107,11 +156,7 @@ func (r *OciRegistry) V2GetNameTagsList(ctx echo.Context, name string, params V2
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteImageBlobsDigest(ctx echo.Context, image string, digest string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
-}
-
-func (r *OciRegistry) V2DeleteImageManifestsReference(ctx echo.Context, image string, reference string) error {
+func (r *OciRegistry) V2DeleteNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -119,11 +164,19 @@ func (r *OciRegistry) V2DeleteOrgImageBlobsDigest(ctx echo.Context, org string, 
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
+func (r *OciRegistry) V2DeleteImageBlobsDigest(ctx echo.Context, image string, digest string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
+func (r *OciRegistry) V2DeleteNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
 func (r *OciRegistry) V2DeleteOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2HeadImageBlobsDigest(ctx echo.Context, image string, digest string) error {
+func (r *OciRegistry) V2DeleteImageManifestsReference(ctx echo.Context, image string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 

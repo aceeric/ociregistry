@@ -72,6 +72,12 @@ func (r *OciRegistry) handleV2Default(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, "true")
 }
 
+// HEAD /v2/
+func (r *OciRegistry) handleV2HeadDefault(ctx echo.Context) error {
+	log.Info("head /v2/")
+	return ctx.JSON(http.StatusOK, "true")
+}
+
 // GET blob
 func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
 	log.Infof("get blob org: %s, image: %s, digest: %s", org, image, digest)

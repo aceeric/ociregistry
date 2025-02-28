@@ -42,6 +42,20 @@ paths:
           description:
         '401':
           description:
+    head:
+      tags: []
+      summary:
+      description:
+      operationId: v2-head-default
+      parameters: []
+      responses:
+        '200':
+          description:
+          content: {}
+        '400':
+          description:
+        '401':
+          description:
   /v2/auth:
     get:
       tags: []
@@ -72,6 +86,117 @@ paths:
           description:
           content: {}
         '401':
+          description:
+  /v2/{ns}/{org}/{image}/blobs/{digest}:
+    get:
+      tags: []
+      summary:
+      description:
+      operationId: v2-get-ns-org-image-blobs-digest
+      parameters:
+      - name: ns
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: org
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description:
+          content: {}
+        '404':
+          description:
+    head:
+      tags: []
+      summary:
+      description:
+      operationId: v2-head-ns-org-image-blobs-digest
+      parameters:
+      - name: ns
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: org
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description:
+          content: {}
+        '404':
+          description:
+    delete:
+      tags: []
+      summary:
+      description:
+      operationId: v2-delete-ns-org-image-blobs-digest
+      parameters:
+      - name: ns
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: org
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description:
+          content: {}
+        '404':
+          description:
+        '405':
           description:
   /v2/{org}/{image}/blobs/{digest}:
     get:
@@ -365,6 +490,155 @@ paths:
           description:
           content: {}
         '404':
+          description:
+  /v2/{ns}/{org}/{image}/manifests/{reference}:
+    get:
+      tags: []
+      summary:
+      description:
+      operationId: v2-get-ns-org-image-manifests-reference
+      parameters:
+      - name: ns
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: org
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description:
+          content: {}
+        '404':
+          description:
+    head:
+      tags: []
+      summary:
+      description:
+      operationId: v2-head-ns-org-image-manifests-reference
+      parameters:
+      - name: ns
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: org
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description:
+          content: {}
+        '404':
+          description:
+    put:
+      tags: []
+      summary:
+      description:
+      operationId: v2-put-ns-org-image-manifests-reference
+      parameters:
+      - name: ns
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: org
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      responses:
+        '201':
+          description:
+          content: {}
+        '404':
+          description:
+    delete:
+      tags: []
+      summary:
+      description:
+      operationId: v2-delete-ns-org-image-manifests-reference
+      parameters:
+      - name: ns
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: org
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: image
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description:
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description:
+          content: {}
+        '400':
+          description:
+        '404':
+          description:
+        '405':
           description:
   /v2/{org}/{image}/manifests/{reference}:
     get:

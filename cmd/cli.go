@@ -125,6 +125,7 @@ func prunePattern(args cmdLine) (bool, error) {
 	// handle multiple search expressions separated by comma
 	srchs := []*regexp.Regexp{}
 	for _, ref := range strings.Split(args.prune, ",") {
+		fmt.Printf("Compiling search regex: %q\n", ref)
 		if exp, err := regexp.Compile(ref); err == nil {
 			srchs = append(srchs, exp)
 		} else {

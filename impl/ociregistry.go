@@ -6,6 +6,7 @@ package impl
 import (
 	"net/http"
 	. "ociregistry/api/models"
+	"strings"
 
 	_ "crypto/sha256"
 	_ "crypto/sha512"
@@ -60,6 +61,11 @@ func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image stri
 
 // HEAD /v2/{org}/{image}/manifests/{reference}
 func (r *OciRegistry) V2HeadOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2HeadOrgImageManifestsReferenceParams) error {
+	if strings.Contains(org, ".") {
+		// if /v2/docker.io/hello-world/manifests/latest then org is a namespace
+		ns := org
+		return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodHead, &ns)
+	}
 	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodHead, params.Ns)
 }
 
@@ -70,6 +76,11 @@ func (r *OciRegistry) V2GetImageManifestsReference(ctx echo.Context, image strin
 
 // GET /v2/{org}/{image}/manifests/{reference}
 func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2GetOrgImageManifestsReferenceParams) error {
+	if strings.Contains(org, ".") {
+		// if /v2/docker.io/hello-world/manifests/latest then org is a namespace
+		ns := org
+		return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodGet, &ns)
+	}
 	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodGet, params.Ns)
 }
 

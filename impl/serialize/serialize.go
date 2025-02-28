@@ -130,7 +130,7 @@ func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 // no error is returned.
 func RmBlob(imagePath string, digest string) error {
 	blobPath := filepath.Join(imagePath, globals.BlobsDir, digest)
-	if _, err := os.Stat(blobPath); err != nil {
+	if _, err := os.Stat(blobPath); err == nil {
 		return os.Remove(blobPath)
 	}
 	return nil
@@ -144,7 +144,7 @@ func RmManifest(imagePath string, mh upstream.ManifestHolder) error {
 		subPath = imgPath
 	}
 	mPath := filepath.Join(imagePath, subPath, mh.Digest)
-	if _, err := os.Stat(mPath); err != nil {
+	if _, err := os.Stat(mPath); err == nil {
 		return os.Remove(mPath)
 	}
 	return nil

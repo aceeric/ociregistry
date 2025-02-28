@@ -11,11 +11,19 @@ import (
 	"time"
 )
 
+// magic numbers from 'format.go' in package 'time'
+const dateFormat = "2006-01-02T15:04:05"
+
 // cliCmd defines a function that can run a command represented by a 'cmdLine' struct
 type cliCmd func(cmdLine) (bool, error)
 
+// match holds a ManifestHolder matching a prune search
+type match struct {
+	mh upstream.ManifestHolder
+}
+
 // cmdList is a list of CLI commands
-var cmdList []cliCmd = []cliCmd{preloadCache, listCache, showVer, pruneCache}
+var cmdList []cliCmd = []cliCmd{preloadCache, listCache, showVer, prunePattern, pruneBefore}
 
 // cliCommands loops through the 'cmdList' array and provides each command with the passed
 // 'cmdLine'. If the command executes (meaning the command line matched what the command needs
@@ -78,20 +86,42 @@ func listCache(args cmdLine) (bool, error) {
 		})
 		return nil
 	})
+
 	for _, img := range images {
-		fmt.Printf("%s %s %s\n", img.ImageUrl, img.ManifestType, img.modtime.Format(time.RFC3339))
+		fmt.Printf("%s %s %s\n", img.ImageUrl, img.ManifestType, img.modtime.Format(dateFormat))
 	}
 	return true, nil
 }
 
-// pruneCache removes manifests and blobs matching the command line arg '--prune'.
-// E.g.: '--prune cilium:v1.15.1'.
-func pruneCache(args cmdLine) (bool, error) {
+// pruneBefore removes manifests and blobs matching the command line arg '--prune-before'.
+// E.g.: '--prune-before 2025-02-28T12:59:59'.
+func pruneBefore(args cmdLine) (bool, error) {
+	if args.pruneBefore == "" {
+		return false, nil
+	}
+	timestamp, err := time.ParseInLocation(dateFormat, args.pruneBefore, time.Local)
+	if err != nil {
+		return true, err
+	}
+	// build a list of matching manifests
+	matches := make(map[string]match)
+	serialize.WalkTheCache(args.imagePath, func(mh upstream.ManifestHolder, fi os.FileInfo) error {
+		if fi.ModTime().Before(timestamp) {
+			matches[mh.ImageUrl] = struct {
+				mh upstream.ManifestHolder
+			}{mh}
+		}
+		return nil
+	})
+	return true, doPrune(args.imagePath, args.dryRun, matches)
+}
+
+// prunePattern removes manifests and blobs matching the command line arg '--prune'.
+// E.g.: '--prune cilium:v1.15.1' or '--prune cilium,coredns'.
+func prunePattern(args cmdLine) (bool, error) {
 	if args.prune == "" {
 		return false, nil
 	}
-	matches := make(map[string]struct{ mh upstream.ManifestHolder })
-
 	// handle multiple search expressions separated by comma
 	srchs := []*regexp.Regexp{}
 	for _, ref := range strings.Split(args.prune, ",") {
@@ -102,6 +132,7 @@ func pruneCache(args cmdLine) (bool, error) {
 		}
 	}
 	// build a list of matching manifests
+	matches := make(map[string]match)
 	serialize.WalkTheCache(args.imagePath, func(mh upstream.ManifestHolder, _ os.FileInfo) error {
 		for _, srch := range srchs {
 			if srch.MatchString(mh.ImageUrl) {
@@ -117,12 +148,12 @@ func pruneCache(args cmdLine) (bool, error) {
 
 // doPrune removes manifests in the passed 'matches' map, along with any blobs that
 // can safely be removed for the image manifests in the map. A blob can be safely
-// deleted if it is not referenced by any image manifest except the manifest(s)
-// in the map.
-func doPrune(imagePath string, dryRun bool, matches map[string]struct{ mh upstream.ManifestHolder }) error {
+// removed if it is not referenced by any image manifest after the manifest(s) in
+// the map are removed.
+func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 	blobs := make(map[string]int)
 
-	// tally the blob counts into the 'blobs' map
+	// tally the blob ref counts of all cached images into the 'blobs' map
 	serialize.WalkTheCache(imagePath, func(mh upstream.ManifestHolder, _ os.FileInfo) error {
 		if mh.IsImageManifest() {
 			for _, blob := range mh.ManifestBlobs() {
@@ -136,7 +167,7 @@ func doPrune(imagePath string, dryRun bool, matches map[string]struct{ mh upstre
 		return nil
 	})
 
-	// for all image *list* manifests in the matches, find cached *image* manifests.
+	// for all image *list* manifests in the match list, find cached *image* manifests.
 	// Handles the case where a narrow search like '--prune nginx:1.14-4' would find
 	// only a manifest *list*, but the intent is to prune all cached *images*.
 	for _, match := range matches {
@@ -155,7 +186,8 @@ func doPrune(imagePath string, dryRun bool, matches map[string]struct{ mh upstre
 	}
 
 	// for all matching image manifests (that are about to be deleted), decrement
-	// the blob count in the 'blobs' map.
+	// the blob count in the 'blobs' map. Those blobs that dec to zero refs will be
+	// removed below.
 	for _, match := range matches {
 		if match.mh.IsImageManifest() {
 			for _, blob := range match.mh.ManifestBlobs() {

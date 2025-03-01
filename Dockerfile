@@ -22,7 +22,7 @@ FROM gcr.io/distroless/static:nonroot
 WORKDIR /ociregistry
 COPY --from=build /app/server .
 # copy emptydir with correct permissions for mounted volume to inherit
-COPY --from=build --chown=nonroot:nonroot /var/lib/emptycir /var/lib/ociregistry
+COPY --from=build --chown=nonroot:nonroot /var/lib/emptydir /var/lib/ociregistry
 USER nonroot:nonroot
 
 ENTRYPOINT ["/ociregistry/server"]

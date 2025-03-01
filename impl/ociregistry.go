@@ -44,7 +44,7 @@ func (r *OciRegistry) V2Default(ctx echo.Context) error {
 	return r.handleV2Default(ctx)
 }
 
-// note to self on these blob getters: in the handler everything except the digest is ignored because
+// note regarding these blob getters: in the handler everything except the digest is ignored because
 // since the blob is content addressable storage the only thing that is needed is the digest. The other
 // segments are just in the API because clients will expect those endpoints
 
@@ -102,7 +102,7 @@ func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org stri
 // GET /v2/{ns}/{org}/{image}/manifests/{reference}
 func (r *OciRegistry) V2GetNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
 	_ns := ns
-	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodHead, &_ns)
+	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodGet, &_ns)
 }
 
 // unimplemented methods of the OCI distribution spec

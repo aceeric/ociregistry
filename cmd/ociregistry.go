@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"ociregistry/api"
@@ -45,7 +46,11 @@ type cmdLine struct {
 
 const startupBanner = `----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
+Version: %s, build date: %s
 Started: %s (port %s)
+Running as (uid:gid) %d:%d
+Process id: %d
+Command line: %v
 ----------------------------------------------------------------------
 `
 
@@ -63,7 +68,10 @@ func main() {
 
 	cliCommands(args)
 
-	fmt.Fprintf(os.Stderr, startupBanner, time.Unix(0, time.Now().UnixNano()), args.port)
+	fmt.Fprintf(os.Stderr, startupBanner, args.buildVer, args.buildDtm,
+		time.Unix(0, time.Now().UnixNano()), args.port,
+		os.Getuid(), os.Getgid(), os.Getpid(),
+		strings.Join(os.Args, " "))
 
 	if args.preloadImages != "" {
 		err := preload.Preload(args.preloadImages, args.imagePath, args.arch, args.os, args.pullTimeout, args.concurrent)

@@ -149,3 +149,17 @@ func RmManifest(imagePath string, mh upstream.ManifestHolder) error {
 	}
 	return nil
 }
+
+// GetAllBlobs returns a map of blobs with a counter (set to zero). The intent is
+// for the caller to tally blob reference counts into the map.
+func GetAllBlobs(imagePath string) map[string]int {
+	blobMap := make(map[string]int)
+	if entries, err := os.ReadDir(filepath.Join(imagePath, globals.BlobsDir)); err != nil {
+		return nil
+	} else {
+		for _, entry := range entries {
+			blobMap[entry.Name()] = 0
+		}
+	}
+	return blobMap
+}

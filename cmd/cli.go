@@ -154,7 +154,8 @@ func prunePattern(args cmdLine) (bool, error) {
 // removed if it is not referenced by any image manifest after the manifest(s) in
 // the map are removed.
 func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
-	blobs := make(map[string]int)
+	// build a list of all blobs. This allows pruning orphaned blobs for free
+	blobs := serialize.GetAllBlobs(imagePath)
 
 	// tally the blob ref counts of all cached images into the 'blobs' map
 	serialize.WalkTheCache(imagePath, func(mh upstream.ManifestHolder, _ os.FileInfo) error {
@@ -163,7 +164,7 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 				if cnt, exists := blobs[blob]; exists {
 					blobs[blob] = cnt + 1
 				} else {
-					blobs[blob] = 1
+					fmt.Printf("warning: blob %q ref'd by manifest URL %q does not exist in the blobs dir\n", blob, mh.ImageUrl)
 				}
 			}
 		}
@@ -196,6 +197,9 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 			for _, blob := range match.mh.ManifestBlobs() {
 				if cnt, exists := blobs[blob]; exists {
 					blobs[blob] = cnt - 1
+					if blobs[blob] < 0 {
+						return fmt.Errorf("blob %q decremented negative (should never happen)", blob)
+					}
 				} else {
 					return fmt.Errorf("blob %q for manifest %q not found (should never happen)", blob, match.mh.ImageUrl)
 				}

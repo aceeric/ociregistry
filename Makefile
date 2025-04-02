@@ -8,6 +8,11 @@ ROOT           := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 all:
 	@echo Run 'make help' to see a list of available targets
 
+.PHONY: oapi-codegen
+oapi-codegen:
+	oapi-codegen -config $(ROOT)/api/server.cfg.yaml $(ROOT)/api/ociregistry.yaml
+	oapi-codegen -config $(ROOT)/api/models.cfg.yaml $(ROOT)/api/ociregistry.yaml
+
 .PHONY: test
 test:
 	go test -count=1 $(ROOT)/cmd $(ROOT)/impl/... $(ROOT)/mock -v --cover
@@ -15,11 +20,6 @@ test:
 .PHONY: coverprof
 coverprof: test
 	go tool cover -html=$(ROOT)/prof.out
-
-.PHONY: oapi-codegen
-oapi-codegen:
-	oapi-codegen -config $(ROOT)/api/server.cfg.yaml $(ROOT)/ociregistry.yaml
-	oapi-codegen -config $(ROOT)/api/models.cfg.yaml $(ROOT)/ociregistry.yaml
 
 .PHONY: desktop
 desktop:

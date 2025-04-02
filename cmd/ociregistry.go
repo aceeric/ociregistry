@@ -97,7 +97,7 @@ func main() {
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
-	api.RegisterHandlers(e, &ociRegistry)
+	api.RegisterHandlers(e, ociRegistry)
 
 	// have Echo use the global logging
 	e.Use(globals.GetEchoLoggingFunc())

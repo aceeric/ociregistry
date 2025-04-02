@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -37,6 +38,8 @@ var (
 	waitMillis = 10000
 )
 
+// <----------------- NEXT HANDLE 3-4 MANIFESTS AND IMPLEMENT PRUNE
+
 func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -46,6 +49,9 @@ func main() {
 			fmt.Printf("retrieved manifest %q in %s\n", segments[1], time.Since(start))
 			m = append(m, []byte("\n")[0])
 			w.Write(m)
+		} else if segments[1] == "delete" {
+			m := getManifest(segments[2])
+			prune(string(m))
 		} else if segments[1] == "blob" {
 			cnt := getBlob(segments[2])
 			msg := fmt.Sprintf("blob: %s; count: %d\n", segments[2], cnt)
@@ -60,15 +66,15 @@ func main() {
 }
 
 func getManifest(key string) []byte {
-	val, ch := getManifestFromCacheEnqueue(key)
+	val, ch := getManifestOrEnqueue(key)
 	if val != nil {
 		return val
 	} else if ch == nil {
+		defer signalWaiters(key)
 		b := simulatePull(key)
-		digests := simulateDigestList()
+		digests := simulateDigestList(string(b))
 		addBlobsToCache(digests)
 		addManifestToCache(key, b)
-		signalWaiters(key)
 		return b
 	}
 	select {
@@ -79,6 +85,7 @@ func getManifest(key string) []byte {
 	}
 }
 
+// maybe just return count - zero means not cached
 func getBlob(digest string) int {
 	bc.Lock()
 	defer bc.Unlock()
@@ -88,31 +95,40 @@ func getBlob(digest string) int {
 	return -1
 }
 
-func simulateDigestList() []string {
-	cnt := rand.IntN(10)
-	digests := []string{}
-	for i := 0; i < cnt; i++ {
-		idx := rand.IntN(26)
-		str := string("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[idx])
-		digests = append(digests, str)
-	}
-	return digests
+func simulateDigestList(key string) []string {
+	return strings.Split(key, "/")[1:]
 }
 
 func simulatePull(key string) []byte {
 	t := rand.IntN(4)
 	time.Sleep(time.Second * time.Duration(t))
-	return []byte(key)
+	// make a manifest consisting of the passed key and a random number of digests
+	// separated by /.
+	digests := ""
+	cnt := rand.IntN(10)
+	for i := 0; i < cnt; i++ {
+		idx := rand.IntN(26)
+		str := string("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[idx])
+		digests = digests + "/" + str
+	}
+	return []byte(key + digests)
 }
 
 func addBlobsToCache(digests []string) {
 	bc.Lock()
 	defer bc.Unlock()
+	for _, digest := range slices.Compact(digests) {
+		bc.blobs[digest] = bc.blobs[digest] + 1
+	}
+}
+
+// todo lazy delete from file system??
+func delBlobsFromCache(digests []string) {
+	bc.Lock()
+	defer bc.Unlock()
 	for _, digest := range digests {
-		if count, exists := bc.blobs[digest]; exists {
-			bc.blobs[digest] = count + 1
-		} else {
-			bc.blobs[digest] = 0
+		if cnt := bc.blobs[digest]; cnt > 0 {
+			bc.blobs[digest] = cnt - 1
 		}
 	}
 }
@@ -123,17 +139,36 @@ func addManifestToCache(key string, val []byte) {
 	mc.manifests[key] = val // manifestHolder
 }
 
+// todo from file system
+// this could delete a manifest right after it was pulled and waiters
+// are waiting which could cause the waiters to return
+func delManifestFromCache(key string) {
+	mc.Lock()
+	defer mc.Unlock()
+	delete(mc.manifests, key)
+}
+
+// if nil does not exist
 func getManifestFromCache(key string) []byte {
 	mc.Lock()
 	defer mc.Unlock()
 	return mc.manifests[key]
 }
 
+// think about doing this in on transaction?
+func prune(key string) {
+	// get blobs associated with manifest
+	digests := simulateDigestList(key)
+	delManifestFromCache(key)
+	delBlobsFromCache(digests)
+}
+
 // return values:
-// if in cache, []byte will be non-nil
-// else not in cache. then if chan non nil caller must wait on channel
-// else chan is nil so caller must get and then signal waiters
-func getManifestFromCacheEnqueue(key string) ([]byte, chan bool) {
+// - if in cache, []byte will be non-nil. If []byte is nil then the manifest is not
+// in cache. In that case:
+//   - if chan non-nil caller must wait on channel because another go routine is pulling
+//   - else chan is nil: so caller must get and then signal waiters
+func getManifestOrEnqueue(key string) ([]byte, chan bool) {
 	mc.Lock()
 	defer mc.Unlock()
 	if val, exists := mc.manifests[key]; exists {

@@ -3,11 +3,13 @@ package cache
 import (
 	"errors"
 	"fmt"
-	"reflect"
+	"ociregistry/impl/pullrequest"
+	"ociregistry/impl/upstream"
 	"sync"
 	"time"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
+	log "github.com/sirupsen/logrus"
 )
 
 type concurrentPulls struct {
@@ -36,23 +38,24 @@ var (
 	//	blobs: map[string]int{},
 	//}
 	// TODO CONFIGURABLE
-	waitMillis = 10000
+	waitMillis          = 10000
+	emptyManifestHolder = imgpull.ManifestHolder{}
 )
 
 // build strategy:
-// 1. get manifest with no options
-// 2. get with options
+// 1. DONE get manifest with no options
+// 2. DONE get with options
 // 3. handle adding blobs
-func GetManifest(url string) (imgpull.ManifestHolder, error) {
-	emptyMh := imgpull.ManifestHolder{}
-	mh, ch := getManifestOrEnqueue(url)
-	if !reflect.DeepEqual(mh, emptyMh) {
+func GetManifest(pr pullrequest.PullRequest) (imgpull.ManifestHolder, error) {
+	url := pr.Url()
+	mh, ch, exists := getManifestOrEnqueue(url)
+	if exists {
 		return mh, nil
 	} else if ch == nil {
 		defer signalWaiters(url)
-		mh, err := doPull(url)
+		mh, err := doPull(pr)
 		if err != nil {
-			return emptyMh, err
+			return emptyManifestHolder, err
 		}
 		//digests := simulateDigestList(string(b))
 		//addBlobsToCache(digests)
@@ -64,21 +67,23 @@ func GetManifest(url string) (imgpull.ManifestHolder, error) {
 		// TODO CONSIDER RETURNING AN ERROR IF NOT FOUND?
 		return getManifestFromCache(url), nil
 	case <-time.After(time.Duration(waitMillis) * time.Millisecond):
-		return emptyMh, errors.New("TODO")
+		return emptyManifestHolder, errors.New("TODO")
 	}
 }
 
-func doPull(url string) (imgpull.ManifestHolder, error) {
-	opts := imgpull.NewPullerOpts(url)
-	// TODO OPTS INITALIZATION FROM REG CONFIG
-	opts.Scheme = "http"
-	puller, err := imgpull.NewPullerWith(opts)
+// TODO move NewConfigFor
+func doPull(pr pullrequest.PullRequest) (imgpull.ManifestHolder, error) {
+	opts, err := upstream.NewConfigFor(pr.Remote)
 	if err != nil {
-		return imgpull.ManifestHolder{}, err
+		log.Warn(err.Error())
+	}
+	puller, err := imgpull.NewPuller(pr.Url(), opts...)
+	if err != nil {
+		return emptyManifestHolder, err
 	}
 	mh, err := puller.GetManifest()
 	if err != nil {
-		return imgpull.ManifestHolder{}, err
+		return emptyManifestHolder, err
 	}
 	return mh, nil
 }
@@ -134,7 +139,7 @@ func doPull(url string) (imgpull.ManifestHolder, error) {
 func addManifestToCache(url string, mh imgpull.ManifestHolder) {
 	mc.Lock()
 	defer mc.Unlock()
-	mc.manifests[url] = mh // manifestHolder
+	mc.manifests[url] = mh
 }
 
 //// todo from file system
@@ -161,18 +166,26 @@ func getManifestFromCache(url string) imgpull.ManifestHolder {
 //	delBlobsFromCache(digests)
 //}
 
-// return values:
-// - if in cache, []byte will be non-nil. If []byte is nil then the manifest is not
-// in cache. In that case:
-//   - if chan non-nil caller must wait on channel because another go routine is pulling
-//   - else chan is nil: so caller must get and then signal waiters
-func getManifestOrEnqueue(url string) (imgpull.ManifestHolder, chan bool) {
+// getManifestOrEnqueue returns a manifest from the in-memory cache if one exists matching the passed
+// url. If a manifest is not cached then there are two possible outcomes. If no other goroutine has attempted
+// to concurrently pull the manifest, then an entry is created in the concurrent pulls map but a nil channel
+// is returned. This means the caller must pull the manifest, and then signal any other goroutines waiting
+// for the image to be pulled. If there is already a concurrent pull in progress then a channel is created
+// and added to the concurrent pulls map and returned. In this case, the caller must wait to be signaled on
+// this channel at which point the manifest should be cached (unless the puller failed, in which case the
+// manifest will not be in cache, which is likely an error condition for the caller.“)
+//
+//	imgpull.ManifestHolder - if manifest is in cache, then it will be returned in this value
+//	chan bool              - nil if manifest is in cache, else: if caller should pull, nil, else non-nil,
+//	                         meaning caller must wait on channel because another go routine is pulling
+//	bool                   - true if manifest is in cache, else false
+func getManifestOrEnqueue(url string) (imgpull.ManifestHolder, chan bool, bool) {
 	mc.Lock()
 	defer mc.Unlock()
 	if val, exists := mc.manifests[url]; exists {
-		return val, nil
+		return val, nil, true
 	}
-	return imgpull.ManifestHolder{}, enqueuePull(url)
+	return emptyManifestHolder, enqueuePull(url), false
 }
 
 // return nil means not enqueued, non-nil means enqueued and caller

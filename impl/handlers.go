@@ -52,17 +52,17 @@ func ToMediaType(mh imgpull.ManifestHolder) string {
 	default:
 		return ""
 	}
-
 }
 
 // TODO END MOVE TO IMGPULL
 
+// TODO HANDLE ALWAYS PULL LATEST
+// TODO LOGGING MOVES TO CACHE?
+
 // HEAD or GET /v2/.../manifests/ref
 func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, verb string, namespace *string) error {
-	remote := parseRemote(ctx, namespace)
-	pr := pullrequest.NewPullRequest(org, image, reference, remote)
-	// TODO USE IMGPULL FOR URL BUILDING
-	mh, err := cache.GetManifest(pr.Url())
+	pr := pullrequest.NewPullRequest(org, image, reference, parseRemote(ctx, namespace))
+	mh, err := cache.GetManifest(pr)
 	if err != nil {
 		return ctx.NoContent(http.StatusInternalServerError)
 	}
@@ -74,7 +74,6 @@ func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org s
 	if mt == "" {
 		return ctx.NoContent(http.StatusInternalServerError)
 	}
-	// TODO NO CACHE LATEST - NEED TO CHANGE TO OVERWRITE CACHE AND THEN 1) REMOVE OLD LATEST DEC BLOBS, 2) ADD NEW LATEST INC BLOBS
 	//remote := parseRemote(ctx, namespace)
 	//pr := pullrequest.NewPullRequest(org, image, reference, remote)
 	//mh := upstream.ManifestHolder{}
@@ -110,7 +109,7 @@ func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org s
 	}
 }
 
-// GET /v2/auth (never called)
+// GET /v2/auth
 func (r *OciRegistry) handleV2Auth(ctx echo.Context, params V2AuthParams) error {
 	log.Infof("get auth scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization)
 	body := struct {

@@ -8,6 +8,10 @@ TODO
 1. Populating the cache from file system has to populate blob cache
 2. Resolve all TODO
 3. if "always pull latest" then replace last latest if different - handle decrement old / increment new blobs
+4. support configfor to cache tls creds to avoid the overhead?
+5. --hello-world
+6. Support TLS??
+7. Replace yaml
 
 1. prune by create
 2. prune by last access

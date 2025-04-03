@@ -5,11 +5,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
+	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -37,7 +40,10 @@ type cfgEntry struct {
 	Description string  `yaml:"description"`
 	Auth        authCfg `yaml:"auth"`
 	Tls         tlsCfg  `yaml:"tls"`
-	Opts        []remote.Option
+	Scheme      string  `yaml:"scheme"`
+	NewOpts     []imgpull.PullOpt
+	// TODO DELETE WHEN CRANE DELETED
+	Opts []remote.Option
 }
 
 var (
@@ -59,6 +65,7 @@ var (
 //	---
 //	- name: localhost:5001
 //	  description: An optional mnemonic that you deem useful
+//	  scheme: http (or https)
 //	  auth:
 //	    user: foo
 //	    password: bar
@@ -192,6 +199,76 @@ func configFor(registry string) ([]remote.Option, error) {
 		opts = append(opts, remote.WithTransport(transport))
 	}
 	regCfg.Opts = opts
+	mu.Lock()
+	config[registry] = regCfg
+	mu.Unlock()
+	return opts, nil
+}
+
+// TODO ERRORS SHOULD BE RETURNED TO THE CALLER NOT LOGGED HERE
+func NewConfigFor(registry string) ([]imgpull.PullOpt, error) {
+	opts := []imgpull.PullOpt{}
+
+	mu.Lock()
+	regCfg, exists := config[registry]
+	mu.Unlock()
+
+	// always set these defaults: scheme, OS, and arch
+	// TODO configurable OS and arch?
+	opts = append(opts, func(p *imgpull.PullerOpts) {
+		p.Scheme = "https"
+		if regCfg.Scheme != "" {
+			p.Scheme = regCfg.Scheme
+		}
+		p.OStype = runtime.GOOS
+		p.ArchType = runtime.GOARCH
+	})
+
+	if !exists {
+		return opts, fmt.Errorf("no entry in configuration for registry %q, using default config ", registry)
+	}
+
+	if regCfg.NewOpts != nil {
+		// use previously calculated from config
+		return regCfg.NewOpts, nil
+	}
+
+	if regCfg.Auth != emptyAuth {
+		opts = append(opts, func(p *imgpull.PullerOpts) {
+			p.Username = regCfg.Auth.User
+			p.Password = regCfg.Auth.Password
+		})
+	}
+
+	if regCfg.Tls != emptyTls {
+		var cp *x509.CertPool
+		var clientCerts []tls.Certificate = []tls.Certificate{}
+		if regCfg.Tls.CA != "" {
+			cp = x509.NewCertPool()
+			caCert, err := os.ReadFile(regCfg.Tls.CA)
+			if err == nil {
+				cp.AppendCertsFromPEM(caCert)
+			} else {
+				log.Errorf("unable to load CA for config entry %s from file: %s", registry, regCfg.Tls.CA)
+			}
+		}
+		if regCfg.Tls.Cert != "" && regCfg.Tls.Key != "" {
+			cert, err := tls.LoadX509KeyPair(regCfg.Tls.Cert, regCfg.Tls.Key)
+			if err == nil {
+				clientCerts = []tls.Certificate{cert}
+			} else {
+				log.Errorf("unable to load client cert and/or key for config entry %s from files: cert: %s, key: %s", registry, regCfg.Tls.Cert, regCfg.Tls.Key)
+			}
+		}
+		opts = append(opts, func(p *imgpull.PullerOpts) {
+			p.TlsCfg = &tls.Config{
+				InsecureSkipVerify: regCfg.Tls.Insecure,
+				RootCAs:            cp,
+				Certificates:       clientCerts,
+			}
+		})
+	}
+	regCfg.NewOpts = opts
 	mu.Lock()
 	config[registry] = regCfg
 	mu.Unlock()

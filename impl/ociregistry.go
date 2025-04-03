@@ -5,8 +5,7 @@ package impl
 
 import (
 	"net/http"
-	"ociregistry/api"
-	. "ociregistry/api/models"
+	"ociregistry/api/models"
 	"strings"
 
 	_ "crypto/sha256"
@@ -24,7 +23,7 @@ type OciRegistry struct {
 // NewOciRegistry creates and returns an OciRegistry struct from the passed args. The
 // OciRegistry struct implements the api.ServerInterface interface, which is generated from
 // the api/ociregistry.yaml openapi spec for the distribution server.
-func NewOciRegistry(imagePath string, pullTimeout int, alwaysPullLatest bool) api.ServerInterface {
+func NewOciRegistry(imagePath string, pullTimeout int, alwaysPullLatest bool) *OciRegistry { //api.ServerInterface {
 	return &OciRegistry{
 		imagePath:        imagePath,
 		pullTimeout:      pullTimeout,
@@ -38,7 +37,7 @@ func (r *OciRegistry) Connect(ctx echo.Context) error {
 }
 
 // GET /v2/auth
-func (r *OciRegistry) V2Auth(ctx echo.Context, params V2AuthParams) error {
+func (r *OciRegistry) V2Auth(ctx echo.Context, params models.V2AuthParams) error {
 	return r.handleV2Auth(ctx, params)
 }
 
@@ -72,12 +71,12 @@ func (r *OciRegistry) V2GetNsOrgImageBlobsDigest(ctx echo.Context, ns string, or
 }
 
 // HEAD /v2/{image}/manifests/{reference}
-func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image string, reference string, params V2HeadImageManifestsReferenceParams) error {
+func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image string, reference string, params models.V2HeadImageManifestsReferenceParams) error {
 	return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodHead, params.Ns)
 }
 
 // HEAD /v2/{org}/{image}/manifests/{reference}
-func (r *OciRegistry) V2HeadOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2HeadOrgImageManifestsReferenceParams) error {
+func (r *OciRegistry) V2HeadOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params models.V2HeadOrgImageManifestsReferenceParams) error {
 	if strings.Contains(org, ".") {
 		// if /v2/docker.io/hello-world/manifests/latest then org is a namespace
 		ns := org
@@ -93,12 +92,12 @@ func (r *OciRegistry) V2HeadNsOrgImageManifestsReference(ctx echo.Context, ns st
 }
 
 // GET /v2/{image}/manifests/{reference}
-func (r *OciRegistry) V2GetImageManifestsReference(ctx echo.Context, image string, reference string, params V2GetImageManifestsReferenceParams) error {
+func (r *OciRegistry) V2GetImageManifestsReference(ctx echo.Context, image string, reference string, params models.V2GetImageManifestsReferenceParams) error {
 	return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodGet, params.Ns)
 }
 
 // GET /v2/{org}/{image}/manifests/{reference}
-func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params V2GetOrgImageManifestsReferenceParams) error {
+func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params models.V2GetOrgImageManifestsReferenceParams) error {
 	if strings.Contains(org, ".") {
 		// if /v2/docker.io/hello-world/manifests/latest then org is a namespace
 		ns := org
@@ -127,7 +126,7 @@ func (r *OciRegistry) V2HeadImageBlobsDigest(ctx echo.Context, image string, dig
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PostNameBlobsUploads(ctx echo.Context, name string, params V2PostNameBlobsUploadsParams) error {
+func (r *OciRegistry) V2PostNameBlobsUploads(ctx echo.Context, name string, params models.V2PostNameBlobsUploadsParams) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -139,7 +138,7 @@ func (r *OciRegistry) V2PatchNameBlobsUploadsReference(ctx echo.Context, name st
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutNameBlobsUploadsReference(ctx echo.Context, name string, reference string, params V2PutNameBlobsUploadsReferenceParams) error {
+func (r *OciRegistry) V2PutNameBlobsUploadsReference(ctx echo.Context, name string, reference string, params models.V2PutNameBlobsUploadsReferenceParams) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -151,11 +150,11 @@ func (r *OciRegistry) V2PutOrgImageManifestsReference(ctx echo.Context, org stri
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2GetNameReferrersDigest(ctx echo.Context, name string, digest string, params V2GetNameReferrersDigestParams) error {
+func (r *OciRegistry) V2GetNameReferrersDigest(ctx echo.Context, name string, digest string, params models.V2GetNameReferrersDigestParams) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2GetNameTagsList(ctx echo.Context, name string, params V2GetNameTagsListParams) error {
+func (r *OciRegistry) V2GetNameTagsList(ctx echo.Context, name string, params models.V2GetNameTagsListParams) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 

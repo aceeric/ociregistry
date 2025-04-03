@@ -1,13 +1,13 @@
 CHANGES
 
 1. api/ociregistry.yaml from root
+2. impl/ociregistry.go - should return struct or interface? If interface then impl/handlers.go
+   SHOULD NOT take the struct in the receiver because its extendin the interface - need HandlerStructFromOciRegistry...
 
-consider a new empty project - start from scratch... 
-
-1. bring over handler
-2. bring over puller - handle current use cases - namespace in path, in url, tag+digest, digest only
-3. 
-
+TODO
+1. Populating the cache from file system has to populate blob cache
+2. Resolve all TODO
+3. if "always pull latest" then replace last latest if different - handle decrement old / increment new blobs
 
 1. prune by create
 2. prune by last access

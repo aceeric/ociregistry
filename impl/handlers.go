@@ -1,8 +1,10 @@
 package impl
 
 import (
+	"encoding/json"
 	"net/http"
 	. "ociregistry/api/models"
+	"ociregistry/impl/cache"
 	"ociregistry/impl/helpers"
 	"ociregistry/impl/memcache"
 	"ociregistry/impl/pullrequest"
@@ -11,43 +13,98 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/labstack/echo/v4"
 )
 
+// TODO BEGIN MOVE TO IMGPULL
+
+// func (mh *imgpull.ManifestHolder) Bytes() ([]byte, error) {
+func Bytes(mh imgpull.ManifestHolder) ([]byte, error) {
+	var err error
+	var marshalled []byte
+	switch mh.Type {
+	case imgpull.V2dockerManifestList:
+		marshalled, err = json.Marshal(mh.V2dockerManifestList)
+	case imgpull.V2dockerManifest:
+		marshalled, err = json.Marshal(mh.V2dockerManifest)
+	case imgpull.V1ociIndex:
+		marshalled, err = json.Marshal(mh.V1ociIndex)
+	case imgpull.V1ociManifest:
+		marshalled, err = json.Marshal(mh.V1ociManifest)
+	}
+	return marshalled, err
+}
+
+// get rid of upstream.
+func ToMediaType(mh imgpull.ManifestHolder) string {
+	switch mh.Type {
+	case imgpull.V2dockerManifestList:
+		return upstream.V2dockerManifestListMt
+	case imgpull.V2dockerManifest:
+		return upstream.V2dockerManifestMt
+	case imgpull.V1ociIndex:
+		return upstream.V1ociIndexMt
+	case imgpull.V1ociManifest:
+		return upstream.V1ociManifestMt
+	default:
+		return ""
+	}
+
+}
+
+// TODO END MOVE TO IMGPULL
+
 // HEAD or GET /v2/.../manifests/ref
 func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, verb string, namespace *string) error {
 	remote := parseRemote(ctx, namespace)
 	pr := pullrequest.NewPullRequest(org, image, reference, remote)
-	mh := upstream.ManifestHolder{}
-	exists := false
-	shouldCache := false
-	if pr.Reference == "latest" && r.alwaysPullLatest {
-		log.Debugf("ignoring cache for: %s", pr.Url())
-	} else {
-		mh, exists = memcache.IsCached(pr)
-		shouldCache = true
+	// TODO USE IMGPULL FOR URL BUILDING
+	mh, err := cache.GetManifest(pr.Url())
+	if err != nil {
+		return ctx.NoContent(http.StatusInternalServerError)
 	}
-	if exists {
-		log.Debugf("serving manifest from cache: %s", pr.Url())
-	} else if remote == "" {
-		return ctx.NoContent(http.StatusNotFound)
-	} else {
-		log.Debugf("will pull for pr id: %s", pr.Id())
-		imh, err := r.pullAndCache(pr, shouldCache)
-		if err != nil {
-			return ctx.NoContent(http.StatusInternalServerError)
-		}
-		mh = imh
+	manifestBytes, err := Bytes(mh) //mh.Bytes()
+	if err != nil {
+		return ctx.NoContent(http.StatusInternalServerError)
 	}
-	ctx.Response().Header().Add("Content-Length", strconv.Itoa(mh.Size))
+	mt := ToMediaType(mh)
+	if mt == "" {
+		return ctx.NoContent(http.StatusInternalServerError)
+	}
+	// TODO NO CACHE LATEST - NEED TO CHANGE TO OVERWRITE CACHE AND THEN 1) REMOVE OLD LATEST DEC BLOBS, 2) ADD NEW LATEST INC BLOBS
+	//remote := parseRemote(ctx, namespace)
+	//pr := pullrequest.NewPullRequest(org, image, reference, remote)
+	//mh := upstream.ManifestHolder{}
+	//exists := false
+	//shouldCache := false
+	//if pr.Reference == "latest" && r.alwaysPullLatest {
+	//	log.Debugf("ignoring cache for: %s", pr.Url())
+	//} else {
+	//	mh, exists = memcache.IsCached(pr)
+	//	shouldCache = true
+	//}
+	//if exists {
+	//	log.Debugf("serving manifest from cache: %s", pr.Url())
+	//} else if remote == "" {
+	//	return ctx.NoContent(http.StatusNotFound)
+	//} else {
+	//	log.Debugf("will pull for pr id: %s", pr.Id())
+	//	imh, err := r.pullAndCache(pr, shouldCache)
+	//	if err != nil {
+	//		return ctx.NoContent(http.StatusInternalServerError)
+	//	}
+	//	mh = imh
+	//}
+	ctx.Response().Header().Add("Content-Length", strconv.Itoa(len(manifestBytes)))
 	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+mh.Digest)
 	ctx.Response().Header().Add("Docker-Distribution-Api-Version", "registry/2.0")
-	ctx.Response().Header().Add("Content-Type", mh.MediaType)
+	ctx.Response().Header().Add("Content-Type", mt)
 
 	if verb == http.MethodGet {
-		return ctx.Blob(http.StatusOK, mh.MediaType, mh.Bytes)
+		return ctx.Blob(http.StatusOK, mt, manifestBytes) //mh.Bytes())
 	} else {
 		return ctx.NoContent(http.StatusOK)
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -15,13 +16,15 @@ var cfg = `
 ---
 - name: %s
   description: %s
+  scheme: %s
   auth:
     user: %s
     password: %s
   tls:
     ca: %s
     cert: %s
-    key: %s`
+    key: %s
+    insecure_skip_verify: %s`
 
 func init() {
 	log.SetOutput(io.Discard)
@@ -35,6 +38,8 @@ func TestCfg(t *testing.T) {
 	cas := []string{"t9", "t10"}
 	certs := []string{"t11", "t12"}
 	keys := []string{"t13", "t14"}
+	schemes := []string{"t15", "t16"}
+	insecures := []string{"true", "false"}
 
 	f, err := os.CreateTemp("", "")
 	if err != nil {
@@ -49,24 +54,33 @@ func TestCfg(t *testing.T) {
 	for i := 0; i <= 1; i++ {
 		name := names[i]
 		description := descriptions[i]
+		scheme := schemes[i]
 		user := users[i]
 		pass := passs[i]
 		ca := cas[i]
 		cert := certs[i]
 		key := keys[i]
-		manifest := fmt.Sprintf(cfg, name, description, user, pass, ca, cert, key)
+		insecure := insecures[i]
+		manifest := fmt.Sprintf(cfg, name, description, scheme, user, pass, ca, cert, key, insecure)
+
+		// write the file and sleep 2 secs which is enough time for the reloader to
+		// to reload since its on a 1-second cycle
 		os.WriteFile(f.Name(), []byte(manifest), 0700)
 		time.Sleep(time.Second * time.Duration(2))
+
 		entry, err := configEntryFor(name)
 		if err != nil {
 			t.Fail()
 		}
+		insecureVal, _ := strconv.ParseBool(insecures[i])
 		if entry.Description != descriptions[i] ||
+			entry.Scheme != schemes[i] ||
 			entry.Auth.User != users[i] ||
 			entry.Auth.Password != passs[i] ||
 			entry.Tls.CA != cas[i] ||
 			entry.Tls.Cert != certs[i] ||
-			entry.Tls.Key != keys[i] {
+			entry.Tls.Key != keys[i] ||
+			entry.Tls.Insecure != insecureVal {
 			t.Fail()
 		}
 	}

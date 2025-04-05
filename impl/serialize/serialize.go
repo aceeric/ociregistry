@@ -56,8 +56,7 @@ func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (up
 // TODO DELETE OLD
 func ToFilesystemNEW(mh imgpull.ManifestHolder, imagePath string) error {
 	var subdir = fatPath
-	// TODO mh.IsImageManifest()
-	if !mh.IsManifestList() {
+	if mh.IsImageManifest() {
 		subdir = imgPath
 	}
 	fname := filepath.Join(imagePath, subdir, mh.Digest)

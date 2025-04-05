@@ -3,7 +3,7 @@ module ociregistry
 go 1.23.3
 
 require (
-	github.com/aceeric/imgpull v1.9.1-0.20250404192709-b35c3a204214
+	github.com/aceeric/imgpull v1.9.1-0.20250405160842-ec1d5cc0a89a
 	github.com/getkin/kin-openapi v0.128.0
 	github.com/google/go-containerregistry v0.20.2
 	github.com/labstack/echo/v4 v4.12.0

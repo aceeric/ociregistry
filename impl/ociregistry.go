@@ -15,7 +15,9 @@ import (
 )
 
 type OciRegistry struct {
-	imagePath        string
+	// base location of the image and metadata cache
+	imagePath string
+	// timeout in milliseconds for pulling from upstreams
 	pullTimeout      int
 	alwaysPullLatest bool
 }

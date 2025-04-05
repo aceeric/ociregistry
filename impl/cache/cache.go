@@ -1,10 +1,13 @@
 package cache
 
 import (
-	"errors"
 	"fmt"
+	"ociregistry/impl/globals"
+	"ociregistry/impl/helpers"
 	"ociregistry/impl/pullrequest"
+	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -12,20 +15,35 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// TODO HANDLE ALWAYS PULL LATEST
+
+// Type concurrentPulls handles the case where multiple goroutines might request a manifest
+// from an upstream concurrently. When that happens, the first goroutine in will actuall do
+// the pull and all other goroutines will wait on the first puller. Its important to understand
+// than pulling an *image* manifest also pulls the image blobs. So this type is intended to
+// prevent multiple goroutines from pulling the same blobs from the upstream at the same
+// time.
 type concurrentPulls struct {
 	sync.Mutex
 	pulls map[string][]chan bool
 }
 
+// Type manifestCache is the in-mem representation of the manifest cache. The key is a manifest
+// URL like docker.io/calico/cni:v3.27.0 or docker.io/calico/cni@sha256:3163eabb.... The content
+// is a 'ManifestHolder'.
 type manifestCache struct {
 	sync.Mutex
 	manifests map[string]imgpull.ManifestHolder
 }
 
-//type blobCache struct {
-//	sync.Mutex
-//	blobs map[string]int
-//}
+// Type blobCache is the in-mem representation of the blob cache. The key is a digest, and the value
+// is a ref count. The ref count is the number of image manifests that reference that particular.
+// blob. This ref count is used to prune the blobs. A blob with no refs can be safely removed from
+// the file system.
+type blobCache struct {
+	sync.Mutex
+	blobs map[string]int
+}
 
 var (
 	cp concurrentPulls = concurrentPulls{
@@ -34,45 +52,57 @@ var (
 	mc manifestCache = manifestCache{
 		manifests: map[string]imgpull.ManifestHolder{},
 	}
-	//bc blobCache = blobCache{
-	//	blobs: map[string]int{},
-	//}
-	// TODO CONFIGURABLE
-	waitMillis          = 10000
+	bc blobCache = blobCache{
+		blobs: map[string]int{},
+	}
 	emptyManifestHolder = imgpull.ManifestHolder{}
 )
 
-// build strategy:
-// 1. DONE get manifest with no options
-// 2. DONE get with options
-// 3. handle adding blobs
-func GetManifest(pr pullrequest.PullRequest) (imgpull.ManifestHolder, error) {
+// GetManifest returns a manifest from the in-mem cache matching the URL of the passed 'PullRequest'.
+// If no manifest is cached then a pull is performed. The function blocks until the pull is complete and
+// then the manifest is added to the in-mem cache and returned. Or an error is returned if the manifest
+// can't be pulled or times out. If an *image* manifest is requested and it is not already cached, then all
+// the blobs for the image will also be pulled and added to the blob cache.
+//
+// If multiple goroutines pull the same image at the same time, then only the first goroutine will actually
+// perform the pull, and all other gouroutines will wait for the first gouroutine to complete the pull and
+// add the image to the cache. Then the waiting goroutines will pull from the cache.
+func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int) (imgpull.ManifestHolder, error) {
 	url := pr.Url()
-	mh, ch, exists := getManifestOrEnqueue(url)
-	if exists {
+	if mh, ch, exists := getManifestOrEnqueue(url); exists {
 		return mh, nil
 	} else if ch == nil {
 		defer signalWaiters(url)
-		mh, err := doPull(pr)
+		mh, err := doPull(pr, imagePath)
 		if err != nil {
+			log.Errorf("doPull failed for %q: %s", url, err)
 			return emptyManifestHolder, err
 		}
-		//digests := simulateDigestList(string(b))
-		//addBlobsToCache(digests)
-		addManifestToCache(url, mh)
+		addBlobsToCache(mh)
+		addManifestToCache(pr, mh)
 		return mh, nil
-	}
-	select {
-	case <-ch:
-		// TODO CONSIDER RETURNING AN ERROR IF NOT FOUND?
-		return getManifestFromCache(url), nil
-	case <-time.After(time.Duration(waitMillis) * time.Millisecond):
-		return emptyManifestHolder, errors.New("TODO")
+	} else {
+		select {
+		case <-ch:
+			return getManifestFromCache(url), nil
+		case <-time.After(time.Duration(pullTimeout) * time.Millisecond):
+			return emptyManifestHolder, fmt.Errorf("timeout exceeded (%d millis) waiting for signal on %q", pullTimeout, url)
+		}
 	}
 }
 
-// TODO move NewConfigFor
-func doPull(pr pullrequest.PullRequest) (imgpull.ManifestHolder, error) {
+// GetBlob returns the ref count for the passed blob digest. If zero then the blob is not
+// referenced by any cached manifests and will eventually be pruned.
+func GetBlob(digest string) int {
+	bc.Lock()
+	defer bc.Unlock()
+	return bc.blobs[digest]
+}
+
+// doPull gets an image list manifest - or image manifest - from an upstream OCI distribution
+// server. If an image manifest is pulled, then all the blobs for the image manifest are
+// also pulled.
+func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, error) {
 	opts, err := upstream.NewConfigFor(pr.Remote)
 	if err != nil {
 		log.Warn(err.Error())
@@ -85,100 +115,81 @@ func doPull(pr pullrequest.PullRequest) (imgpull.ManifestHolder, error) {
 	if err != nil {
 		return emptyManifestHolder, err
 	}
+	serialize.ToFilesystemNEW(mh, imagePath)
+	// if this is an image manifest, then get the blobs
+	// TODO mh.IsImageManifest()
+	if !mh.IsManifestList() {
+		blobDir := filepath.Join(imagePath, globals.BlobsDir)
+		err = puller.PullBlobs(mh, blobDir)
+		if err != nil {
+			return emptyManifestHolder, err
+		}
+	}
 	return mh, nil
 }
 
-//// maybe just return count - zero means not cached
-//func getBlob(digest string) int {
-//	bc.Lock()
-//	defer bc.Unlock()
-//	if count, exists := bc.blobs[digest]; exists {
-//		return count
-//	}
-//	return -1
-//}
-
-//func simulateDigestList(key string) []string {
-//	return strings.Split(key, "/")[1:]
-//}
-
-//func simulatePull(key string) []byte {
-//	t := rand.IntN(4)
-//	time.Sleep(time.Second * time.Duration(t))
-//	// make a manifest consisting of the passed key and a random number of digests
-//	// separated by /.
-//	digests := ""
-//	cnt := rand.IntN(10)
-//	for i := 0; i < cnt; i++ {
-//		idx := rand.IntN(26)
-//		str := string("ABCDEFGHIJKLMNOPQRSTUVWXYZ"[idx])
-//		digests = digests + "/" + str
-//	}
-//	return []byte(key + digests)
-//}
-
-//func addBlobsToCache(digests []string) {
-//	bc.Lock()
-//	defer bc.Unlock()
-//	for _, digest := range slices.Compact(digests) {
-//		bc.blobs[digest] = bc.blobs[digest] + 1
-//	}
-//}
-//
-//// todo lazy delete from file system??
-//func delBlobsFromCache(digests []string) {
-//	bc.Lock()
-//	defer bc.Unlock()
-//	for _, digest := range digests {
-//		if cnt := bc.blobs[digest]; cnt > 0 {
-//			bc.blobs[digest] = cnt - 1
-//		}
-//	}
-//}
-
-func addManifestToCache(url string, mh imgpull.ManifestHolder) {
-	mc.Lock()
-	defer mc.Unlock()
-	mc.manifests[url] = mh
+// addBlobsToCache adds entries to the blob map and/or increments the ref count for
+// existing blobs in the blob map based on the layers (and the config blob) in the
+// passed manifest.
+func addBlobsToCache(mh imgpull.ManifestHolder) {
+	if mh.IsManifestList() {
+		return
+	}
+	bc.Lock()
+	defer bc.Unlock()
+	for _, layer := range mh.Layers() {
+		digest := helpers.GetDigestFrom(layer.Digest)
+		bc.blobs[digest] = bc.blobs[digest] + 1
+	}
 }
 
-//// todo from file system
-//// this could delete a manifest right after it was pulled and waiters
-//// are waiting which could cause the waiters to return
-//func delManifestFromCache(key string) {
-//	mc.Lock()
-//	defer mc.Unlock()
-//	delete(mc.manifests, key)
-//}
+// addManifestToCache adds the passed manifest to the in-mem cache, keyed by
+// the passed URL. The the passed manifest was pulled by tag, then a second entry
+// is added to cache keyed by digest. This enables the cache to serve manifest requests
+// by tag and by digest for the same manifest.
+func addManifestToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
+	mc.Lock()
+	defer mc.Unlock()
+	mc.manifests[pr.Url()] = mh
+	if pr.PullType == pullrequest.ByTag {
+		mc.manifests[pr.UrlWithDigest("sha256:"+mh.Digest)] = mh
+	}
+}
 
-// if nil does not exist
+// getManifestFromCache gets a manifest from the in-mem manifest cache, or returns
+// nil if the manifest for the passed URL is not cached.
 func getManifestFromCache(url string) imgpull.ManifestHolder {
 	mc.Lock()
 	defer mc.Unlock()
 	return mc.manifests[url]
 }
 
-//// think about doing this in on transaction?
-//func prune(key string) {
-//	// get blobs associated with manifest
-//	digests := simulateDigestList(key)
-//	delManifestFromCache(key)
-//	delBlobsFromCache(digests)
-//}
-
-// getManifestOrEnqueue returns a manifest from the in-memory cache if one exists matching the passed
-// url. If a manifest is not cached then there are two possible outcomes. If no other goroutine has attempted
-// to concurrently pull the manifest, then an entry is created in the concurrent pulls map but a nil channel
-// is returned. This means the caller must pull the manifest, and then signal any other goroutines waiting
-// for the image to be pulled. If there is already a concurrent pull in progress then a channel is created
-// and added to the concurrent pulls map and returned. In this case, the caller must wait to be signaled on
-// this channel at which point the manifest should be cached (unless the puller failed, in which case the
-// manifest will not be in cache, which is likely an error condition for the caller.“)
+// getManifestOrEnqueue looks at the in-mem manifest cache for the passed URL. If found, then the
+// manifest holder is returned. If not in cache, then the function enqueues a pull for the manifest
+// from the upstream.
 //
-//	imgpull.ManifestHolder - if manifest is in cache, then it will be returned in this value
-//	chan bool              - nil if manifest is in cache, else: if caller should pull, nil, else non-nil,
-//	                         meaning caller must wait on channel because another go routine is pulling
-//	bool                   - true if manifest is in cache, else false
+// If the current goroutine is the first to enqueue a pull, then a nil channel is returned. Otherwise
+// this goroutine has made a concurrent pull request and another goroutine is already doing the pull
+// so a channel is returned for the caller to wait on. So the return values are to be interpreted
+// as follows:
+//
+// Manifest in cache:
+//
+//	ManifestHolder: The manifest
+//	channel: nil
+//	bool: true
+//
+// Manifest NOT in cache, and no other goroutine is already pulling from the upstream
+//
+//	ManifestHolder: Empty
+//	channel: nil - caller must pull and then signal any/all gouroutines waiting
+//	bool: false
+//
+// Manifest NOT in cache, and another goroutine IS already pulling from the upstream
+//
+//	ManifestHolder: Empty
+//	channel: non-nil - caller should wait to be signaled when the other goroutine finishes
+//	bool: false
 func getManifestOrEnqueue(url string) (imgpull.ManifestHolder, chan bool, bool) {
 	mc.Lock()
 	defer mc.Unlock()
@@ -188,8 +199,10 @@ func getManifestOrEnqueue(url string) (imgpull.ManifestHolder, chan bool, bool) 
 	return emptyManifestHolder, enqueuePull(url), false
 }
 
-// return nil means not enqueued, non-nil means enqueued and caller
-// must wait on the channel
+// enqueuePull enqueues a pull request from the upstream. A return value of  nil
+// means the pull request has not already been enqueued by another goroutine. Non-nil means
+// another goroutine HAS already enqueued the pull and the caller must wait on the returned
+// channel to be signalled when the pull completes.
 func enqueuePull(url string) chan bool {
 	cp.Lock()
 	defer cp.Unlock()
@@ -203,6 +216,8 @@ func enqueuePull(url string) chan bool {
 	return nil
 }
 
+// signalWaiters signals any goroutines waiting on the passed url to be pulled. (Which could
+// be none.)
 func signalWaiters(url string) {
 	cp.Lock()
 	defer cp.Unlock()

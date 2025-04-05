@@ -5,17 +5,17 @@ import (
 	"strings"
 )
 
-// pullType allows to differentiate a pull by tag vs. digest.
-type pullType int
+// PullType allows to differentiate a pull by tag vs. digest.
+type PullType int
 
 const (
-	byTag pullType = iota
-	byDigest
+	ByTag PullType = iota
+	ByDigest
 )
 
 // PullRequest has the individual components of an image pull
 type PullRequest struct {
-	PullType  pullType `json:"pullType"`
+	PullType  PullType `json:"pullType"`
 	Org       string   `json:"org"`
 	Image     string   `json:"image"`
 	Reference string   `json:"reference"`
@@ -108,9 +108,9 @@ func (pr *PullRequest) IdDigest(digest string) string {
 
 // typeFromRef looks at the passed 'ref' and if it's a digest ref then returns
 // 'byDigest' else returns 'byTag'.
-func typeFromRef(ref string) pullType {
+func typeFromRef(ref string) PullType {
 	if strings.HasPrefix(ref, "sha256:") {
-		return byDigest
+		return ByDigest
 	}
-	return byTag
+	return ByTag
 }

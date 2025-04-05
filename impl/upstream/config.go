@@ -53,19 +53,19 @@ var (
 	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", Insecure: false}
 )
 
-// ConfigLoader loads the remote registry configuration from the file
+// ConfigLoader loads  remote registry configurations from the file
 // referenced by the 'configPath' arg. If the arg is the empty string
 // then nothing is done and no remote registry configs are defined.
 // The result of this will be that every remote registry will be
 // accessed anonymously. The function loops forever checking the config
 // file for changes every 'chkSeconds' seconds. The passed file may contain
-// multiple entries (it is a yaml list.) A fully-populated configuration
-// for one entry looks like so:
+// multiple entries (it is a yaml list.) A fully-populated single
+// configuration entry looks like so:
 //
 //	---
 //	- name: localhost:5001
 //	  description: An optional mnemonic that you deem useful
-//	  scheme: http (or https)
+//	  scheme: https (the default, or, http)
 //	  auth:
 //	    user: foo
 //	    password: bar

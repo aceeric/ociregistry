@@ -12,11 +12,14 @@ TODO
 5. --hello-world
 6. Support TLS??
 7. Replace yaml
+8. imgpull blob concurrency init
+9. Rename `--image-path` `--cache-path` and associated variables
 
 1. prune by create
 2. prune by last access
 3. when loading the cache, compare digest to object?
 4. Rework concurrent load?
+
 
 imageref in imgpull - may need to move out of internal and use here
 

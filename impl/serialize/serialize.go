@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -50,6 +51,30 @@ func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (up
 		}
 	}
 	return upstream.ManifestHolder{}, false
+}
+
+// TODO DELETE OLD
+func ToFilesystemNEW(mh imgpull.ManifestHolder, imagePath string) error {
+	var subdir = fatPath
+	// TODO mh.IsImageManifest()
+	if !mh.IsManifestList() {
+		subdir = imgPath
+	}
+	fname := filepath.Join(imagePath, subdir, mh.Digest)
+	if _, err := os.Stat(fname); err == nil {
+		log.Infof("manifest already in cache %s", fname)
+		return nil
+	}
+	if err := os.MkdirAll(filepath.Dir(fname), 0755); err != nil {
+		log.Errorf("unable to create directory %s, error: %s", filepath.Dir(fname), err)
+		return err
+	}
+	mb, _ := json.Marshal(mh)
+	if err := os.WriteFile(fname, mb, 0755); err != nil {
+		log.Errorf("error serializing manifest for %s, error: %s", mh.ImageUrl, err)
+		return err
+	}
+	return nil
 }
 
 // ToFilesystem serializes the passed 'ManifestHolder' to the file system at

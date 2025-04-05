@@ -18,6 +18,7 @@ import (
 	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
 
+	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
@@ -65,6 +66,7 @@ func main() {
 	postprocessArgs(args)
 
 	globals.ConfigureLogging(args.logLevel)
+	imgpull.SetConcurrentBlobs(args.pullTimeout * 1000)
 
 	cliCommands(args)
 

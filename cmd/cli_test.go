@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/opencontainers/go-digest"
 )
 
@@ -139,7 +140,7 @@ func makeTestFiles(cnt int) (string, string, error) {
 				return "", "", err
 			}
 		}
-		mh := upstream.ManifestHolder{
+		mh := imgpull.ManifestHolder{
 			ImageUrl: "z" + strconv.Itoa(i) + "z",
 			Digest:   manifestDigests[i],
 		}

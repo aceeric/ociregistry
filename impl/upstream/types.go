@@ -36,8 +36,3 @@ type ManifestHolder struct {
 	V2dockerManifestList v2docker.ManifestList   `json:"v2.docker.manifestList"`
 	V2dockerManifest     v2docker.Manifest       `json:"v2.docker.Manifest"`
 }
-
-func IsImageManifest(mediaType string) bool {
-	return mediaType != V2dockerManifestListMt &&
-		mediaType != V1ociIndexMt
-}

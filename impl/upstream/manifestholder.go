@@ -1,6 +1,9 @@
 package upstream
 
-import "ociregistry/impl/helpers"
+import (
+	"encoding/json"
+	"ociregistry/impl/helpers"
+)
 
 // IsImageManifest returns true if the passed 'ManifestHolder' is an image
 // manifest, and false if it is a fat manifest (i.e. a manifest containing
@@ -52,4 +55,23 @@ func (mh *ManifestHolder) ManifestBlobs() []string {
 		blobs[idx] = helpers.GetDigestFrom(blob)
 	}
 	return blobs
+}
+
+// ToString renders the manifest held by the receiver into JSON. Only the
+// embedded manifest is returned - which will be a docker or oci manifest
+// list, or a docker or oci image manifest.
+func (mh *ManifestHolder) ToString() (string, error) {
+	var err error
+	var marshalled []byte
+	switch mh.Type {
+	case V2dockerManifestList:
+		marshalled, err = json.MarshalIndent(mh.V2dockerManifestList, "", "   ")
+	case V2dockerManifest:
+		marshalled, err = json.MarshalIndent(mh.V2dockerManifest, "", "   ")
+	case V1ociIndex:
+		marshalled, err = json.MarshalIndent(mh.V1ociIndex, "", "   ")
+	case V1ociDescriptor:
+		marshalled, err = json.MarshalIndent(mh.V1ociManifest, "", "   ")
+	}
+	return string(marshalled), err
 }

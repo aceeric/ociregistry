@@ -24,12 +24,12 @@ const (
 
 // CacheEntryHandler defines a function that can act on a 'ManifestHolder' instance
 // from the metadata cache
-type CacheEntryHandler func(upstream.ManifestHolder, os.FileInfo) error
+type CacheEntryHandler func(imgpull.ManifestHolder, os.FileInfo) error
 
 // MhFromFileSystem gets a 'ManifestHolder' from the file system at the passed path.
 // If not found, returns an empty 'ManifestHolder' and false, else the 'ManifestHolder'
 // from the file system and true
-func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (upstream.ManifestHolder, bool) {
+func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (imgpull.ManifestHolder, bool) {
 	var subdir = fatPath
 	if isImageManifest {
 		subdir = imgPath
@@ -42,72 +42,48 @@ func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (up
 	if err == nil {
 		b, err := os.ReadFile(fname)
 		if err != nil {
-			return upstream.ManifestHolder{}, false
+			return imgpull.ManifestHolder{}, false
 		}
-		mh := upstream.ManifestHolder{}
+		mh := imgpull.ManifestHolder{}
 		err = json.Unmarshal(b, &mh)
 		if err == nil {
 			return mh, true
 		}
 	}
-	return upstream.ManifestHolder{}, false
+	return imgpull.ManifestHolder{}, false
 }
 
-// TODO DELETE OLD
-func ToFilesystemNEW(mh imgpull.ManifestHolder, imagePath string) error {
+func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string) error {
 	var subdir = fatPath
 	if mh.IsImageManifest() {
 		subdir = imgPath
 	}
 	fname := filepath.Join(imagePath, subdir, mh.Digest)
 	if _, err := os.Stat(fname); err == nil {
-		log.Infof("manifest already in cache %s", fname)
+		log.Infof("manifest already in cache %q", fname)
 		return nil
 	}
 	if err := os.MkdirAll(filepath.Dir(fname), 0755); err != nil {
-		log.Errorf("unable to create directory %s, error: %s", filepath.Dir(fname), err)
+		log.Errorf("unable to create directory %q, error: %q", filepath.Dir(fname), err)
 		return err
 	}
 	mb, _ := json.Marshal(mh)
 	if err := os.WriteFile(fname, mb, 0755); err != nil {
-		log.Errorf("error serializing manifest for %s, error: %s", mh.ImageUrl, err)
+		log.Errorf("error serializing manifest for %q, error: %q", mh.ImageUrl, err)
 		return err
 	}
 	return nil
 }
 
-// ToFilesystem serializes the passed 'ManifestHolder' to the file system at
-// the passed image path. If the file already exists, no action is taken.
-func ToFilesystem(mh upstream.ManifestHolder, imagePath string) error {
-	var subdir = fatPath
-	if mh.IsImageManifest() {
-		subdir = imgPath
-	}
-	fname := filepath.Join(imagePath, subdir, mh.Digest)
-	if _, err := os.Stat(fname); err == nil {
-		log.Infof("manifest already in cache %s", fname)
-		return nil
-	}
-	if err := os.MkdirAll(filepath.Dir(fname), 0755); err != nil {
-		log.Errorf("unable to create directory %s, error: %s", filepath.Dir(fname), err)
-		return err
-	}
-	mb, _ := json.Marshal(mh)
-	if err := os.WriteFile(fname, mb, 0755); err != nil {
-		log.Errorf("error serializing manifest for %s, error: %s", mh.ImageUrl, err)
-		return err
-	}
-	return nil
-}
-
+// TODO rename to LoadInMemCache or someting
 // FromFilesystem reads all the manifests from the file system and adds them
 // the the in-memory data structure that represents the cache in memory.
 func FromFilesystem(imagePath string) error {
 	start := time.Now()
 	log.Infof("load in-mem cache from file system")
 	itemcnt := 0
-	WalkTheCache(imagePath, func(mh upstream.ManifestHolder, _ os.FileInfo) error {
-		memcache.AddToCache(mh.Pr, mh, false)
+	WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
+		memcache.AddToCache(mh.ImageUrl, mh, false)
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
 		itemcnt++
 		return nil

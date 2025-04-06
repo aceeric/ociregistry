@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"runtime"
 	"sync"
@@ -15,8 +14,6 @@ import (
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/google/go-containerregistry/pkg/authn"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,14 +33,12 @@ type tlsCfg struct {
 
 // cfgEntry combines authCfg and tlsCfg
 type cfgEntry struct {
-	Name        string  `yaml:"name"`
-	Description string  `yaml:"description"`
-	Auth        authCfg `yaml:"auth"`
-	Tls         tlsCfg  `yaml:"tls"`
-	Scheme      string  `yaml:"scheme"`
-	NewOpts     []imgpull.PullOpt
-	// TODO DELETE WHEN CRANE DELETED
-	Opts []remote.Option
+	Name        string
+	Description string
+	Auth        authCfg
+	Tls         tlsCfg
+	Scheme      string
+	Opts        imgpull.PullerOpts
 }
 
 var (
@@ -51,16 +46,17 @@ var (
 	mu        sync.Mutex
 	emptyAuth = authCfg{User: "", Password: ""}
 	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", Insecure: false}
+	emptyOpts = imgpull.PullerOpts{}
 )
 
-// ConfigLoader loads  remote registry configurations from the file
-// referenced by the 'configPath' arg. If the arg is the empty string
-// then nothing is done and no remote registry configs are defined.
-// The result of this will be that every remote registry will be
-// accessed anonymously. The function loops forever checking the config
-// file for changes every 'chkSeconds' seconds. The passed file may contain
-// multiple entries (it is a yaml list.) A fully-populated single
-// configuration entry looks like so:
+// ConfigLoader loads remote registry configurations from the file referenced by the
+// 'configPath' arg. If the arg is the empty string then nothing is done and no remote
+// registry configs are defined. In that case, every remote registry will be accessed
+// anonymously.
+//
+// The function loops forever checking the config file for changes every 'chkSeconds' seconds
+// (unless chkSeconds is zero in which case it only runs once.) The config file can contain
+// multiple entries (it is a yaml list.) A fully-populated single configuration entry looks like:
 //
 //	---
 //	- name: localhost:5001
@@ -70,10 +66,14 @@ var (
 //	    user: foo
 //	    password: bar
 //	  tls:
-//	    ca:   /etc/certs/ca.crt
+//	    ca: /etc/certs/ca.crt
 //	    cert: /etc/certs/server.crt
-//	    key:  /etc/certs/server.key
+//	    key: /etc/certs/server.key
 //	    insecure_skip_verify: true
+//
+// The only mandatory key is 'name'. Everything else is optional. So if 'auth' is omitted then
+// there's no basic auth. If 'tls' is omitted then insecure is the default (because zero is
+// false.) If scheme is omitted the default is 'https'.
 func ConfigLoader(configPath string, chkSeconds int) {
 	if configPath != "" {
 		var lastHash [md5.Size]byte
@@ -117,13 +117,21 @@ func ConfigLoader(configPath string, chkSeconds int) {
 	}
 }
 
-// parseConfig parses the remote registry yaml config in the passed 'configBytes'
-// arg. which consists of some number of entries, each describing the auth and TLS
-// configuration to access one remote registry. The results are parsed into a map of
-// 'cfgEntry' structs and returned to the caller. The map key is the 'name' element
-// of each configuration which must exactly match a remote registry URL with no
-// scheme, e.g.: quay.io, or: our.private.registry.gov:6443, or 129.168.1.1:8080,
-// etc.
+func AddConfig(configBytes []byte) error {
+	if newConfig, err := parseConfig(configBytes); err != nil {
+		return err
+	} else {
+		config = newConfig
+	}
+	return nil
+}
+
+// parseConfig parses the remote registry yaml config in the passed 'configBytes' arg. which
+// consists of some number of entries, each describing the auth and TLS configuration to access
+// one remote registry. The results are parsed into a map of 'cfgEntry' structs and returned to
+// the caller. The map key is the 'name' element of each configuration which must exactly match
+// a remote registry URL with no scheme, e.g.: quay.io, or: our.private.registry.gov:6443, or
+// 129.168.1.1:8080, or index.docker.io, etc.
 func parseConfig(configBytes []byte) (map[string]cfgEntry, error) {
 	var entries []cfgEntry
 	err := yaml.Unmarshal(configBytes, &entries)
@@ -141,35 +149,40 @@ func parseConfig(configBytes []byte) (map[string]cfgEntry, error) {
 	return config, nil
 }
 
-// configFor looks for a configuration entry keyed by the passed 'registry' arg
-// (e.g. 'index.docker.io') and returns an array of options built from the config
-// to configure the Crane image puller for that remote registry. In other words this
-// is purpose-built to integrate with Crane. If no matching config is found, then
-// an empty array is returned with an error. (The error means the caller requested
-// a config that didn't exist.) An empty array can be also be returned without an
-// error - which means that the registry existed in the configuration but it didn't
-// supply any options that would be used to configure Crane. This would be the case
-// for a registry with no auth and no TLS. Bottom line, the caller can always use
-// the options returned by the function, but may wish to log or record the fact
-// that a registry was provided for lookup that was not configured.
-func configFor(registry string) ([]remote.Option, error) {
+// ConfigFor looks for a configuration entry keyed by the passed 'registry' arg (e.g.
+// 'index.docker.io') and returns configuration options for that registry from the config.
+// If no matching config is found, then a default configuration is returned specifying insecure
+// https, and the runtime OS and architecture.
+func ConfigFor(registry string) (imgpull.PullerOpts, error) {
+	// default options if no configuration
+	opts := imgpull.PullerOpts{
+		Scheme:   "https",
+		OStype:   runtime.GOOS,
+		ArchType: runtime.GOARCH,
+	}
+
 	mu.Lock()
 	regCfg, exists := config[registry]
 	mu.Unlock()
+
 	if !exists {
-		return []remote.Option{}, errors.New("no entry in configuration for registry: " + registry)
+		return opts, nil
 	}
-	if regCfg.Opts != nil {
-		// previously calculated
+
+	if regCfg.Opts != emptyOpts {
+		// use previously calculated values
 		return regCfg.Opts, nil
 	}
 
-	opts := []remote.Option{}
+	if regCfg.Scheme != "" {
+		opts.Scheme = regCfg.Scheme
+	}
 
 	if regCfg.Auth != emptyAuth {
-		basic := &authn.Basic{Username: regCfg.Auth.User, Password: regCfg.Auth.Password}
-		opts = append(opts, remote.WithAuth(basic))
+		opts.Username = regCfg.Auth.User
+		opts.Password = regCfg.Auth.Password
 	}
+
 	if regCfg.Tls != emptyTls {
 		var cp *x509.CertPool
 		var clientCerts []tls.Certificate = []tls.Certificate{}
@@ -179,7 +192,7 @@ func configFor(registry string) ([]remote.Option, error) {
 			if err == nil {
 				cp.AppendCertsFromPEM(caCert)
 			} else {
-				log.Errorf("unable to load CA for config entry %s from file: %s", registry, regCfg.Tls.CA)
+				return opts, fmt.Errorf("unable to load CA for config entry %s from file: %s", registry, regCfg.Tls.CA)
 			}
 		}
 		if regCfg.Tls.Cert != "" && regCfg.Tls.Key != "" {
@@ -187,88 +200,16 @@ func configFor(registry string) ([]remote.Option, error) {
 			if err == nil {
 				clientCerts = []tls.Certificate{cert}
 			} else {
-				log.Errorf("unable to load client cert and/or key for config entry %s from files: cert: %s, key: %s", registry, regCfg.Tls.Cert, regCfg.Tls.Key)
+				return opts, fmt.Errorf("unable to load client cert and/or key for config entry %s from files: cert: %s, key: %s", registry, regCfg.Tls.Cert, regCfg.Tls.Key)
 			}
 		}
-		transport := remote.DefaultTransport.(*http.Transport).Clone()
-		transport.TLSClientConfig = &tls.Config{
+		opts.TlsCfg = &tls.Config{
 			InsecureSkipVerify: regCfg.Tls.Insecure,
 			RootCAs:            cp,
 			Certificates:       clientCerts,
 		}
-		opts = append(opts, remote.WithTransport(transport))
 	}
 	regCfg.Opts = opts
-	mu.Lock()
-	config[registry] = regCfg
-	mu.Unlock()
-	return opts, nil
-}
-
-// TODO ERRORS SHOULD BE RETURNED TO THE CALLER NOT LOGGED HERE
-func NewConfigFor(registry string) ([]imgpull.PullOpt, error) {
-	opts := []imgpull.PullOpt{}
-
-	mu.Lock()
-	regCfg, exists := config[registry]
-	mu.Unlock()
-
-	// always set these defaults: scheme, OS, and arch
-	// TODO configurable OS and arch?
-	opts = append(opts, func(p *imgpull.PullerOpts) {
-		p.Scheme = "https"
-		if regCfg.Scheme != "" {
-			p.Scheme = regCfg.Scheme
-		}
-		p.OStype = runtime.GOOS
-		p.ArchType = runtime.GOARCH
-	})
-
-	if !exists {
-		return opts, fmt.Errorf("no entry in configuration for registry %q, using default config ", registry)
-	}
-
-	if regCfg.NewOpts != nil {
-		// use previously calculated from config
-		return regCfg.NewOpts, nil
-	}
-
-	if regCfg.Auth != emptyAuth {
-		opts = append(opts, func(p *imgpull.PullerOpts) {
-			p.Username = regCfg.Auth.User
-			p.Password = regCfg.Auth.Password
-		})
-	}
-
-	if regCfg.Tls != emptyTls {
-		var cp *x509.CertPool
-		var clientCerts []tls.Certificate = []tls.Certificate{}
-		if regCfg.Tls.CA != "" {
-			cp = x509.NewCertPool()
-			caCert, err := os.ReadFile(regCfg.Tls.CA)
-			if err == nil {
-				cp.AppendCertsFromPEM(caCert)
-			} else {
-				log.Errorf("unable to load CA for config entry %s from file: %s", registry, regCfg.Tls.CA)
-			}
-		}
-		if regCfg.Tls.Cert != "" && regCfg.Tls.Key != "" {
-			cert, err := tls.LoadX509KeyPair(regCfg.Tls.Cert, regCfg.Tls.Key)
-			if err == nil {
-				clientCerts = []tls.Certificate{cert}
-			} else {
-				log.Errorf("unable to load client cert and/or key for config entry %s from files: cert: %s, key: %s", registry, regCfg.Tls.Cert, regCfg.Tls.Key)
-			}
-		}
-		opts = append(opts, func(p *imgpull.PullerOpts) {
-			p.TlsCfg = &tls.Config{
-				InsecureSkipVerify: regCfg.Tls.Insecure,
-				RootCAs:            cp,
-				Certificates:       clientCerts,
-			}
-		})
-	}
-	regCfg.NewOpts = opts
 	mu.Lock()
 	config[registry] = regCfg
 	mu.Unlock()

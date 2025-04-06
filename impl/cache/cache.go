@@ -78,7 +78,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int) 
 		return mh, nil
 	} else if ch == nil {
 		defer signalWaiters(url)
-		mh, err := doPull(pr, imagePath)
+		mh, err := DoPull(nil, pr, imagePath)
 		if err != nil {
 			log.Errorf("doPull failed for %q: %s", url, err)
 			return emptyManifestHolder, err
@@ -104,23 +104,26 @@ func GetBlob(digest string) int {
 	return bc.blobs[digest]
 }
 
-// doPull gets an image list manifest - or image manifest - from an upstream OCI distribution
+// DoPull gets an image list manifest - or image manifest - from an upstream OCI distribution
 // server. If an image manifest is pulled, then all the blobs for the image manifest are
 // also pulled.
-func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, error) {
-	opts, err := upstream.NewConfigFor(pr.Remote)
-	if err != nil {
-		log.Debug(err)
-	}
-	puller, err := imgpull.NewPuller(pr.Url(), opts...)
-	if err != nil {
-		return emptyManifestHolder, err
+func DoPull(puller imgpull.Puller, pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, error) {
+	if puller == nil {
+		opts, err := upstream.ConfigFor(pr.Remote)
+		if err != nil {
+			return emptyManifestHolder, err
+		}
+		opts.Url = pr.Url()
+		puller, err = imgpull.NewPullerWith(opts)
+		if err != nil {
+			return emptyManifestHolder, err
+		}
 	}
 	mh, err := puller.GetManifest()
 	if err != nil {
 		return emptyManifestHolder, err
 	}
-	serialize.ToFilesystemNEW(mh, imagePath)
+	serialize.MhToFilesystem(mh, imagePath)
 	if mh.IsImageManifest() {
 		blobDir := filepath.Join(imagePath, globals.BlobsDir)
 		err = puller.PullBlobs(mh, blobDir)
@@ -132,8 +135,8 @@ func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolde
 	return mh, nil
 }
 
-// addBlobsToCache adds entries to the blob map and/or increments the ref count for
-// existing blobs in the blob map based on the layers (and the config blob) in the
+// addBlobsToCache adds entries to the in-mem blob map and/or increments the ref count
+// for existing blobs in the blob map based on the layers (and the config blob) in the
 // passed manifest.
 func addBlobsToCache(mh imgpull.ManifestHolder) {
 	if mh.IsManifestList() {
@@ -147,7 +150,7 @@ func addBlobsToCache(mh imgpull.ManifestHolder) {
 	}
 }
 
-// addManifestToCache adds the passed manifest to the in-mem cache, keyed by
+// addManifestToCache adds the passed manifest to the in-mem manifest map, keyed by
 // the passed URL. The the passed manifest was pulled by tag, then a second entry
 // is added to cache keyed by digest. This enables the cache to serve manifest requests
 // by tag and by digest for the same manifest.

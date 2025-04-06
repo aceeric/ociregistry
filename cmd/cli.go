@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"ociregistry/impl/preload"
 	"ociregistry/impl/serialize"
-	"ociregistry/impl/upstream"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/aceeric/imgpull/pkg/imgpull"
 )
 
 // magic numbers from 'format.go' in package 'time'
@@ -21,7 +22,7 @@ type cliCmd func(cmdLine) (bool, error)
 
 // match holds a ManifestHolder matching a prune search
 type match struct {
-	mh upstream.ManifestHolder
+	mh imgpull.ManifestHolder
 }
 
 // cmdList is a list of CLI commands
@@ -74,7 +75,7 @@ func listCache(args cmdLine) (bool, error) {
 		ManifestType string
 		modtime      time.Time
 	}{}
-	serialize.WalkTheCache(args.imagePath, func(mh upstream.ManifestHolder, info os.FileInfo) error {
+	serialize.WalkTheCache(args.imagePath, func(mh imgpull.ManifestHolder, info os.FileInfo) error {
 		mt := "list"
 		if mh.IsImageManifest() {
 			mt = "image"
@@ -107,10 +108,10 @@ func pruneBefore(args cmdLine) (bool, error) {
 	}
 	// build a list of matching manifests
 	matches := make(map[string]match)
-	serialize.WalkTheCache(args.imagePath, func(mh upstream.ManifestHolder, fi os.FileInfo) error {
+	serialize.WalkTheCache(args.imagePath, func(mh imgpull.ManifestHolder, fi os.FileInfo) error {
 		if fi.ModTime().Before(timestamp) {
 			matches[mh.ImageUrl] = struct {
-				mh upstream.ManifestHolder
+				mh imgpull.ManifestHolder
 			}{mh}
 		}
 		return nil
@@ -136,11 +137,11 @@ func prunePattern(args cmdLine) (bool, error) {
 	}
 	// build a list of matching manifests
 	matches := make(map[string]match)
-	serialize.WalkTheCache(args.imagePath, func(mh upstream.ManifestHolder, _ os.FileInfo) error {
+	serialize.WalkTheCache(args.imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
 		for _, srch := range srchs {
 			if srch.MatchString(mh.ImageUrl) {
 				matches[mh.ImageUrl] = struct {
-					mh upstream.ManifestHolder
+					mh imgpull.ManifestHolder
 				}{mh}
 			}
 		}
@@ -158,7 +159,7 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 	blobs := serialize.GetAllBlobs(imagePath)
 
 	// tally the blob ref counts of all cached images into the 'blobs' map
-	serialize.WalkTheCache(imagePath, func(mh upstream.ManifestHolder, _ os.FileInfo) error {
+	serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
 		if mh.IsImageManifest() {
 			for _, blob := range mh.ManifestBlobs() {
 				if cnt, exists := blobs[blob]; exists {
@@ -181,7 +182,7 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 				if _, exists := matches[url]; !exists {
 					if mh, found := serialize.MhFromFileSystem(sha256, true, imagePath); found {
 						matches[url] = struct {
-							mh upstream.ManifestHolder
+							mh imgpull.ManifestHolder
 						}{mh}
 					}
 				}

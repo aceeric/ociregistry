@@ -23,13 +23,13 @@ func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org s
 		log.Errorf("error getting manifest for %q: %s", pr.Url(), err)
 		return ctx.NoContent(http.StatusInternalServerError)
 	}
-	ctx.Response().Header().Add("Content-Length", strconv.Itoa(len(mh.Data)))
+	ctx.Response().Header().Add("Content-Length", strconv.Itoa(len(mh.Bytes)))
 	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+mh.Digest)
 	ctx.Response().Header().Add("Docker-Distribution-Api-Version", "registry/2.0")
 	ctx.Response().Header().Add("Content-Type", mh.MediaType())
 
 	if verb == http.MethodGet {
-		return ctx.Blob(http.StatusOK, mh.MediaType(), mh.Data)
+		return ctx.Blob(http.StatusOK, mh.MediaType(), mh.Bytes)
 	} else {
 		return ctx.NoContent(http.StatusOK)
 	}

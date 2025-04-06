@@ -7,6 +7,7 @@ import (
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -133,6 +134,27 @@ func DoPull(puller imgpull.Puller, pr pullrequest.PullRequest, imagePath string)
 		}
 	}
 	return mh, nil
+}
+
+// TODO BLOBS
+func Load(imagePath string) error {
+	start := time.Now()
+	log.Infof("load in-mem cache from file system")
+	itemcnt := 0
+	var outerErr error
+	serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
+		pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
+		if err != nil {
+			outerErr = err
+			return err
+		}
+		addManifestToCache(pr, mh)
+		log.Debugf("loading manifest for %s", mh.ImageUrl)
+		itemcnt++
+		return nil
+	})
+	log.Infof("loaded %d manifest(s) from the file system in %s", itemcnt, time.Since(start))
+	return outerErr
 }
 
 // addBlobsToCache adds entries to the in-mem blob map and/or increments the ref count

@@ -3,7 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"ociregistry/impl/helpers"
 	"ociregistry/impl/preload"
+	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/serialize"
 	"os"
 	"path/filepath"
@@ -161,11 +163,12 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 	// tally the blob ref counts of all cached images into the 'blobs' map
 	serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
 		if mh.IsImageManifest() {
-			for _, blob := range mh.ManifestBlobs() {
-				if cnt, exists := blobs[blob]; exists {
-					blobs[blob] = cnt + 1
+			for _, layer := range mh.Layers() {
+				digest := helpers.GetDigestFrom(layer.Digest)
+				if cnt, exists := blobs[digest]; exists {
+					blobs[digest] = cnt + 1
 				} else {
-					fmt.Printf("warning: blob %q ref'd by manifest URL %q does not exist in the blobs dir\n", blob, mh.ImageUrl)
+					fmt.Printf("warning: blob %q ref'd by manifest URL %q does not exist in the blobs dir\n", digest, mh.ImageUrl)
 				}
 			}
 		}
@@ -178,7 +181,11 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 	for _, match := range matches {
 		if !match.mh.IsImageManifest() {
 			for _, sha256 := range match.mh.ImageManifestDigests() {
-				url := match.mh.Pr.UrlWithDigest(sha256)
+				pr, err := pullrequest.NewPullRequestFromUrl(match.mh.ImageUrl)
+				if err != nil {
+					return err
+				}
+				url := pr.UrlWithDigest(sha256)
 				if _, exists := matches[url]; !exists {
 					if mh, found := serialize.MhFromFileSystem(sha256, true, imagePath); found {
 						matches[url] = struct {
@@ -195,14 +202,15 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 	// removed below.
 	for _, match := range matches {
 		if match.mh.IsImageManifest() {
-			for _, blob := range match.mh.ManifestBlobs() {
-				if cnt, exists := blobs[blob]; exists {
-					blobs[blob] = cnt - 1
-					if blobs[blob] < 0 {
-						return fmt.Errorf("blob %q decremented negative (should never happen)", blob)
+			for _, layer := range match.mh.Layers() {
+				digest := helpers.GetDigestFrom(layer.Digest)
+				if cnt, exists := blobs[digest]; exists {
+					blobs[digest] = cnt - 1
+					if blobs[digest] < 0 {
+						return fmt.Errorf("blob %q decremented negative (should never happen)", digest)
 					}
 				} else {
-					return fmt.Errorf("blob %q for manifest %q not found (should never happen)", blob, match.mh.ImageUrl)
+					return fmt.Errorf("blob %q for manifest %q not found (should never happen)", digest, match.mh.ImageUrl)
 				}
 			}
 		}

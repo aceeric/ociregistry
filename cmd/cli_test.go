@@ -5,9 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
-	"ociregistry/impl/upstream"
-	"ociregistry/impl/upstream/v1oci"
-	"ociregistry/impl/upstream/v2docker"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -17,6 +14,38 @@ import (
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/opencontainers/go-digest"
 )
+
+var v2dockerManifest = `{
+	"schemaVersion": 2,
+	"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+	"config": {
+	   "digest": "sha256:%s"
+	},
+	"layers": [
+	   {
+		  "digest": "sha256:%s"
+	   },
+	   {
+		  "digest": "sha256:%s"
+	   }
+	]
+ }`
+
+var v1ociManifest = `{
+	"schemaVersion": 2,
+	"mediaType": "application/vnd.oci.image.manifest.v1+json",
+	"config": {
+	   "digest": "sha256:%s"
+	},
+	"layers": [
+	   {
+		  "digest": "sha256:%s"
+	   },
+	   {
+		  "digest": "sha256:%s"
+	   }
+	]
+ }`
 
 // Test prune manifests and blobs by url pattern
 func TestPrunebyPattern(t *testing.T) {
@@ -140,35 +169,23 @@ func makeTestFiles(cnt int) (string, string, error) {
 				return "", "", err
 			}
 		}
-		mh := imgpull.ManifestHolder{
-			ImageUrl: "z" + strconv.Itoa(i) + "z",
-			Digest:   manifestDigests[i],
-		}
+		var mh imgpull.ManifestHolder
+		var err error
 		if i%2 == 0 {
-			mh.Type = upstream.V1ociDescriptor
-			mh.V1ociManifest = v1oci.Manifest{
-				Config: v1oci.Descriptor{
-					Digest: blobDigests[0],
-				},
-				Layers: []v1oci.Descriptor{
-					{Digest: blobDigests[1]},
-					{Digest: sharedBlobDigest},
-				},
+			foo := fmt.Sprintf(v1ociManifest, blobDigests[0], blobDigests[1], sharedBlobDigest)
+			mh, err = imgpull.NewManifestHolder("application/vnd.oci.image.manifest.v1+json", []byte(foo), manifestDigests[i], "z"+strconv.Itoa(i)+"z")
+			if err != nil {
+				return "", "", err
 			}
 		} else {
-			mh.Type = upstream.V2dockerManifest
-			mh.V2dockerManifest = v2docker.Manifest{
-				Config: v2docker.Descriptor{
-					Digest: blobDigests[0],
-				},
-				Layers: []v2docker.Descriptor{
-					{Digest: blobDigests[1]},
-					{Digest: sharedBlobDigest},
-				},
+			foo := fmt.Sprintf(v2dockerManifest, blobDigests[0], blobDigests[1], sharedBlobDigest)
+			mh, err = imgpull.NewManifestHolder("application/vnd.docker.distribution.manifest.v2+json", []byte(foo), manifestDigests[i], "z"+strconv.Itoa(i)+"z")
+			if err != nil {
+				return "", "", err
 			}
 		}
 		mb, _ := json.Marshal(mh)
-		err := os.WriteFile(filepath.Join(dir, "img", manifestDigests[i]), mb, 0777)
+		err = os.WriteFile(filepath.Join(dir, "img", manifestDigests[i]), mb, 0777)
 		if err != nil {
 			return "", "", err
 		}

@@ -3,8 +3,6 @@ package serialize
 import (
 	"encoding/json"
 	"ociregistry/impl/globals"
-	"ociregistry/impl/memcache"
-	"ociregistry/impl/upstream"
 	"os"
 	"path/filepath"
 	"strings"
@@ -53,6 +51,7 @@ func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (im
 	return imgpull.ManifestHolder{}, false
 }
 
+// MhToFilesystem writes a ManifestHolder to the file system
 func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string) error {
 	var subdir = fatPath
 	if mh.IsImageManifest() {
@@ -83,7 +82,7 @@ func FromFilesystem(imagePath string) error {
 	log.Infof("load in-mem cache from file system")
 	itemcnt := 0
 	WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
-		memcache.AddToCache(mh.ImageUrl, mh, false)
+		// TODO memcache.AddToCache(mh.ImageUrl, mh, false)
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
 		itemcnt++
 		return nil
@@ -108,7 +107,7 @@ func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 			if err != nil {
 				return err
 			}
-			mh := upstream.ManifestHolder{}
+			mh := imgpull.ManifestHolder{}
 			err = json.Unmarshal(b, &mh)
 			if err != nil {
 				return err
@@ -136,9 +135,9 @@ func RmBlob(imagePath string, digest string) error {
 	return nil
 }
 
-// RmManifest removes the passed manifest. If the manifest file does not exist,
+// RmManifest removes the passed manifest from the fle system. If the manifest file does not exist,
 // no error is returned.
-func RmManifest(imagePath string, mh upstream.ManifestHolder) error {
+func RmManifest(imagePath string, mh imgpull.ManifestHolder) error {
 	subPath := fatPath
 	if mh.IsImageManifest() {
 		subPath = imgPath
@@ -150,8 +149,7 @@ func RmManifest(imagePath string, mh upstream.ManifestHolder) error {
 	return nil
 }
 
-// GetAllBlobs returns a map of blobs with a counter (set to zero). The intent is
-// for the caller to tally blob reference counts into the map.
+// GetAllBlobs returns a map of all blobs on the filesystem with a counter (set to zero).
 func GetAllBlobs(imagePath string) map[string]int {
 	blobMap := make(map[string]int)
 	if entries, err := os.ReadDir(filepath.Join(imagePath, globals.BlobsDir)); err != nil {

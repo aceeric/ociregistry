@@ -3,7 +3,7 @@ module ociregistry
 go 1.23.3
 
 require (
-	github.com/aceeric/imgpull v1.9.1-0.20250406021737-b8acd0943a53
+	github.com/aceeric/imgpull v1.9.1-0.20250406174021-192ea719d05c
 	github.com/getkin/kin-openapi v0.128.0
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/oapi-codegen/runtime v1.1.1

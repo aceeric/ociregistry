@@ -5,6 +5,8 @@ github.com/aceeric/imgpull v1.9.1-0.20250406012407-5736bc0d9770 h1:lqAk8a4vq94fp
 github.com/aceeric/imgpull v1.9.1-0.20250406012407-5736bc0d9770/go.mod h1:yTCvfgQUZgp3R4M9FuR5J+c02l5dtxBB+AOTYOmxzu4=
 github.com/aceeric/imgpull v1.9.1-0.20250406021737-b8acd0943a53 h1:Xcd1uU0ut2v8k7VHNaXBxK9cfMdBH1vsgv+IEQr02Mo=
 github.com/aceeric/imgpull v1.9.1-0.20250406021737-b8acd0943a53/go.mod h1:yTCvfgQUZgp3R4M9FuR5J+c02l5dtxBB+AOTYOmxzu4=
+github.com/aceeric/imgpull v1.9.1-0.20250406174021-192ea719d05c h1:7PTgcTxnE3F21xl9C4+CRoY/bgMcY0J6tDopzqcU9cU=
+github.com/aceeric/imgpull v1.9.1-0.20250406174021-192ea719d05c/go.mod h1:yTCvfgQUZgp3R4M9FuR5J+c02l5dtxBB+AOTYOmxzu4=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0 h1:axGnT1gRIfimI7gJifB699GoE/oq+F2MU7Dml6nw9rQ=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0/go.mod h1:lvDnEdqiQrp0O42VQGgmlKpxL1AP2+08jFMw88y4klk=
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=

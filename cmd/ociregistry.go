@@ -13,9 +13,9 @@ import (
 
 	"ociregistry/api"
 	"ociregistry/impl"
+	"ociregistry/impl/cache"
 	"ociregistry/impl/globals"
 	"ociregistry/impl/preload"
-	"ociregistry/impl/serialize"
 	"ociregistry/impl/upstream"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
@@ -111,7 +111,7 @@ func main() {
 	//e.Use(middleware.OapiRequestValidator(swagger))
 
 	// load cached image metadata into mem
-	serialize.FromFilesystem(args.imagePath)
+	cache.Load(args.imagePath)
 
 	// set up the command API
 	shutdownCh := make(chan bool)

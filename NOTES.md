@@ -1,6 +1,7 @@
 
 TODO
-1. Populating the cache from file system has to populate blob cache
+1. Re-implement FromFilesystem (load in mem cache)
+2. cli_test should test fat manifests
 2. Change ManifestType in impull to match here
 3. Resolve all TODO
 4. if "always pull latest" then replace last latest if different - handle decrement old / increment new blobs

@@ -136,7 +136,6 @@ func DoPull(puller imgpull.Puller, pr pullrequest.PullRequest, imagePath string)
 	return mh, nil
 }
 
-// TODO BLOBS
 func Load(imagePath string) error {
 	start := time.Now()
 	log.Infof("load in-mem cache from file system")
@@ -148,8 +147,9 @@ func Load(imagePath string) error {
 			outerErr = err
 			return err
 		}
-		addManifestToCache(pr, mh)
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
+		addManifestToCache(pr, mh)
+		addBlobsToCache(mh)
 		itemcnt++
 		return nil
 	})
@@ -157,6 +157,7 @@ func Load(imagePath string) error {
 	return outerErr
 }
 
+// TODO MAKE SURE THEY EXIST ON THE FILESYSTEM?
 // addBlobsToCache adds entries to the in-mem blob map and/or increments the ref count
 // for existing blobs in the blob map based on the layers (and the config blob) in the
 // passed manifest.

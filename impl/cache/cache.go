@@ -75,9 +75,9 @@ var (
 // perform the pull, and all other gouroutines will wait for the first gouroutine to complete the pull and
 // add the image to the cache. Then the waiting goroutine(s) will simply pull from the cache entry created
 // by the first goroutine.
-func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, allwaysPullLatest bool) (imgpull.ManifestHolder, error) {
+func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, forcePull bool) (imgpull.ManifestHolder, error) {
 	url := pr.Url()
-	if mh, ch, exists := getManifestOrEnqueue(url); exists {
+	if mh, ch, exists := getManifestOrEnqueue(url, forcePull); exists {
 		log.Infof("serving manifest from cache: %q", url)
 		return mh, nil
 	} else if ch == nil {
@@ -87,6 +87,9 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 		if err != nil {
 			log.Errorf("doPull failed for %q: %s", url, err)
 			return emptyManifestHolder, err
+		}
+		if forcePull {
+			prune(pr, mh)
 		}
 		addBlobsToCache(mh)
 		addManifestToCache(pr, mh)
@@ -228,11 +231,16 @@ func getManifestFromCache(url string) imgpull.ManifestHolder {
 //	ManifestHolder: Empty
 //	channel: non-nil - caller must wait to be signaled when the pulling goroutine finishes
 //	bool: false
-func getManifestOrEnqueue(url string, alwaysPullLatest bool) (imgpull.ManifestHolder, chan bool, bool) {
+//
+// As a final bit of complexity if forcePull is true then the manifest is always pulled.
+// In this case the server acts like a simple proxy.
+func getManifestOrEnqueue(url string, forcePull bool) (imgpull.ManifestHolder, chan bool, bool) {
 	mc.Lock()
 	defer mc.Unlock()
-	if val, exists := mc.manifests[url]; exists {
-		return val, nil, true
+	if !forcePull {
+		if val, exists := mc.manifests[url]; exists {
+			return val, nil, true
+		}
 	}
 	return emptyManifestHolder, enqueuePull(url), false
 }

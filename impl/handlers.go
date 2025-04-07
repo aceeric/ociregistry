@@ -18,7 +18,11 @@ import (
 func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string,
 	reference string, verb string, namespace *string) error {
 	pr := pullrequest.NewPullRequest(org, image, reference, parseRemote(ctx, namespace))
-	mh, err := cache.GetManifest(pr, r.imagePath, r.pullTimeout, r.alwaysPullLatest)
+	forcePull := false
+	if r.alwaysPullLatest && pr.Reference == "latest" {
+		forcePull = true
+	}
+	mh, err := cache.GetManifest(pr, r.imagePath, r.pullTimeout, forcePull)
 	if err != nil {
 		log.Errorf("error getting manifest for %q: %s", pr.Url(), err)
 		return ctx.NoContent(http.StatusInternalServerError)

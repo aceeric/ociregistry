@@ -1,29 +1,40 @@
 package cache
 
-//// think about doing this in on transaction?
-//func prune(key string) {
-//	// get blobs associated with manifest
-//	digests := simulateDigestList(key)
-//	delManifestFromCache(key)
-//	delBlobsFromCache(digests)
-//}
+import (
+	"ociregistry/impl/helpers"
+	"ociregistry/impl/pullrequest"
 
-//// todo from file system
-//// this could delete a manifest right after it was pulled and waiters
-//// are waiting which could cause the waiters to return
-//func delManifestFromCache(key string) {
-//	mc.Lock()
-//	defer mc.Unlock()
-//	delete(mc.manifests, key)
-//}
+	"github.com/aceeric/imgpull/pkg/imgpull"
+)
 
-//// todo lazy delete from file system??
-//func delBlobsFromCache(digests []string) {
-//	bc.Lock()
-//	defer bc.Unlock()
-//	for _, digest := range digests {
-//		if cnt := bc.blobs[digest]; cnt > 0 {
-//			bc.blobs[digest] = cnt - 1
-//		}
-//	}
-//}
+// prune removes the manifest and blobs
+func prune(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
+	delManifestFromCache(pr, mh.Digest)
+	delBlobsFromCache(mh)
+}
+
+// TODO delete from file system (or optionally delete since don't need to
+// delete on a force pull because prior will be overwritten)
+// this could delete a manifest right after it was pulled and waiters
+// are waiting which could cause the waiters to return
+func delManifestFromCache(pr pullrequest.PullRequest, digest string) {
+	mc.Lock()
+	defer mc.Unlock()
+	delete(mc.manifests, pr.Url())
+	if pr.PullType == pullrequest.ByTag {
+		delete(mc.manifests, pr.UrlWithDigest("sha256:"+digest))
+	}
+}
+
+// TODO delete from file system
+func delBlobsFromCache(mh imgpull.ManifestHolder) {
+	if mh.IsManifestList() {
+		return
+	}
+	bc.Lock()
+	defer bc.Unlock()
+	for _, layer := range mh.Layers() {
+		digest := helpers.GetDigestFrom(layer.Digest)
+		bc.blobs[digest] = bc.blobs[digest] - 1
+	}
+}

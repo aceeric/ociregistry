@@ -26,10 +26,10 @@ type PullRequest struct {
 func NewPullRequest(org, image, reference, remote string) PullRequest {
 	return PullRequest{
 		PullType:  typeFromRef(reference),
-		Org:       org,
-		Image:     image,
-		Reference: reference,
-		Remote:    remote,
+		Org:       strings.ToLower(org),
+		Image:     strings.ToLower(image),
+		Reference: strings.ToLower(reference),
+		Remote:    strings.ToLower(remote),
 	}
 }
 
@@ -64,10 +64,10 @@ func NewPullRequestFromUrl(url string) (PullRequest, error) {
 	}
 	return PullRequest{
 		PullType:  typeFromRef(ref),
-		Org:       org,
-		Image:     img,
-		Reference: ref,
-		Remote:    remote,
+		Org:       strings.ToLower(org),
+		Image:     strings.ToLower(img),
+		Reference: strings.ToLower(ref),
+		Remote:    strings.ToLower(remote),
 	}, nil
 }
 

@@ -15,7 +15,7 @@ oapi-codegen:
 
 .PHONY: test
 test:
-	go test -count=1 $(ROOT)/cmd $(ROOT)/impl/... $(ROOT)/mock -v --cover
+	go test $(ROOT)/cmd $(ROOT)/impl/... $(ROOT)/mock -v -cover -coverprofile=$(ROOT)/prof.out
 
 .PHONY: coverprof
 coverprof: test

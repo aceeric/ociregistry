@@ -1,9 +1,11 @@
 package impl
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"ociregistry/impl/config"
 	"ociregistry/mock"
 	"os"
 	"testing"
@@ -15,6 +17,13 @@ import (
 func init() {
 	log.SetOutput(io.Discard)
 }
+
+// configures the mock distribution server
+var regConfig = `
+---
+- name: %s
+  scheme: http
+`
 
 // Starts the mock OCI distribution server then runs the ociregistry server
 // and gets a manifest from the ociregistry server with the mock distribution
@@ -29,6 +38,10 @@ func TestManifestGetWithNs(t *testing.T) {
 		}
 	}
 	server, url := mock.ServerWithCallback(mock.NewMockParams(mock.NONE, mock.HTTP), &callback)
+	cfg := fmt.Sprintf(regConfig, url)
+	if err := config.AddConfig([]byte(cfg)); err != nil {
+		t.Fail()
+	}
 	defer server.Close()
 	d, err := os.MkdirTemp("", "")
 	if err != nil {
@@ -63,6 +76,10 @@ func TestNeverCacheLatest(t *testing.T) {
 		}
 	}
 	server, url := mock.ServerWithCallback(mock.NewMockParams(mock.NONE, mock.HTTP), &callback)
+	cfg := fmt.Sprintf(regConfig, url)
+	if err := config.AddConfig([]byte(cfg)); err != nil {
+		t.Fail()
+	}
 	defer server.Close()
 	d, err := os.MkdirTemp("", "")
 	if err != nil {

@@ -2,10 +2,10 @@ package preload
 
 import (
 	"fmt"
+	"ociregistry/impl/config"
 	"ociregistry/impl/globals"
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/serialize"
-	"ociregistry/impl/upstream"
 	"path/filepath"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
@@ -17,7 +17,7 @@ func preloadOneImage(imageUrl string, imagePath string, platformArch string, pla
 	if err != nil {
 		return itemcnt, fmt.Errorf("unable to parse image ref %q", imageUrl)
 	}
-	opts, err := upstream.ConfigFor(pr.Remote)
+	opts, err := config.ConfigFor(pr.Remote)
 	if err != nil {
 		return itemcnt, err
 	}
@@ -49,7 +49,7 @@ func preloadOneImage(imageUrl string, imagePath string, platformArch string, pla
 }
 
 func getFromCacheOrRemote(puller imgpull.Puller, digest string, isImageManifest bool, imagePath string, cnt *int) (imgpull.ManifestHolder, error) {
-	if mh, found := serialize.MhFromFileSystem(digest, isImageManifest, imagePath); found {
+	if mh, found := serialize.MhFromFilesystem(digest, isImageManifest, imagePath); found {
 		return mh, nil
 	}
 	var mh imgpull.ManifestHolder

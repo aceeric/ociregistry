@@ -14,9 +14,9 @@ import (
 	"ociregistry/api"
 	"ociregistry/impl"
 	"ociregistry/impl/cache"
+	"ociregistry/impl/config"
 	"ociregistry/impl/globals"
 	"ociregistry/impl/preload"
-	"ociregistry/impl/upstream"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/labstack/echo/v4"
@@ -104,7 +104,7 @@ func main() {
 	// have Echo use the global logging
 	e.Use(globals.GetEchoLoggingFunc())
 
-	go upstream.ConfigLoader(args.configPath, 30)
+	go config.ConfigLoader(args.configPath, 30)
 
 	// use Open API middleware to check all requests against the OpenAPI schema
 	// for now, don't do this until I add the cmd api to the Swagger spec

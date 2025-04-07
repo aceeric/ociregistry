@@ -3,10 +3,9 @@ package serialize
 import (
 	"encoding/json"
 	"ociregistry/impl/globals"
+	"ociregistry/impl/helpers"
 	"os"
 	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"
@@ -24,20 +23,17 @@ const (
 // from the metadata cache
 type CacheEntryHandler func(imgpull.ManifestHolder, os.FileInfo) error
 
-// MhFromFileSystem gets a 'ManifestHolder' from the file system at the passed path.
+// MhFromFilesystem gets a 'ManifestHolder' from the file system at the passed path.
 // If not found, returns an empty 'ManifestHolder' and false, else the 'ManifestHolder'
 // from the file system and true
-func MhFromFileSystem(digest string, isImageManifest bool, imagePath string) (imgpull.ManifestHolder, bool) {
+func MhFromFilesystem(digest string, isImageManifest bool, imagePath string) (imgpull.ManifestHolder, bool) {
 	var subdir = fatPath
 	if isImageManifest {
 		subdir = imgPath
 	}
-	if strings.HasPrefix(digest, "sha256:") {
-		digest = strings.Split(digest, ":")[1]
-	}
+	digest = helpers.GetDigestFrom(digest)
 	fname := filepath.Join(imagePath, subdir, digest)
-	_, err := os.Stat(fname)
-	if err == nil {
+	if _, err := os.Stat(fname); err == nil {
 		b, err := os.ReadFile(fname)
 		if err != nil {
 			return imgpull.ManifestHolder{}, false
@@ -71,23 +67,6 @@ func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string) error {
 		log.Errorf("error serializing manifest for %q, error: %q", mh.ImageUrl, err)
 		return err
 	}
-	return nil
-}
-
-// TODO rename to LoadInMemCache or someting
-// FromFilesystem reads all the manifests from the file system and adds them
-// the the in-memory data structure that represents the cache in memory.
-func FromFilesystem(imagePath string) error {
-	start := time.Now()
-	log.Infof("load in-mem cache from file system")
-	itemcnt := 0
-	WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
-		// TODO memcache.AddToCache(mh.ImageUrl, mh, false)
-		log.Debugf("loading manifest for %s", mh.ImageUrl)
-		itemcnt++
-		return nil
-	})
-	log.Infof("loaded %d manifest(s) from the file system in %s", itemcnt, time.Since(start))
 	return nil
 }
 

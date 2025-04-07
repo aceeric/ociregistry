@@ -1,18 +1,12 @@
 package serialize
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
-	"ociregistry/impl/pullrequest"
-	"ociregistry/impl/upstream"
 	"os"
-	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
-	log "github.com/sirupsen/logrus"
 )
 
 var v2dockerManifest = `{
@@ -244,183 +238,88 @@ var v1ociManifest = `{
    }
 }`
 
-func init() {
-	log.SetOutput(io.Discard)
-}
-
 type manifestTest struct {
 	imgurl    string
 	mediatype string
 	digest    string
 	bytes     []byte
-	mtype     upstream.ManifestType
+	mtype     imgpull.ManifestType
 }
 
-var compatTests = []manifestTest{
+var manifestTests = []manifestTest{
 	{
 		imgurl:    "registry.k8s.io/pause:3.8",
 		mediatype: "application/vnd.docker.distribution.manifest.list.v2+json",
 		digest:    "9001185023633d17a2f98ff69b6ff2615b8ea02a825adffa40422f51dfdcde9d",
 		bytes:     []byte(v2dockerManifestList),
-		mtype:     upstream.V2dockerManifestList,
+		mtype:     imgpull.V2dockerManifestList,
 	},
 	{
 		imgurl:    "registry.k8s.io/pause@sha256:f5944f2d1daf66463768a1503d0c8c5e8dde7c1674d3f85abc70cef9c7e32e95",
 		mediatype: "application/vnd.docker.distribution.manifest.v2+json",
 		digest:    "f5944f2d1daf66463768a1503d0c8c5e8dde7c1674d3f85abc70cef9c7e32e95",
 		bytes:     []byte(v2dockerManifest),
-		mtype:     upstream.V2dockerManifest,
+		mtype:     imgpull.V2dockerManifest,
 	},
 	{
 		imgurl:    "quay.io/coreos/etcd:v3.5.18",
 		mediatype: "application/vnd.oci.image.index.v1+json",
 		digest:    "d0a641d5fbcc89678c931a61b7de7b8a1cf097149f135c9c73bc81d076a1494b",
 		bytes:     []byte(v1ociIndex),
-		mtype:     upstream.V1ociIndex,
+		mtype:     imgpull.V1ociIndex,
 	},
 	{
 		imgurl:    "quay.io/coreos/etcd@sha256:a1fbaea309fa27bad418200539a69cffb4c9336fe1a6b0af23874cd15293c8f8",
 		mediatype: "application/vnd.oci.image.manifest.v1+json",
 		digest:    "a1fbaea309fa27bad418200539a69cffb4c9336fe1a6b0af23874cd15293c8f8",
 		bytes:     []byte(v1ociManifest),
-		mtype:     upstream.V1ociDescriptor,
+		mtype:     imgpull.V1ociManifest,
 	},
 }
 
-// Test that old 'upstream.ManifestHolder' can be read as new 'imgpull.ManifestHolder'. Some fields in the
-// old struct were not carried forward but that's ok they are not needed in the new implementation.
-func TestReadOldManifestHolders(t *testing.T) {
+// Test saving and loading manifest holders.
+func TestSaveAndLoad(t *testing.T) {
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 
-	var mhOut upstream.ManifestHolder
-	fname := "testfile"
-	pr := pullrequest.NewPullRequest("foo", "bar", "baz", "frobozz")
-	for _, tst := range compatTests {
-		mhOut = upstream.ManifestHolder{
-			Pr:        pr,
-			ImageUrl:  tst.imgurl,
-			MediaType: tst.mediatype,
-			Digest:    tst.digest,
-			Bytes:     tst.bytes,
-			Type:      tst.mtype,
+	var mhOut imgpull.ManifestHolder
+
+	for _, tst := range manifestTests {
+		mhOut = imgpull.ManifestHolder{
+			Type:     tst.mtype,
+			Digest:   tst.digest,
+			ImageUrl: tst.imgurl,
+			Bytes:    tst.bytes,
 		}
 		switch tst.mtype {
-		case upstream.V2dockerManifestList:
+		case imgpull.V2dockerManifestList:
 			if err := json.Unmarshal(mhOut.Bytes, &mhOut.V2dockerManifestList); err != nil {
 				t.Fail()
 			}
-		case upstream.V2dockerManifest:
+		case imgpull.V2dockerManifest:
 			if err := json.Unmarshal(mhOut.Bytes, &mhOut.V2dockerManifest); err != nil {
 				t.Fail()
 			}
 
-		case upstream.V1ociIndex:
+		case imgpull.V1ociIndex:
 			if err := json.Unmarshal(mhOut.Bytes, &mhOut.V1ociIndex); err != nil {
 				t.Fail()
 			}
 
-		case upstream.V1ociDescriptor:
+		case imgpull.V1ociManifest:
 			if err := json.Unmarshal(mhOut.Bytes, &mhOut.V1ociManifest); err != nil {
 				t.Fail()
 			}
 		}
-		outBytes, _ := json.Marshal(mhOut)
-		if err := os.WriteFile(fname, outBytes, 0755); err != nil {
+		if MhToFilesystem(mhOut, td) != nil {
 			t.Fail()
 		}
-		inBytes, err := os.ReadFile(fname)
-		if err != nil {
+		mhIn, found := MhFromFilesystem(tst.digest, mhOut.IsImageManifest(), td)
+		if !found {
 			t.Fail()
 		}
-		mhIn := imgpull.ManifestHolder{}
-		if err = json.Unmarshal(inBytes, &mhIn); err != nil {
-			t.Fail()
-		}
-		if int(mhOut.Type) != int(mhIn.Type) {
-			t.Fail()
-		}
-		if mhOut.Digest != mhIn.Digest {
-			t.Fail()
-		}
-		if !bytes.Equal(mhOut.Bytes, mhIn.Bytes) {
-			t.Fail()
-		}
-		if mhOut.ImageUrl != mhIn.ImageUrl {
-			t.Fail()
-		}
-		if mhOut.MediaType != mhIn.MediaType() {
-			t.Fail()
-		}
-		mhOutStr, err := mhOut.ToString()
-		if err != nil {
-			t.Fail()
-		}
-		mhInStr, err := mhIn.ToString()
-		if err != nil {
-			t.Fail()
-		}
-		if mhOutStr != mhInStr {
+		if !reflect.DeepEqual(mhOut, mhIn) {
 			t.Fail()
 		}
 	}
 }
-func TestSaveLoadCompare(t *testing.T) {
-	td, _ := os.MkdirTemp("", "")
-	defer os.RemoveAll(td)
-
-	imageURL := "registry.k8s.io/pause:3.8"
-	digest := "9001185023633d17a2f98ff69b6ff2615b8ea02a825adffa40422f51dfdcde9d"
-
-	mhOut, err := imgpull.NewManifestHolder(imgpull.MediaTypeFrom[imgpull.V2dockerManifestList], []byte(v2dockerManifestList), digest, imageURL)
-	if err != nil {
-		t.Fail()
-	}
-	MhToFilesystem(mhOut, td)
-	fname := filepath.Join(td, "fat", mhOut.Digest)
-	_, err = os.Stat(fname)
-	if err != nil {
-		t.Fail()
-	}
-	b, err := os.ReadFile(fname)
-	if err != nil {
-		t.Fail()
-	}
-	mhIn := imgpull.ManifestHolder{}
-	err = json.Unmarshal(b, &mhIn)
-	if err != nil {
-		t.Fail()
-	}
-	same := reflect.DeepEqual(mhOut, mhIn)
-	if !same {
-		t.Fail()
-	}
-}
-
-// // TODO TEST THIS
-// func TestSaveLoadAddToCache(t *testing.T) {
-// 	td, _ := os.MkdirTemp("", "")
-// 	defer os.RemoveAll(td)
-// 	pr := pullrequest.NewPullRequest("foo", "bar", "baz", "frobozz")
-// 	mhOut := upstream.ManifestHolder{
-// 		Pr:        pr,
-// 		ImageUrl:  "registry.k8s.io/pause:3.8",
-// 		MediaType: "application/vnd.docker.distribution.manifest.list.v2+json",
-// 		Digest:    "9001185023633d17a2f98ff69b6ff2615b8ea02a825adffa40422f51dfdcde9d",
-// 		Size:      2761,
-// 		Bytes:     []byte{},
-// 		Type:      upstream.V2dockerManifestList,
-// 	}
-// 	MhToFilesystem(mhOut, td)
-// 	err := FromFilesystem(td)
-// 	if err != nil {
-// 		t.Fail()
-// 	}
-// 	mh, exists := memcache.IsCached(pr)
-// 	if !exists {
-// 		t.Fail()
-// 	}
-// 	if mh.Pr != pr {
-// 		t.Fail()
-// 	}
-// }

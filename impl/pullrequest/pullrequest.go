@@ -15,11 +15,11 @@ const (
 
 // PullRequest has the individual components of an image pull
 type PullRequest struct {
-	PullType  PullType `json:"pullType"`
-	Org       string   `json:"org"`
-	Image     string   `json:"image"`
-	Reference string   `json:"reference"`
-	Remote    string   `json:"remote"`
+	PullType  PullType
+	Org       string
+	Image     string
+	Reference string
+	Remote    string
 }
 
 // NewPullRequest returns a 'PullRequest' struct from the passed args

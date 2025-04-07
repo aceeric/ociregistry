@@ -2,8 +2,8 @@ package preload
 
 import (
 	"fmt"
+	"ociregistry/impl/config"
 	"ociregistry/impl/globals"
-	"ociregistry/impl/upstream"
 	"ociregistry/mock"
 	"os"
 	"path/filepath"
@@ -22,7 +22,7 @@ func TestPreload(t *testing.T) {
 	globals.ConfigureLogging("error")
 	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
 	cfg := fmt.Sprintf(regConfig, url)
-	if err := upstream.AddConfig([]byte(cfg)); err != nil {
+	if err := config.AddConfig([]byte(cfg)); err != nil {
 		t.Fail()
 	}
 	defer server.Close()

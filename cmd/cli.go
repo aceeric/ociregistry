@@ -187,7 +187,7 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 				}
 				url := pr.UrlWithDigest(sha256)
 				if _, exists := matches[url]; !exists {
-					if mh, found := serialize.MhFromFileSystem(sha256, true, imagePath); found {
+					if mh, found := serialize.MhFromFilesystem(sha256, true, imagePath); found {
 						matches[url] = struct {
 							mh imgpull.ManifestHolder
 						}{mh}
@@ -248,7 +248,7 @@ func fix(args cmdLine) (bool, error) {
 	if args.fix == "" {
 		return false, nil
 	}
-	mh, found := serialize.MhFromFileSystem(args.fix, true, args.imagePath)
+	mh, found := serialize.MhFromFilesystem(args.fix, true, args.imagePath)
 	if !found {
 		return true, fmt.Errorf("manifest not found for digest: %q", args.fix)
 	}

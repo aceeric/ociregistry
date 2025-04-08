@@ -67,10 +67,23 @@ var v1ociIndex = `{
 	]
 }`
 
+func resetCache() {
+	cp = concurrentPulls{
+		pulls: make(map[string][]chan bool),
+	}
+	mc = manifestCache{
+		manifests: map[string]imgpull.ManifestHolder{},
+	}
+	bc = blobCache{
+		blobs: map[string]int{},
+	}
+}
+
 // Setup: creates one each of the four supported manifest types, writes them to the file system,
 // along with blobs. Tests that the cache.Load function loads them correctly.
 func TestLoad(t *testing.T) {
 	mts := []imgpull.ManifestType{imgpull.V2dockerManifestList, imgpull.V2dockerManifest, imgpull.V1ociIndex, imgpull.V1ociManifest}
+	resetCache()
 	td, err := setupTestLoad(mts)
 	if td != "" {
 		defer os.RemoveAll(td)

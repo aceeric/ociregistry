@@ -18,15 +18,15 @@ func init() {
 	log.SetOutput(io.Discard)
 }
 
-// configures the mock distribution server
+// configures the OCI distribution server's connection to the upstream
+// mock server.
 var regConfig = `
 ---
 - name: %s
   scheme: http
 `
 
-// Starts the mock OCI distribution server then runs the ociregistry server
-// and gets a manifest from the ociregistry server with the mock distribution
+// Gets a manifest from the ociregistry server with the mock distribution
 // server as the upstream to pull from. Ensures the default behavior which is
 // that the first pull talks to the upstream (the mock distribution server
 // in this case) and all other pulls get from the ociregistry server cache.
@@ -56,8 +56,8 @@ func TestManifestGetWithNs(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 	getCnt := 5
 	for i := 0; i < getCnt; i++ {
-		err = r.handleV2OrgImageManifestsReference(ctx, "", "hello-world", "latest", http.MethodGet, &url)
-		if err != nil {
+		r.handleV2OrgImageManifestsReference(ctx, "", "hello-world", "latest", http.MethodGet, &url)
+		if ctx.Response().Status != 200 {
 			t.Fail()
 		}
 	}
@@ -81,21 +81,21 @@ func TestNeverCacheLatest(t *testing.T) {
 		t.Fail()
 	}
 	defer server.Close()
-	d, err := os.MkdirTemp("", "")
+	td, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fail()
 	}
-	defer os.RemoveAll(d)
+	defer os.RemoveAll(td)
 
-	r := NewOciRegistry(d, 1000, true)
+	r := NewOciRegistry(td, 1000, true)
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
 	getCnt := 5
 	for i := 0; i < getCnt; i++ {
-		err = r.handleV2OrgImageManifestsReference(ctx, "", "hello-world", "latest", http.MethodGet, &url)
-		if err != nil {
+		r.handleV2OrgImageManifestsReference(ctx, "", "hello-world", "latest", http.MethodGet, &url)
+		if ctx.Response().Status != 200 {
 			t.Fail()
 		}
 	}
@@ -130,6 +130,61 @@ func TestParseNamespace(t *testing.T) {
 	remote = parseRemote(ctx, &namespace)
 	// header has higher precedence than explicit namespace arg
 	if remote != "quay.io" {
+		t.Fail()
+	}
+}
+
+// Tests getting a blob. Since no manifests have been pulled thru a 404
+// should be returned.
+func TestBlobGetFails(t *testing.T) {
+	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
+	cfg := fmt.Sprintf(regConfig, url)
+	if err := config.AddConfig([]byte(cfg)); err != nil {
+		t.Fail()
+	}
+	defer server.Close()
+	td, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.RemoveAll(td)
+
+	r := NewOciRegistry(td, 1000, false)
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	ctx := e.NewContext(req, rec)
+	r.handleV2GetOrgImageBlobsDigest(ctx, "", "hello-world", "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a")
+	if ctx.Response().Status != 404 {
+		t.Fail()
+	}
+}
+
+// gets an image manifest which triggers also pulling the blobs.
+func TestPullImageAndBlob(t *testing.T) {
+	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
+	cfg := fmt.Sprintf(regConfig, url)
+	if err := config.AddConfig([]byte(cfg)); err != nil {
+		t.Fail()
+	}
+	defer server.Close()
+	d, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.RemoveAll(d)
+
+	r := NewOciRegistry(d, 1000, false)
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	ctx := e.NewContext(req, rec)
+	r.handleV2OrgImageManifestsReference(ctx, "", "hello-world", "sha256:e2fc4e5012d16e7fe466f5291c476431beaa1f9b90a5c2125b493ed28e2aba57", http.MethodGet, &url)
+	if ctx.Response().Status != 200 {
+		t.Fail()
+	}
+	r.handleV2GetOrgImageBlobsDigest(ctx, "", "hello-world", "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a")
+	if ctx.Response().Status != 200 {
 		t.Fail()
 	}
 }

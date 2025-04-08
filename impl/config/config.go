@@ -117,6 +117,9 @@ func ConfigLoader(configPath string, chkSeconds int) {
 	}
 }
 
+// AddConfig supports unit testing by creating an upstream config from the passed bytes as if they
+// had been read from a config file. It doesn't have any concurrency because it expects to be called
+// by a unit test running in isolation.
 func AddConfig(configBytes []byte) error {
 	if newConfig, err := parseConfig(configBytes); err != nil {
 		return err
@@ -153,6 +156,11 @@ func parseConfig(configBytes []byte) (map[string]cfgEntry, error) {
 // 'index.docker.io') and returns configuration options for that registry from the config.
 // If no matching config is found, then a default configuration is returned specifying insecure
 // https, and the runtime OS and architecture.
+//
+// Since the config might involve loading and calculating a tls.Config with certs, once the
+// parsing is complete, the final config struis saved for reuse so it doesn't need to be
+// re-parsed in the future. (Unless the config file changes, which is handled by the
+// ConfigLoader func.)
 func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 	// default options if no configuration
 	opts := imgpull.PullerOpts{
@@ -170,7 +178,7 @@ func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 	}
 
 	if regCfg.Opts != emptyOpts {
-		// use previously calculated values
+		// already parsed
 		return regCfg.Opts, nil
 	}
 

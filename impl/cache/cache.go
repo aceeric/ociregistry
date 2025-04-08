@@ -16,19 +16,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// TODO HANDLE ALWAYS PULL LATEST
-// if tag is latest and cached
-//   head upstream
-//   if digest matches
-//     return from cache
-//   pull
-//   delete existing manifest (for blob ref counts)
-//   add new manifest
+// TODO tie manifest and blobs together as a single transaction?
 
 // Type concurrentPulls handles the case where multiple goroutines might request a manifest
-// from an upstream concurrently. When that happens, the first goroutine in will actually do
+// from an upstream concurrently. When that happens, the first-in goroutine will actually do
 // the pull and all other goroutines will wait on the first puller. Its important to understand
-// than pulling an *image* manifest also pulls the image blobs. So this type avoids multiple
+// than pulling an *image* manifest also pulls the image blobs. This type avoids multiple
 // goroutines pulling the same blobs from the upstream at the same time.
 type concurrentPulls struct {
 	sync.Mutex
@@ -67,14 +60,14 @@ var (
 // GetManifest returns a manifest from the in-mem cache matching the URL of the passed 'PullRequest'.
 // If no manifest is cached then a pull is performed from an upstream OCI distribution server. The
 // function blocks until the pull is complete and then the manifest is added to the in-mem cache and
-// returned. Or an error is returned if the manifest can't be pulled or times out. If an *image* manifest
+// returned. An error is returned if the manifest can't be pulled or times out. If an *image* manifest
 // is requested and it is not already cached, then all the blobs for the image will also be pulled and
 // added to the blob cache.
 //
-// If multiple goroutines pull the same image at the same time, then only the first goroutine will actually
-// perform the pull, and all other gouroutines will wait for the first gouroutine to complete the pull and
-// add the image to the cache. Then the waiting goroutine(s) will simply pull from the cache entry created
-// by the first goroutine.
+// If multiple goroutines request to pull the same image at the same time, then only the first goroutine
+// will actually perform the pull, and all other goroutines will wait for the first goroutine to complete
+// the pull and add the image to the cache. Then the waiting goroutine(s) will simply pull from the cache
+// entry created by the first goroutine.
 func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, forcePull bool) (imgpull.ManifestHolder, error) {
 	url := pr.Url()
 	if mh, ch, exists := getManifestOrEnqueue(url, forcePull); exists {

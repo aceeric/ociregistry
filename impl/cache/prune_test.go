@@ -29,9 +29,10 @@ var pruneTest = `{
 }`
 
 func TestPrune(t *testing.T) {
+	resetCache()
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
-	for _, dir := range []string{"img", "blobs"} {
+	for _, dir := range []string{"fat", "img", "blobs"} {
 		os.Mkdir(filepath.Join(td, dir), 0777)
 	}
 	mh := imgpull.ManifestHolder{
@@ -56,6 +57,7 @@ func TestPrune(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
+
 	addManifestToCache(pr, mh)
 	addBlobsToCache(mh)
 	// manifests are added twice - one by tag and a second by digest

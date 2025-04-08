@@ -19,12 +19,12 @@ const (
 	imgPath = "img"
 )
 
-// CacheEntryHandler defines a function that can act on a 'ManifestHolder' instance
+// CacheEntryHandler defines a function that can act on a ManifestHolder instance
 // from the metadata cache
 type CacheEntryHandler func(imgpull.ManifestHolder, os.FileInfo) error
 
-// MhFromFilesystem gets a 'ManifestHolder' from the file system at the passed path.
-// If not found, returns an empty 'ManifestHolder' and false, else the 'ManifestHolder'
+// MhFromFilesystem gets a ManifestHolder from the file system at the passed path.
+// If not found, returns an empty ManifestHolder and false, else the ManifestHolder
 // from the file system and true
 func MhFromFilesystem(digest string, isImageManifest bool, imagePath string) (imgpull.ManifestHolder, bool) {
 	var subdir = fatPath
@@ -70,7 +70,7 @@ func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string) error {
 	return nil
 }
 
-// WalkTheCache walks the image cache and provides each de-serialized 'ManifestHolder'
+// WalkTheCache walks the image cache and provides each de-serialized ManifestHolder
 // to the passed function.
 func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 	for _, subpath := range []string{fatPath, imgPath} {
@@ -128,7 +128,7 @@ func RmManifest(imagePath string, mh imgpull.ManifestHolder) error {
 	return nil
 }
 
-// GetAllBlobs returns a map of all blobs on the filesystem with a counter (set to zero).
+// GetAllBlobs returns a map of all blobs on the filesystem with a ref counter initialized to zero.
 func GetAllBlobs(imagePath string) map[string]int {
 	blobMap := make(map[string]int)
 	if entries, err := os.ReadDir(filepath.Join(imagePath, globals.BlobsDir)); err != nil {

@@ -7,10 +7,13 @@ import (
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )
 
+// TODO CONSIDER ONE LOCK COVERING BOTH MANIFEST AND BLOBS
+// THEN BLOBS COULD BE REMOVED IF DEC TO ZERO...
+
 // prune removes the manifest and blobs
 func prune(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
 	delManifestFromCache(pr, mh.Digest)
-	delBlobsFromCache(mh)
+	decBlobRef(mh)
 }
 
 // TODO delete from file system (or optionally delete since don't need to
@@ -26,8 +29,8 @@ func delManifestFromCache(pr pullrequest.PullRequest, digest string) {
 	}
 }
 
-// TODO delete from file system
-func delBlobsFromCache(mh imgpull.ManifestHolder) {
+// blobs can only be decremented here for now
+func decBlobRef(mh imgpull.ManifestHolder) {
 	if mh.IsManifestList() {
 		return
 	}

@@ -48,15 +48,17 @@ func MhFromFilesystem(digest string, isImageManifest bool, imagePath string) (im
 }
 
 // MhToFilesystem writes a ManifestHolder to the file system
-func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string) error {
+func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) error {
 	var subdir = fatPath
 	if mh.IsImageManifest() {
 		subdir = imgPath
 	}
 	fname := filepath.Join(imagePath, subdir, mh.Digest)
-	if _, err := os.Stat(fname); err == nil {
-		log.Infof("manifest already in cache %q", fname)
-		return nil
+	if !replace {
+		if _, err := os.Stat(fname); err == nil {
+			log.Infof("manifest already in cache %q", fname)
+			return nil
+		}
 	}
 	if err := os.MkdirAll(filepath.Dir(fname), 0755); err != nil {
 		log.Errorf("unable to create directory %q, error: %q", filepath.Dir(fname), err)

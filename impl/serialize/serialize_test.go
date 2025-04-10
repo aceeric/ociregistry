@@ -311,7 +311,7 @@ func TestSaveAndLoad(t *testing.T) {
 				t.Fail()
 			}
 		}
-		if MhToFilesystem(mhOut, td) != nil {
+		if MhToFilesystem(mhOut, td, false) != nil {
 			t.Fail()
 		}
 		mhIn, found := MhFromFilesystem(tst.digest, mhOut.IsImageManifest(), td)

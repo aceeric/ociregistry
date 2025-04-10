@@ -106,12 +106,12 @@ func TestLoad(t *testing.T) {
 	for _, mt := range mts {
 		emptyMH := imgpull.ManifestHolder{}
 		urlTag := fmt.Sprintf("foo.io/foo/%d:v1.2.3", mt)
-		mh := getManifestFromCache(urlTag)
+		mh, _ := getManifestFromCache(urlTag, td)
 		if reflect.DeepEqual(mh, emptyMH) {
 			t.Fail()
 		}
 		urlSha := fmt.Sprintf("foo.io/foo/%d@sha256:%d", mt, mt)
-		mh = getManifestFromCache(urlSha)
+		mh, _ = getManifestFromCache(urlSha, td)
 		if reflect.DeepEqual(mh, emptyMH) {
 			t.Fail()
 		}
@@ -160,7 +160,7 @@ func setupTestLoad(mts []imgpull.ManifestType) (string, error) {
 				return "", err
 			}
 		}
-		if err := serialize.MhToFilesystem(mh, td); err != nil {
+		if err := serialize.MhToFilesystem(mh, td, false); err != nil {
 			return "", err
 		}
 	}

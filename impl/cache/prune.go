@@ -3,41 +3,57 @@ package cache
 import (
 	"ociregistry/impl/helpers"
 	"ociregistry/impl/pullrequest"
+	"ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
+	log "github.com/sirupsen/logrus"
 )
 
-// TODO CONSIDER ONE LOCK COVERING BOTH MANIFEST AND BLOBS
-// THEN BLOBS COULD BE REMOVED IF DEC TO ZERO...
+type PruneComparer func(imgpull.ManifestHolder) bool
 
-// prune removes the manifest and blobs
-func prune(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
-	delManifestFromCache(pr, mh.Digest)
-	decBlobRef(mh)
-}
-
-// TODO delete from file system (or optionally delete since don't need to
-// delete on a force pull because prior will be overwritten)
-// this could delete a manifest right after it was pulled and waiters
-// are waiting which could cause the waiters to return
-func delManifestFromCache(pr pullrequest.PullRequest, digest string) {
+func getManifestsToPrune(comparer PruneComparer) []imgpull.ManifestHolder {
 	mc.Lock()
 	defer mc.Unlock()
-	delete(mc.manifests, pr.Url())
-	if pr.PullType == pullrequest.ByTag {
-		delete(mc.manifests, pr.UrlWithDigest("sha256:"+digest))
+	mhs := make([]imgpull.ManifestHolder, 0, len(mc.manifests))
+	for _, mh := range mc.manifests {
+		if comparer(mh) {
+			mhs = append(mhs, mh)
+		}
+	}
+	return mhs
+}
+
+// prune removes the passed manifest and decrements blob ref counts from the in-mem
+// cache (if the manifest is an image manifest.)
+func prune(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string) {
+	mc.Lock()
+	defer mc.Unlock()
+	delManifestFromCache(pr, mh, imagePath)
+	if mh.IsImageManifest() {
+		bc.Lock()
+		defer bc.Unlock()
+		decBlobRefs(mh)
 	}
 }
 
-// blobs can only be decremented here for now
-func decBlobRef(mh imgpull.ManifestHolder) {
-	if mh.IsManifestList() {
-		return
+// delManifestFromCache removes the passed manifest from the manifest cache and the
+// file system. If the manifest is by tag, then the by-digest manifest is also removed from in-mem
+// cache. (It only exists once on the file system.)
+func delManifestFromCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string) {
+	delete(mc.manifests, pr.Url())
+	if pr.PullType == pullrequest.ByTag {
+		delete(mc.manifests, pr.UrlWithDigest("sha256:"+mh.Digest))
+		if err := serialize.RmManifest(imagePath, mh); err != nil {
+			log.Errorf("error removing manifest %q from the file system. the error was: %s", pr.Url(), err)
+		}
 	}
-	bc.Lock()
-	defer bc.Unlock()
+}
+
+// TODO if refcnt == 0 then remove and remove from filesystem
+// decBlobRefs decrements the ref count for all blobs in the passed image manifest.
+func decBlobRefs(mh imgpull.ManifestHolder) {
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)
-		bc.blobs[digest] = bc.blobs[digest] - 1
+		bc.blobs[digest]--
 	}
 }

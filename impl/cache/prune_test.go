@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
@@ -64,13 +65,38 @@ func TestPrune(t *testing.T) {
 	if len(mc.manifests) != 2 || len(bc.blobs) != 3 {
 		t.Fail()
 	}
-	prune(pr, mh)
+	prune(pr, mh, td)
 	if len(mc.manifests) != 0 {
 		t.Fail()
 	}
 	// blobs are only decremented - actual deletion happens elsewhere (TODO)
 	for _, digest := range digests {
 		if cnt, exists := bc.blobs[digest]; cnt != 0 || !exists {
+			t.Fail()
+		}
+	}
+}
+
+func TestGetManifestsToPrune(t *testing.T) {
+	resetCache()
+	for i := 0; i < 100; i++ {
+		pr, err := pullrequest.NewPullRequestFromUrl(fmt.Sprintf("foo.io/my-image:%d", i))
+		if err != nil {
+			t.Fail()
+		}
+		mh := imgpull.ManifestHolder{
+			Type:     imgpull.V1ociIndex,
+			Digest:   strconv.Itoa(i),
+			ImageUrl: pr.Url(),
+		}
+		addToCache(pr, mh)
+	}
+	comparer := func(mh imgpull.ManifestHolder) bool {
+		return strings.Contains(mh.ImageUrl, "2")
+	}
+	toPrune := getManifestsToPrune(comparer)
+	for _, mh := range toPrune {
+		if !strings.Contains(mh.ImageUrl, "2") {
 			t.Fail()
 		}
 	}

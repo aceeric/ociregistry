@@ -36,6 +36,7 @@ type cmdLine struct {
 	listCache        bool
 	prune            string
 	pruneBefore      string
+	pruneConfig      string
 	dryRun           bool
 	concurrent       int
 	version          bool
@@ -106,6 +107,11 @@ func main() {
 
 	go config.ConfigLoader(args.configPath, 30)
 
+	if err := cache.RunPruner(args.pruneConfig, args.imagePath); err != nil {
+		fmt.Fprintf(os.Stderr, "error starting the pruner: %s\n", err)
+		os.Exit(1)
+	}
+
 	// use Open API middleware to check all requests against the OpenAPI schema
 	// for now, don't do this until I add the cmd api to the Swagger spec
 	//e.Use(middleware.OapiRequestValidator(swagger))
@@ -146,6 +152,7 @@ func parseCmdline() cmdLine {
 	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "Max time in millis to pull an image from an upstream. Defaults to one minute")
 	flag.BoolVar(&args.listCache, "list-cache", false, "Lists the cached images and exits")
 	flag.StringVar(&args.prune, "prune", "", "Prunes from the cache matching comma-separated pattern(s)")
+	flag.StringVar(&args.pruneConfig, "prune-config", "", "Defines the prune configuration")
 	flag.StringVar(&args.pruneBefore, "prune-before", "", "Prunes from the cache created earlier than the specified datetime")
 	flag.BoolVar(&args.dryRun, "dry-run", false, "Runs other commands in dry-run mode")
 	flag.BoolVar(&args.version, "version", false, "Displays the version and exits")

@@ -1,9 +1,16 @@
 package cache
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"ociregistry/impl/helpers"
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/serialize"
+	"slices"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"
@@ -11,35 +18,197 @@ import (
 
 type PruneComparer func(imgpull.ManifestHolder) bool
 
-func getManifestsToPrune(comparer PruneComparer) []imgpull.ManifestHolder {
+const (
+	createdType      = "created"
+	accessedType     = "accessed"
+	noLimit          = -1
+	defaultPruneFreq = "5h"
+)
+
+// PruneConfig configures pruning.
+type PruneConfig struct {
+	// Created is a duration used in tandem with Type.
+	Duration string `json:"duration"`
+	// Type is a prune type used in tandem with Duration. Valid values are 'created' and 'accessed'.
+	// E.g. Duration "30d" and Type "created" is interpreted as: "prune all manifests that were created
+	// more than 30 days ago." Duration "30d" and Type "accessed" is interpreted as: "prune all manifests
+	// that have not been accessed (pulled) in the last 30 days"
+	Type string `json:"type"`
+	// Freq is a duration. Eg. "12h" means run the pruner every 12 hours. The default is
+	// 5 hours
+	Freq string `json:"freq"`
+	// Count is the max number of manifests to prune on every run. The default is no
+	// limit (every cached manifest matching the prune criteria could be pruned.)
+	Count int `json:"count"`
+	// If DryRun is true then nothing is pruned but logging is performed to show what would be pruned
+	DryRun bool `json:"dryrun"`
+}
+
+// RunPruner runs the pruner, performing the prune according to the criteria and frequency
+// specified in the passed prune configuration. For example, if the configuration string has
+// `{"accessed": "15d"}` then using built-in defaults, the pruner will run every 5 hours, and
+// remove images that have not been accessed (pulled) in over 15 days.
+func RunPruner(cfgStr string, imagePath string) error {
+	if cfgStr == "" {
+		return nil
+	}
+	cfg, err := parseConfig(cfgStr)
+	if err != nil {
+		return err
+	}
+	comparer, err := parseCriteria(cfg)
+	if err != nil {
+		return err
+	}
+	count := noLimit
+	if cfg.Count != 0 {
+		count = cfg.Count
+	}
+	freq := defaultPruneFreq
+	if cfg.Freq != "" {
+		freq = cfg.Freq
+	}
+	runFreq, err := time.ParseDuration(freq)
+	if err != nil {
+		return err
+	}
+	go func() {
+		for {
+			time.Sleep(runFreq)
+			doPrune(imagePath, comparer, count, cfg.DryRun)
+		}
+	}()
+	return nil
+}
+
+// parseConfig takes a string like `{"duration": "24h", "type": "created", "freq": "3h",
+// "count": 11, "dryrun": true}` and returns a PruneConfig struct.
+func parseConfig(cfg string) (PruneConfig, error) {
+	var parseResult PruneConfig
+	err := json.Unmarshal([]byte(cfg), &parseResult)
+	return parseResult, err
+}
+
+// parseCriteria parses the prune criteria in the receiver and returns a prune comparer
+// function.
+func parseCriteria(cfg PruneConfig) (PruneComparer, error) {
+	// duration has to minimally be a value and a type like "1h"
+	if len(cfg.Duration) < 2 || cfg.Type == "" {
+		return nil, errors.New("missing/invalid duration/type in prune criteria")
+	}
+	if !slices.Contains([]string{createdType, accessedType}, strings.ToLower(cfg.Type)) {
+		return nil, fmt.Errorf("unknown criteria type %q, expect %q or %q", cfg.Type, createdType, accessedType)
+	}
+	durStr := cfg.Duration
+	if !strings.HasPrefix(cfg.Duration, "-") {
+		durStr = "-" + cfg.Duration
+	}
+	durStr, err := days2hrs(durStr)
+	if err != nil {
+		return nil, err
+	}
+	dur, err := time.ParseDuration(durStr)
+	if err != nil {
+		return nil, err
+	}
+	cutoffDate := time.Now().Add(dur)
+	switch strings.ToLower(cfg.Type) {
+	case createdType:
+		return func(mh imgpull.ManifestHolder) bool {
+			if mh.Created == "" {
+				log.Debugf("prune comparer - manifest has no create date, skipping %q", mh.ImageUrl)
+				return false
+			}
+			manifestCreateDt, err := time.Parse(dateFormat, mh.Created)
+			if err != nil {
+				log.Errorf("prune comparer - error parsing manifest create date %q for manifest %q", mh.Created, mh.ImageUrl)
+				return false
+			}
+			return manifestCreateDt.Before(cutoffDate)
+		}, nil
+	case accessedType:
+		return func(mh imgpull.ManifestHolder) bool {
+			if mh.Pulled == "" {
+				log.Debugf("prune comparer - manifest has no pull date, skipping %q", mh.ImageUrl)
+				return false
+			}
+			manifestPullDt, err := time.Parse(dateFormat, mh.Pulled)
+			if err != nil {
+				log.Errorf("prune comparer - error parsing parse manifest pull date %q for manifest %q", mh.Pulled, mh.ImageUrl)
+				return false
+			}
+			return manifestPullDt.Before(cutoffDate)
+		}, nil
+	}
+	return nil, nil
+}
+
+// doPrune makes one pass through the cache and evaluates each manifest according to the passed
+// comparer. If the comparer indicates that a manifest matches the prune criteria it is pruned.
+// The count arg is the max number of manifests to prune. If noLimit (-1) then there is no limit.
+// If druRun then the function logs what would be pruned but does not prune.
+func doPrune(imagePath string, comparer PruneComparer, count int, dryRun bool) {
+	toPrune := getManifestsToPrune(comparer, count)
+	for _, mh := range toPrune {
+		if dryRun {
+			log.Infof("doPrune - dry run specified, skipping prune of manifest %q", mh.ImageUrl)
+			continue
+		}
+		prune(mh, imagePath)
+	}
+}
+
+// getManifestsToPrune traverses the in-mem manifest cache and evaluates each manifest
+// according to the passed comparer. Manifests selected for pruning by the comparer are
+// returned to the caller in an array. The count arg is the max number of manifests to
+// prune. If noLimit (-1) then there is no limit.
+func getManifestsToPrune(comparer PruneComparer, count int) []imgpull.ManifestHolder {
 	mc.Lock()
 	defer mc.Unlock()
 	mhs := make([]imgpull.ManifestHolder, 0, len(mc.manifests))
-	for _, mh := range mc.manifests {
+	matches := 0
+	for url, mh := range mc.manifests {
 		if comparer(mh) {
+			if url != mh.ImageUrl {
+				// when manifests are added to cache, if the manifest has a tag it is added
+				// by tag and again by digest so it is retrievable both ways. The pruner
+				// will handle this so only add to the prune list if the lookup key matches
+				// the manifest url
+				continue
+			}
+			matches++
+			if count != noLimit && matches > count {
+				break
+			}
 			mhs = append(mhs, mh)
 		}
 	}
 	return mhs
 }
 
-// prune removes the passed manifest and decrements blob ref counts from the in-mem
-// cache (if the manifest is an image manifest.)
-func prune(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string) {
+// prune removes the passed manifest (and blobs if the manifest is an image manifest)
+// from the in-mem cache and from the file system.
+func prune(mh imgpull.ManifestHolder, imagePath string) {
 	mc.Lock()
 	defer mc.Unlock()
-	delManifestFromCache(pr, mh, imagePath)
+	rmManifest(mh, imagePath)
 	if mh.IsImageManifest() {
 		bc.Lock()
 		defer bc.Unlock()
-		decBlobRefs(mh)
+		rmBlobs(mh, imagePath)
 	}
 }
 
-// delManifestFromCache removes the passed manifest from the manifest cache and the
-// file system. If the manifest is by tag, then the by-digest manifest is also removed from in-mem
-// cache. (It only exists once on the file system.)
-func delManifestFromCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string) {
+// rmManifest removes the passed manifest from the manifest cache and the file system. If the
+// manifest is by tag, then the pair by-digest manifest is also removed from in-mem cache.
+// (Manifests only exists once on the file system, but may exist twice in the in-mem cache:
+// once by tag and once by digest for efficient retrieval.)
+func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
+	pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
+	if err != nil {
+		log.Errorf("error parsing manifest URL: %s", err)
+		return
+	}
 	delete(mc.manifests, pr.Url())
 	if pr.PullType == pullrequest.ByTag {
 		delete(mc.manifests, pr.UrlWithDigest("sha256:"+mh.Digest))
@@ -49,11 +218,35 @@ func delManifestFromCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder,
 	}
 }
 
-// TODO if refcnt == 0 then remove and remove from filesystem
-// decBlobRefs decrements the ref count for all blobs in the passed image manifest.
-func decBlobRefs(mh imgpull.ManifestHolder) {
+// rmBlobs decrements the ref count pf all blobs in the passed image manifest in the in-mem
+// blob map and if the ref count is zero, the blob is removed from the file system.
+func rmBlobs(mh imgpull.ManifestHolder, imagePath string) {
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)
 		bc.blobs[digest]--
+		if bc.blobs[digest] == 0 {
+			if err := serialize.RmBlob(imagePath, digest); err != nil {
+				log.Errorf("error removing blob %q from the file system. the error was: %s", digest, err)
+			}
+			delete(bc.blobs, digest)
+		} else if bc.blobs[digest] < 0 {
+			log.Errorf("negative blob count for digest %q", digest)
+		}
 	}
+}
+
+// days2hrs converts a days string like "-1d" to an hours string like "-24h" because
+// the Go Duration parser doesn't support days. The the passed value is not days then
+// it is simply returned unaltered.
+func days2hrs(v string) (string, error) {
+	if v[len(v)-1] == 'd' {
+		days := v[0 : len(v)-1]
+		intDays, err := strconv.Atoi(days)
+		if err != nil {
+			return "", err
+		}
+		hours := intDays * 24
+		v = fmt.Sprintf("%dh", hours)
+	}
+	return v, nil
 }

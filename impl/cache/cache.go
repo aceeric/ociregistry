@@ -16,13 +16,16 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// magic numbers from 'format.go' in package 'time'
+const dateFormat = "2006-01-02T15:04:05"
+
 // Type concurrentPulls handles the case where multiple goroutines might request a manifest
 // from an upstream concurrently. When that happens, the first-in goroutine will actually do
 // the pull and all other goroutines will wait on the first puller. The thing to know is
-// that pulling an image manifest *also* pulls the image blobs. This is time-consuming and
-// uses potentially a lot of network bandwidth. This type avoids multiple goroutines pulling
-// the same blobs from the upstream at the same time - thus more efficiently utilizing
-// system resources.
+// that pulling an image manifest *also* pulls the image blobs. This can be relatively
+// time-consuming and uses potentially a lot of network bandwidth. This type avoids multiple
+// goroutines pulling the same blobs from the upstream at the same time - thus more efficiently
+// utilizing system resources.
 type concurrentPulls struct {
 	sync.Mutex
 	pulls map[string][]chan bool
@@ -39,9 +42,10 @@ type manifestCache struct {
 
 // Type blobCache is the in-mem representation of the blob cache. The key is a digest, and the value
 // is a ref count. The ref count is the number of image manifests that reference that particular.
-// blob. This ref count is used to prune the blobs. A blob with no refs can be safely removed. Blobs
-// are mainly pulled and so reads vastly outnumber updates or deletes. Hence we use a RWMutex for
-// a little better concurrency.
+// blob. When a manifest is added the ref count is inc'd and then a manifest is removed the ref
+// count is dec'd. This ref count is used to prune the blobs. A blob with no refs can be safely
+// removed. Blobs are downloaded from upstreams infrequently, but pulled frequently, so reads
+// vastly outnumber updates or deletes. Hence a RWMutex for a little better concurrency.
 type blobCache struct {
 	sync.RWMutex
 	blobs map[string]int
@@ -64,8 +68,8 @@ var (
 // If no manifest is cached then a pull is performed from an upstream OCI distribution server. The
 // function blocks until the pull is complete and then the manifest is added to the in-mem cache and
 // returned. An error is returned if the manifest can't be pulled or times out. If an *image* manifest
-// is requested and it is not already cached, then all the blobs for the image will also be pulled and
-// added to the blob cache.
+// is requested and it is not already cached, then all the blobs for the image will also be pulled from
+// the upstream and added to the blob cache.
 //
 // If multiple goroutines request to pull the same image at the same time, then only the first goroutine
 // will actually perform the pull, and all other goroutines will wait for the first goroutine to complete
@@ -86,7 +90,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 		}
 		if forcePull {
 			// remove the old because it will be replaced by the new
-			prune(pr, mh, imagePath)
+			prune(mh, imagePath)
 		}
 		addToCache(pr, mh)
 		return mh, nil
@@ -107,6 +111,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 
 // GetBlob returns the ref count for the passed blob digest. If zero then the blob is not referenced
 // by any cached manifests and therefore technically does not exist and and will eventually be pruned.
+// If no map entry then zero is returned.
 func GetBlob(digest string) int {
 	bc.RLock()
 	defer bc.RUnlock()
@@ -299,7 +304,5 @@ func signalWaiters(url string) {
 
 // curTime gets the current time as YYYY-MM-DDYHH:MM:SS
 func curTime() string {
-	// magic numbers from 'format.go' in package 'time'
-	const dateFormat = "2006-01-02T15:04:05"
 	return time.Now().Format(dateFormat)
 }

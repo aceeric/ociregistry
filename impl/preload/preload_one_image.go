@@ -62,7 +62,7 @@ func getFromCacheOrRemote(puller imgpull.Puller, digest string, isImageManifest 
 	if err != nil {
 		return imgpull.ManifestHolder{}, err
 	}
-	serialize.MhToFilesystem(mh, imagePath)
+	serialize.MhToFilesystem(mh, imagePath, false)
 	if mh.IsImageManifest() {
 		blobDir := filepath.Join(imagePath, globals.BlobsDir)
 		if err = puller.PullBlobs(mh, blobDir); err != nil {

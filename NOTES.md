@@ -17,4 +17,15 @@ server list
 server prune --before --pattern --dry-run
 server version
 
+--config-path > --registry-config
+
 global --log-level --image-path  (--cache-path)
+
+config:
+  created: 1d
+  accessed: 1d
+  frequency: 1h
+  count: 10
+
+
+--prune: '{"created": "1d", "accessed": "1d", "freq": "1h", "count": "10"}'

@@ -158,7 +158,7 @@ func parseConfig(configBytes []byte) (map[string]cfgEntry, error) {
 // https, and the runtime OS and architecture.
 //
 // Since the config might involve loading and calculating a tls.Config with certs, once the
-// parsing is complete, the final config struis saved for reuse so it doesn't need to be
+// parsing is complete, the final config struct saved for reuse so it doesn't need to be
 // re-parsed in the future. (Unless the config file changes, which is handled by the
 // ConfigLoader func.)
 func ConfigFor(registry string) (imgpull.PullerOpts, error) {

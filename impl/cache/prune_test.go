@@ -48,7 +48,7 @@ func TestPrune(t *testing.T) {
 	}
 
 	addManifestToCache(pr, mh)
-	addBlobsToCache(mh)
+	addBlobsToCache(mh, td)
 	// manifests that are pulled by tag are added twice - one by tag and a second by digest
 	if len(mc.manifests) != 2 || len(bc.blobs) != 3 {
 		t.Fail()
@@ -76,7 +76,7 @@ func TestGetManifestsToPrune(t *testing.T) {
 			Digest:   strconv.Itoa(i),
 			ImageUrl: pr.Url(),
 		}
-		addToCache(pr, mh)
+		addToCache(pr, mh, "")
 	}
 	comparer := func(mh imgpull.ManifestHolder) bool {
 		return strings.Contains(mh.ImageUrl, "2")

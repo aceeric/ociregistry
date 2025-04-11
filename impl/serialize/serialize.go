@@ -116,6 +116,15 @@ func RmBlob(imagePath string, digest string) error {
 	return nil
 }
 
+// BlobExists returns true if the passed blob is on the file system, else false.
+func BlobExists(imagePath string, digest string) bool {
+	blobPath := filepath.Join(imagePath, globals.BlobsDir, digest)
+	if _, err := os.Stat(blobPath); err == nil {
+		return true
+	}
+	return false
+}
+
 // RmManifest removes the passed manifest from the fle system. If the manifest file does not exist,
 // no error is returned.
 func RmManifest(imagePath string, mh imgpull.ManifestHolder) error {

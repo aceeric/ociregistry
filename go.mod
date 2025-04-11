@@ -7,7 +7,6 @@ require (
 	github.com/getkin/kin-openapi v0.128.0
 	github.com/labstack/echo/v4 v4.12.0
 	github.com/oapi-codegen/runtime v1.1.1
-	github.com/rs/zerolog v1.34.0
 	github.com/sirupsen/logrus v1.9.3
 	gopkg.in/yaml.v3 v3.0.1
 )

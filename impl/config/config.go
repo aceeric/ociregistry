@@ -28,21 +28,46 @@ type tlsCfg struct {
 	Cert     string `yaml:"cert"`
 	Key      string `yaml:"key"`
 	CA       string `yaml:"ca"`
-	Insecure bool   `yaml:"insecure_skip_verify"`
+	Insecure bool   `yaml:"insecure_skip_verify"` // TODO insecureSkipVerify
 }
 
-// cfgEntry combines authCfg and tlsCfg
-type cfgEntry struct {
-	Name        string
-	Description string
-	Auth        authCfg
-	Tls         tlsCfg
-	Scheme      string
-	Opts        imgpull.PullerOpts
+// RegistryConfig combines authCfg and tlsCfg
+type RegistryConfig struct {
+	Name        string             `yaml:"name"`
+	Description string             `yaml:"description"`
+	Auth        authCfg            `yaml:"auth"`
+	Tls         tlsCfg             `yaml:"tls"`
+	Scheme      string             `yaml:"scheme"`
+	Opts        imgpull.PullerOpts `yaml:"opts,omitempty"`
+}
+
+type PruneConfig struct {
+	Enabled  bool   `yaml:"enabled"`
+	Duration string `yaml:"duration"`
+	Type     string `yaml:"type"`
+	Freq     string `yaml:"frequency"`
+	Count    int    `yaml:"count"`
+	DryRun   bool   `yaml:"dryrun"`
+}
+type Configuration struct {
+	LogLevel         string           `yaml:"logLevel"`
+	ConfigFile       string           `yaml:"configFile"`
+	ImagePath        string           `yaml:"imagePath"`
+	PreloadImages    string           `yaml:"preloadImages"`
+	Port             int64            `yaml:"port"`
+	Os               string           `yaml:"os"`
+	Arch             string           `yaml:"arch"`
+	PullTimeout      int64            `yaml:"pullTimeout"`
+	AlwaysPullLatest bool             `yaml:"allwaysPullLatest"`
+	AirGapped        bool             `yaml:"airGapped"`
+	HelloWorld       bool             `yaml:"helloWorld"`
+	Registries       []RegistryConfig `yaml:"registries"`
+	PruneConfig      PruneConfig      `yaml:"pruneConfig"`
 }
 
 var (
-	config    map[string]cfgEntry = make(map[string]cfgEntry)
+	NewConfig Configuration
+	config    map[string]RegistryConfig = make(map[string]RegistryConfig)
 	mu        sync.Mutex
 	emptyAuth = authCfg{User: "", Password: ""}
 	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", Insecure: false}
@@ -117,6 +142,18 @@ func ConfigLoader(configPath string, chkSeconds int) {
 	}
 }
 
+func Load(configFile string) error {
+	if _, err := os.Stat(configFile); err != nil {
+		return fmt.Errorf("unable to stat configuration file: %s", configFile)
+	}
+	if contents, err := os.ReadFile(configFile); err != nil {
+		return fmt.Errorf("error reading configuration file: %s", configFile)
+	} else if err := yaml.Unmarshal(contents, &NewConfig); err != nil {
+		return fmt.Errorf("error parsing configuration file: %s, the error was: %s", configFile, err)
+	}
+	return nil
+}
+
 // AddConfig supports unit testing by creating an upstream config from the passed bytes as if they
 // had been read from a config file. It doesn't have any concurrency because it expects to be called
 // by a unit test running in isolation.
@@ -135,13 +172,13 @@ func AddConfig(configBytes []byte) error {
 // the caller. The map key is the 'name' element of each configuration which must exactly match
 // a remote registry URL with no scheme, e.g.: quay.io, or: our.private.registry.gov:6443, or
 // 129.168.1.1:8080, or index.docker.io, etc.
-func parseConfig(configBytes []byte) (map[string]cfgEntry, error) {
-	var entries []cfgEntry
+func parseConfig(configBytes []byte) (map[string]RegistryConfig, error) {
+	var entries []RegistryConfig
 	err := yaml.Unmarshal(configBytes, &entries)
 	if err != nil {
-		return map[string]cfgEntry{}, err
+		return map[string]RegistryConfig{}, err
 	}
-	config := make(map[string]cfgEntry)
+	config := make(map[string]RegistryConfig)
 
 	for _, entry := range entries {
 		_, exists := config[entry.Name]

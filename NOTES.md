@@ -1,4 +1,14 @@
 
+
+TOPLINE:
+- do not support hot reload config at this time ?????
+- if config provided load it
+- if args provided fold them into config
+- mod reg lookup to use new struct
+- mod prune runner to use new struct
+
+
+
  2. Resolve all TODO
  3. --hello-world
  4. Replace yaml https://github.com/goccy/go-yaml if possible (may be sub-dependency)
@@ -14,24 +24,23 @@ curl http://localhost/cmd/prune/accessed&dur=1d
 curl http://localhost/cmd/prune/created&dur=1d
 curl http://localhost/cmd/prune/pattern?kubernetesui/dashboard:v2.7.0&dryRun=true
 
-server serve --config-path --port --preload-images <file> --os --arch --pull-timeout --always-pull-latest --concurrent
-server load  --config-pat                                 --os --arch --pull-timeout                      --concurrent <file>
-server list
-server prune --before --pattern --dry-run
-server version
-
---config-path > --registry-config
-
-global --log-level --image-path  (--cache-path)
-
-config:
-  created: 1d
-  accessed: 1d
-  frequency: 1h
-  count: 10
+--pull-timeout
+--always-pull-latest
 
 
---prune: '{"created": "1d", "accessed": "1d", "freq": "1h", "count": "10"}'
+               port  preload-images  os  arch  pull-timeout  always-pull-latest  concurrent  hello-world  air-gapped
+               ----  --------------  --  ----  ------------  ------------------  ----------  -----------  ----------
+server serve    X       X            X    X         X        X                                    X           X
+server load                          X    X         X                              ?
+server list                                
+server prune   (see below)                            
+server version            
+
+global: --log-level / --config-path / --image-path
+
+
+or ociregistry prune --duration 1d --type accessed --dry-run --regex  (if type=pattern)
+
 
 ```yaml
 # configuration of ociregistry
@@ -40,14 +49,14 @@ imagePath: /var/lib/ociregistry
 port: 8080
 os: linux
 arch: amd64
-pullTimeout: 
+pullTimeout: 60000
 alwaysPullLatest: false
 airGapped: false
 helloWorld: false
-concurrent: TODO
+concurrent: 12
 registries:
   - name: localhost:8080
-    description: The ociregistry server running on my desktop
+    description: server running on the desktop
     scheme: http
 pruneConfig:
   enabled: false
@@ -57,3 +66,5 @@ pruneConfig:
   count: -1
   dryRun: false
 ```
+
+

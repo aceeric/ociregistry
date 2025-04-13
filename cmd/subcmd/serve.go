@@ -1,4 +1,4 @@
-package main
+package subcmd
 
 import (
 	"context"
@@ -30,9 +30,9 @@ Command line: %v
 ----------------------------------------------------------------------
 `
 
-// serve runs the OCI distribution server, blocking until stopped with CTRL-C
+// Serve runs the OCI distribution server, blocking until stopped with CTRL-C
 // or via the command REST API.
-func serve(buildVer string, buildDtm string) {
+func Serve(buildVer string, buildDtm string) {
 	if config.GetPreloadImages() != "" {
 		if err := preload.Load(config.GetPreloadImages()); err != nil {
 			fmt.Printf("error pre-loading images: %s\n", err)

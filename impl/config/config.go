@@ -44,7 +44,12 @@ type PruneConfig struct {
 	Type     string `yaml:"type"`
 	Freq     string `yaml:"frequency"`
 	Count    int    `yaml:"count"`
+	Expr     string `yaml:"expr"`
 	DryRun   bool   `yaml:"dryrun"`
+}
+
+type ListConfig struct {
+	Header bool `yaml:"header"`
 }
 
 // Configuration represents the totality of configuration knobs and dials for the server.
@@ -63,25 +68,28 @@ type Configuration struct {
 	HelloWorld       bool             `yaml:"helloWorld"`
 	Registries       []RegistryConfig `yaml:"registries"`
 	PruneConfig      PruneConfig      `yaml:"pruneConfig"`
+	ListConfig       ListConfig       `yaml:"listConfig"`
 }
 
 // FromCmdLine has a flag for every command-line option. The parsing code
 // sets the flag to true if the option was explicitly provided on the command
 // line by the user.
 type FromCmdLine struct {
-	Command          string //`yaml:"command"`
-	LogLevel         bool   //`yaml:"logLevel"`
-	ConfigFile       bool   //`yaml:"configFile"`
-	ImagePath        bool   //`yaml:"imagePath"`
-	PreloadImages    bool   //`yaml:"preloadImages"`
-	ImageFile        bool   //`yaml:"imageFile"`
-	Port             bool   //`yaml:"port"`
-	Os               bool   //`yaml:"os"`
-	Arch             bool   //`yaml:"arch"`
-	PullTimeout      bool   //`yaml:"pullTimeout"`
-	AlwaysPullLatest bool   //`yaml:"alwaysPullLatest"`
-	AirGapped        bool   //`yaml:"airGapped"`
-	HelloWorld       bool   //`yaml:"helloWorld"`
+	Command          string
+	LogLevel         bool
+	ConfigFile       bool
+	ImagePath        bool
+	PreloadImages    bool
+	ImageFile        bool
+	Port             bool
+	Os               bool
+	Arch             bool
+	PullTimeout      bool
+	AlwaysPullLatest bool
+	AirGapped        bool
+	HelloWorld       bool
+	PruneConfig      bool
+	ListConfig       bool
 }
 
 var (
@@ -149,6 +157,10 @@ func GetPruneConfig() PruneConfig {
 	return config.PruneConfig
 }
 
+func GetListConfig() ListConfig {
+	return config.ListConfig
+}
+
 // Load loads the passed configuration file into the configuration struct
 func Load(configFile string) error {
 	if _, err := os.Stat(configFile); err != nil {
@@ -207,6 +219,10 @@ func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 		fallthrough
 	case fromCmdline.HelloWorld || !config.HelloWorld:
 		config.HelloWorld = cfg.HelloWorld
+	case fromCmdline.PruneConfig || config.PruneConfig == PruneConfig{}:
+		config.PruneConfig = cfg.PruneConfig
+	case fromCmdline.ListConfig || config.ListConfig == ListConfig{}:
+		config.ListConfig = cfg.ListConfig
 	}
 }
 

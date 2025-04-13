@@ -1,27 +1,42 @@
 # TODO
 
-1. Command API:  /v2 and add to oapi spec
-1. Re-implement pruning vi cmd - just call API
-1. Implement --hello-world
-1. impl/cache/cache.go - on force pull dont delete blobs BUT - need a background goroutine to clean orphaned blobs
-1. Instrumentation
-1. Base URL support
-1. Enable swagger UI
-1. Resolve all TODO
+- Prune changes (below)
+- Test continuous pruning
+- Command API: add to oapi spec
+- Implement --hello-world
+- impl/cache/cache.go - on force pull dont delete blobs BUT - need a background goroutine to clean orphaned blobs
+- Instrumentation
+- Base URL support
+- Enable swagger UI
+- Resolve all TODO
 
-## Prune 
+## Prune changes
 
+1. When pruning, guarantee two removed if two added. If a manifest is keyed by digest but its
+   url is by tag then its the second one so in that case the tagged one should also be removed.
+   So:
+   - If by tag then get the digest and remove
+   - If by digest then get the tag and remove
+2. getManifestsToPrune should return map keys And ensure BOTH are returned. Process should be driven
+   by the map keys
+
+## Prune API
+
+```shell
+curl -X POST http://localhost:8080/cmd/prune/accessed?dur=1d&dryRun
+curl -X POST http://localhost:8080/cmd/prune/created?dur=1d&dryRun
+curl -X POST http://localhost:8080/cmd/prune/regex?kubernetesui/dashboard:v2.7.0&dryRun
 ```
-POST
-curl http://localhost/cmd/prune/accessed?dur=1d&dryRun
-curl http://localhost/cmd/prune/created?dur=1d&dryRun
-curl http://localhost/cmd/prune/regex?kubernetesui/dashboard:v2.7.0&dryRun
 
-CLI
+## Support API
 
-type is accessed or created --dry-run is always supported
+```shell
+curl -X GET http://localhost:8080/cmd/manifest/list
+curl -X GET http://localhost:8080/cmd/blob/list
+```
 
-ociregistry prune --type ? --duration ? --dry-run
-ociregistry prune --type ? --duration ? --dry-run
-ociregistry prune --regex foo --dry-run
+## Patch older manifest
+
+```shell
+sed  -i -e 's/}}$/},"Created":"2025-04-01T22:07:01","Pulled":"2025-04-01T22:08:34"}/' /tmp/images/img/* /tmp/images/fat/*
 ```

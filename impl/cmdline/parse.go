@@ -47,7 +47,7 @@ var cmds = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:        "config-file",
-			Usage:       "A path to load configuration values from (cmdline overrides file settings)",
+			Usage:       "A file to load configuration values from (cmdline overrides file settings)",
 			Destination: &cfg.ConfigFile,
 			Validator: func(path string) error {
 				if fi, err := os.Stat(path); err != nil {
@@ -235,6 +235,18 @@ var cmds = &cli.Command{
 				fromCmdline.Command = "list"
 				return nil
 			},
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:        "header",
+					Value:       false,
+					Usage:       "Displays a header line",
+					Destination: &cfg.ListConfig.Header,
+					Action: func(ctx context.Context, cmd *cli.Command, _ bool) error {
+						fromCmdline.ListConfig = true
+						return nil
+					},
+				},
+			},
 		},
 		{
 			Name:  "version",
@@ -242,6 +254,46 @@ var cmds = &cli.Command{
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "version"
 				return nil
+			},
+		},
+		{
+			Name:  "prune",
+			Usage: "Prunes the cache on the filesystem (server should not be running)",
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				fromCmdline.Command = "prune"
+				return nil
+			},
+			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:        "pattern",
+					Usage:       "Prune images matching the comma-separated pattern(s), e.g. '--pattern cilium,coredns'",
+					Destination: &cfg.PruneConfig.Expr,
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.PruneConfig = true
+						cfg.PruneConfig.Type = "pattern"
+						return nil
+					},
+				},
+				&cli.StringFlag{
+					Name:        "date",
+					Usage:       "Prune images created before a timestamp, e.g. '--date 2025-02-28T12:59:59'",
+					Destination: &cfg.PruneConfig.Expr,
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.PruneConfig = true
+						cfg.PruneConfig.Type = "date"
+						return nil
+					},
+				},
+				&cli.BoolFlag{
+					Name:        "dry-run",
+					Value:       false,
+					Usage:       "Shows what would prune, but does not actually prune",
+					Destination: &cfg.PruneConfig.DryRun,
+					Action: func(ctx context.Context, cmd *cli.Command, _ bool) error {
+						fromCmdline.PruneConfig = true
+						return nil
+					},
+				},
 			},
 		},
 	},

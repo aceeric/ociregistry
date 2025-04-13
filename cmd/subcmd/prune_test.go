@@ -1,10 +1,11 @@
-package main
+package subcmd
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"ociregistry/impl/config"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -47,45 +48,56 @@ var v1ociManifest = `{
 	]
  }`
 
-// Test prune manifests and blobs by url pattern
+var cfgYaml = `
+---
+imagePath: %s
+pruneConfig:
+  enabled: false
+  duration: 30d
+  type: %s
+  expr: %s
+  dryRun: false
+`
+
+// Test prune by url pattern
 func TestPrunebyPattern(t *testing.T) {
 	manifestCnt := 10
 	expectPrune := 3
-	d, sharedBlobDigest, err := makeTestFiles(manifestCnt)
-	if d != "" {
-		defer os.RemoveAll(d)
+	td, sharedBlobDigest, err := makeTestFiles(manifestCnt)
+	if td != "" {
+		defer os.RemoveAll(td)
 	}
 	if err != nil {
 		t.Fail()
 	}
-	c := cmdLine{
-		imagePath: d,
-		prune:     "2,4,6",
-	}
-	if _, err = prunePattern(c); err != nil {
+	cfg := fmt.Sprintf(cfgYaml, td, "pattern", "2,4,6")
+	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
 		t.Fail()
-	} else if entries, err := os.ReadDir(filepath.Join(d, "img")); err != nil {
+	}
+	if err := Prune(); err != nil {
+		t.Fail()
+	} else if entries, err := os.ReadDir(filepath.Join(td, "img")); err != nil {
 		t.Fail()
 	} else if len(entries) != manifestCnt-expectPrune {
 		t.Fail()
-	} else if verifyBlobPrune(d, len(entries), sharedBlobDigest) != nil {
+	} else if verifyBlobPrune(td, len(entries), sharedBlobDigest) != nil {
 		t.Fail()
 	}
 }
 
-// Test prune manifests and blobs by date/time.
+// Test prune by date/time.
 func TestPrunebyDate(t *testing.T) {
 	manifestCnt := 10
 	expectPrune := 5
-	d, sharedBlobDigest, err := makeTestFiles(10)
-	if d != "" {
-		defer os.RemoveAll(d)
+	td, sharedBlobDigest, err := makeTestFiles(10)
+	if td != "" {
+		defer os.RemoveAll(td)
 	}
 	if err != nil {
 		t.Fail()
 	}
 	var cutoff time.Time
-	if entries, err := os.ReadDir(filepath.Join(d, "img")); err != nil {
+	if entries, err := os.ReadDir(filepath.Join(td, "img")); err != nil {
 		t.Fail()
 	} else {
 		for i := 0; i < manifestCnt; i++ {
@@ -98,23 +110,23 @@ func TestPrunebyDate(t *testing.T) {
 			if i == expectPrune-1 {
 				cutoff = tstamp.Add(time.Second)
 			}
-			fname := filepath.Join(d, "img", entries[i].Name())
+			fname := filepath.Join(td, "img", entries[i].Name())
 			if err := os.Chtimes(fname, tstamp, tstamp); err != nil {
 				fmt.Println(err)
 			}
 		}
 	}
-	c := cmdLine{
-		imagePath:   d,
-		pruneBefore: cutoff.Format(dateFormat),
-	}
-	if _, err = pruneBefore(c); err != nil {
+	cfg := fmt.Sprintf(cfgYaml, td, "date", cutoff.Format(dateFormat))
+	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
 		t.Fail()
-	} else if entries, err := os.ReadDir(filepath.Join(d, "img")); err != nil {
+	}
+	if err := Prune(); err != nil {
+		t.Fail()
+	} else if entries, err := os.ReadDir(filepath.Join(td, "img")); err != nil {
 		t.Fail()
 	} else if len(entries) != manifestCnt-expectPrune {
 		t.Fail()
-	} else if verifyBlobPrune(d, len(entries), sharedBlobDigest) != nil {
+	} else if verifyBlobPrune(td, len(entries), sharedBlobDigest) != nil {
 		t.Fail()
 	}
 }
@@ -144,7 +156,10 @@ func verifyBlobPrune(testdir string, cnt int, sharedBlobDigest string) error {
 
 // Makes image manifests and blobs. Each manifest contains two unique
 // blobs and one blob shared by all manifests. Manifest urls are like
-// z1z, z2z, z3z, ...
+// z1z, z2z, z3z, ... The function returns:
+//  1. The test directory name
+//  2. The shared blob digest
+//  3. An error (or nil)
 func makeTestFiles(cnt int) (string, string, error) {
 	dir, _ := os.MkdirTemp("", "")
 	os.Mkdir(filepath.Join(dir, "fat"), 0777)

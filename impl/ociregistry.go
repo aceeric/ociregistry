@@ -20,7 +20,7 @@ type OciRegistry struct {
 	imagePath string
 	// timeout in milliseconds for pulling from upstreams
 	pullTimeout int
-	// if true then always pull images with tag 'latest' (act liek a simple proxy)
+	// if true then always pull images with tag 'latest' (act like a simple proxy)
 	alwaysPullLatest bool
 	// if air-gapped, we can't pull so don't try just return 404
 	airGapped bool
@@ -30,7 +30,6 @@ type OciRegistry struct {
 // OciRegistry struct implements the api.ServerInterface interface, which is generated from
 // the api/ociregistry.yaml openapi spec for the distribution server.
 func NewOciRegistry() *OciRegistry { //api.ServerInterface {
-
 	return &OciRegistry{
 		imagePath:        config.GetImagePath(),
 		pullTimeout:      int(config.GetPullTimeout()),

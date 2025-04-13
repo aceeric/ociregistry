@@ -18,6 +18,7 @@ import (
 
 type PruneComparer func(imgpull.ManifestHolder) bool
 
+// only accept created and accessed types
 const (
 	createdType      = "created"
 	accessedType     = "accessed"
@@ -27,12 +28,13 @@ const (
 
 // RunPruner runs the pruner, performing the prune according to the criteria and frequency
 // specified in the passed prune configuration. For example, if the configuration string has
-// `{"accessed": "15d"}` then using built-in defaults, the pruner will run every 5 hours, and
-// remove images that have not been accessed (pulled) in over 15 days.
+// `{"accessed": "15d"}` then using built-in defaults, the pruner will remove images that have
+// not been accessed (pulled) within the last 15 days. Unless configured differently, the process
+// will run every 5 hours.
 func RunPruner() error {
 	cfg := config.GetPruneConfig()
 	if !cfg.Enabled {
-		log.Info("pruning not enabled - exiting")
+		log.Info("pruning not enabled")
 		return nil
 	}
 	comparer, err := parseCriteria(cfg)
@@ -111,7 +113,7 @@ func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
 			return manifestPullDt.Before(cutoffDate)
 		}, nil
 	}
-	return nil, nil
+	return nil, fmt.Errorf("unsupported prune type %q", cfg.Type)
 }
 
 // doPrune makes one pass through the cache and evaluates each manifest according to the passed

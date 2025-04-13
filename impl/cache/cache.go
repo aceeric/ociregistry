@@ -226,7 +226,7 @@ func addBlobsToCache(mh imgpull.ManifestHolder, imagePath string) {
 // means the current goroutine must pull the image and signal any other goroutines waiting for the
 // pull to complete.
 //
-// 2) If a nin-nil channel is returned, it means another goroutine is already doing the pull for the
+// 2) If a non-nil channel is returned, it means another goroutine is already doing the pull for the
 // requested url so the caller in *this* goroutine should wait to be signaled on the non-nil
 // channel. (The pulling go routine will signal all waiters when the image has been added to cache.)
 //
@@ -321,7 +321,7 @@ func signalWaiters(url string) {
 	}
 }
 
-// curTime gets the current time as YYYY-MM-DDYHH:MM:SS
+// curTime gets the current time as YYYY-MM-DDTHH:MM:SS
 func curTime() string {
 	return time.Now().Format(dateFormat)
 }

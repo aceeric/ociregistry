@@ -117,7 +117,7 @@ func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
 // doPrune makes one pass through the cache and evaluates each manifest according to the passed
 // comparer. If the comparer indicates that a manifest matches the prune criteria it is pruned.
 // The count arg is the max number of manifests to prune. If noLimit (-1) then there is no limit.
-// If druRun then the function logs what would be pruned but does not actually prune.
+// If dryRun then the function logs what would be pruned but does not actually prune.
 func doPrune(imagePath string, comparer PruneComparer, count int, dryRun bool) {
 	toPrune := getManifestsToPrune(comparer, count)
 	for _, mh := range toPrune {

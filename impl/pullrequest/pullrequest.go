@@ -13,7 +13,14 @@ const (
 	ByDigest
 )
 
-// PullRequest has the individual components of an image pull
+// PullRequest has the individual components of an image pull. If initialized with
+// 'index.docker.io/hello-world:latest' then the struct members are like so:
+//
+//	PullType  = ByTag
+//	Org       = ""
+//	Image     = hello-world
+//	Reference = latest
+//	Remote    = docker.io
 type PullRequest struct {
 	PullType  PullType
 	Org       string
@@ -83,7 +90,7 @@ func (pr *PullRequest) Url() string {
 	return fmt.Sprintf("%s/%s/%s%s%s", pr.Remote, pr.Org, pr.Image, separator, pr.Reference)
 }
 
-// UrlWithDigest is like Url except it overrides the ref with the passed digest
+// UrlWithDigest is like Url except it overrides the ref in the receiver with the passed digest
 func (pr *PullRequest) UrlWithDigest(digest string) string {
 	separator := "@"
 	if pr.Org == "" {
@@ -92,22 +99,8 @@ func (pr *PullRequest) UrlWithDigest(digest string) string {
 	return fmt.Sprintf("%s/%s/%s%s%s", pr.Remote, pr.Org, pr.Image, separator, digest)
 }
 
-// Id formats the instance as a slash-separated compound key. E.g. url 'calico/node:v1.23.0'
-// becomes key '/calico/node/v1.23.0' and url 'hello-world:v1.0.0' becomes key '/hello-world/v1.0.0'.
-// For SHA-based pulls, 'foo/bar@sha256:a15f3c...' becomes key 'foo/bar/sha256:a15f3c...'. Note
-// that if there is no org, the Id begins with a forward slash character.
-func (pr *PullRequest) Id() string {
-	return fmt.Sprintf("%s/%s/%s", pr.Org, pr.Image, pr.Reference)
-}
-
-// IdDigest is like 'Id' except it only operates on digest pulls. E.g. 'foo/bar@sha256:a15f3c...'
-// is returned as key 'foo/bar/sha256:a15f3c...'.
-func (pr *PullRequest) IdDigest(digest string) string {
-	return fmt.Sprintf("%s/%s/%s", pr.Org, pr.Image, digest)
-}
-
 // typeFromRef looks at the passed 'ref' and if it's a digest ref then returns
-// 'byDigest' else returns 'byTag'.
+// 'ByDigest' else returns 'ByTag'.
 func typeFromRef(ref string) PullType {
 	if strings.HasPrefix(ref, "sha256:") {
 		return ByDigest

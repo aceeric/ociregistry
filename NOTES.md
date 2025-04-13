@@ -1,46 +1,21 @@
 
-
-TOPLINE:
-- do not support hot reload config at this time ?????
-- if config provided load it
-- if args provided fold them into config
-- mod reg lookup to use new struct
-- mod prune runner to use new struct
+ 1. Resolve all TODO
+ 2. --hello-world
+ 3. Re-implement pruning vi cmd
+ 4. Load/Preload is broken - SIMPLIFY
+ 6. impl/cache/cache.go - on forcepull dont delete blobs BUT - need a background goroutine to clean orphaned blobs
 
 
+POST
+curl http://localhost/cmd/prune/accessed?dur=1d&dryRun
+curl http://localhost/cmd/prune/created?dur=1d&dryRun
+curl http://localhost/cmd/prune/regex?kubernetesui/dashboard:v2.7.0&dryRun
 
- 2. Resolve all TODO
- 3. --hello-world
- 4. Replace yaml https://github.com/goccy/go-yaml if possible (may be sub-dependency)
- 5. Implement sub-commands (serve, prune, load)
- 6. Implement pruning vi cmd
- 7. Rework concurrent load / pre-load
- 8. --air-gapped
- 9. --config  path-to-config-file (what do to about current config...)
-10. Consider https://github.com/urfave/cli
+// type is accessed or created --dry-run is always supported
 
-
-curl http://localhost/cmd/prune/accessed&dur=1d
-curl http://localhost/cmd/prune/created&dur=1d
-curl http://localhost/cmd/prune/pattern?kubernetesui/dashboard:v2.7.0&dryRun=true
-
---pull-timeout
---always-pull-latest
-
-
-               port  preload-images  os  arch  pull-timeout  always-pull-latest  concurrent  hello-world  air-gapped
-               ----  --------------  --  ----  ------------  ------------------  ----------  -----------  ----------
-server serve    X       X            X    X         X        X                                    X           X
-server load                          X    X         X                              ?
-server list                                
-server prune   (see below)                            
-server version            
-
-global: --log-level / --config-path / --image-path
-
-
-or ociregistry prune --duration 1d --type accessed --dry-run --regex  (if type=pattern)
-
+ociregistry prune --type ? --duration ? --dry-run
+ociregistry prune --type ? --duration ? --dry-run
+ociregistry prune --regex foo --dry-run
 
 ```yaml
 # configuration of ociregistry

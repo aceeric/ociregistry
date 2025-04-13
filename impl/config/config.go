@@ -47,13 +47,13 @@ type PruneConfig struct {
 	DryRun   bool   `yaml:"dryrun"`
 }
 
-// Configuration brings together all the structs above and represents the totality
-// of configuration knobs and dials for the server.
+// Configuration represents the totality of configuration knobs and dials for the server.
 type Configuration struct {
 	LogLevel         string           `yaml:"logLevel"`
 	ConfigFile       string           `yaml:"configFile"`
 	ImagePath        string           `yaml:"imagePath"`
 	PreloadImages    string           `yaml:"preloadImages"`
+	ImageFile        string           `yaml:"imageFile"`
 	Port             int64            `yaml:"port"`
 	Os               string           `yaml:"os"`
 	Arch             string           `yaml:"arch"`
@@ -74,6 +74,7 @@ type FromCmdLine struct {
 	ConfigFile       bool   //`yaml:"configFile"`
 	ImagePath        bool   //`yaml:"imagePath"`
 	PreloadImages    bool   //`yaml:"preloadImages"`
+	ImageFile        bool   //`yaml:"imageFile"`
 	Port             bool   //`yaml:"port"`
 	Os               bool   //`yaml:"os"`
 	Arch             bool   //`yaml:"arch"`
@@ -106,6 +107,10 @@ func GetImagePath() string {
 
 func GetPreloadImages() string {
 	return config.PreloadImages
+}
+
+func GetImageFile() string {
+	return config.ImageFile
 }
 
 func GetPort() int64 {
@@ -178,6 +183,9 @@ func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 		fallthrough
 	case fromCmdline.PreloadImages || config.PreloadImages == "":
 		config.PreloadImages = cfg.PreloadImages
+		fallthrough
+	case fromCmdline.ImageFile || config.ImageFile == "":
+		config.ImageFile = cfg.ImageFile
 		fallthrough
 	case fromCmdline.Port || config.Port == 0:
 		config.Port = cfg.Port

@@ -15,13 +15,13 @@ import (
 )
 
 // HEAD or GET /v2/.../manifests/ref
-func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string,
-	reference string, verb string, namespace *string) error {
-	pr := pullrequest.NewPullRequest(org, image, reference, parseRemote(ctx, namespace))
-	forcePull := false
-	if r.alwaysPullLatest && pr.Reference == "latest" {
-		forcePull = true
+func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string, ref string, verb string, ns *string) error {
+	pr := pullrequest.NewPullRequest(org, image, ref, parseRemote(ctx, ns))
+	if r.airGapped && !cache.IsCached(pr) {
+		log.Debugf("request for un-cached manifest %q in air-gapped mode - returning 404", pr.Url())
+		return ctx.JSON(http.StatusNotFound, "")
 	}
+	forcePull := r.alwaysPullLatest && pr.Reference == "latest"
 	mh, err := cache.GetManifest(pr, r.imagePath, r.pullTimeout, forcePull)
 	if err != nil {
 		log.Errorf("error getting manifest for %q: %s", pr.Url(), err)
@@ -50,7 +50,7 @@ func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org strin
 	fi, err := os.Stat(blob_file)
 	if err != nil {
 		log.Errorf("blob not on the file system for org %q, image %q, digest %q", org, image, digest)
-		return ctx.JSON(http.StatusNotFound, "")
+		return ctx.JSON(http.StatusInternalServerError, "")
 	}
 	ctx.Response().Header().Add("Content-Length", strconv.Itoa(int(fi.Size())))
 	ctx.Response().Header().Add("Docker-Distribution-Api-Version", "registry/2.0")

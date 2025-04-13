@@ -19,13 +19,13 @@ import (
 // magic numbers from 'format.go' in package 'time'
 const dateFormat = "2006-01-02T15:04:05"
 
-// Type concurrentPulls handles the case where multiple goroutines might request a manifest
-// from an upstream concurrently. When that happens, the first-in goroutine will actually do
+// Type concurrentPulls handles the case where multiple goroutines request a manifest from
+// an upstream concurrently. When that happens, the first-in goroutine will actually do
 // the pull and all other goroutines will wait on the first puller. The thing to know is
 // that pulling an image manifest *also* pulls the image blobs. This can be relatively
-// time-consuming and uses potentially a lot of network bandwidth. This type avoids multiple
-// goroutines pulling the same blobs from the upstream at the same time - thus more efficiently
-// utilizing system resources.
+// time-consuming may use a lot of network bandwidth. This type avoids multiple goroutines
+// pulling the same manifests (and hence blobs) from the upstream at the same time, thus
+// more efficiently utilizing system resources.
 type concurrentPulls struct {
 	sync.Mutex
 	pulls map[string][]chan bool
@@ -41,8 +41,8 @@ type manifestCache struct {
 }
 
 // Type blobCache is the in-mem representation of the blob cache. The key is a digest, and the value
-// is a ref count. The ref count is the number of image manifests that reference that particular.
-// blob. When a manifest is added the ref count is inc'd and then a manifest is removed the ref
+// is a ref count. The ref count is the number of image manifests that reference that particular
+// blob. When a manifest is added the ref count is inc'd and when a manifest is removed the ref
 // count is dec'd. This ref count is used to prune the blobs. A blob with no refs can be safely
 // removed. Blobs are downloaded from upstreams infrequently, but pulled frequently, so reads
 // vastly outnumber updates or deletes. Hence a RWMutex for a little better concurrency.
@@ -52,12 +52,18 @@ type blobCache struct {
 }
 
 var (
+	// cp has concurrent pulls in progress. 99.999% of the time this will be empty.
 	cp concurrentPulls = concurrentPulls{
 		pulls: make(map[string][]chan bool),
 	}
+	// mc is the manifest in-mem cache, keyed by url. When a manifest is pulled by tag
+	// it is placed in the map twice for efficient retrieval - once by tag and a second
+	// time by digest.
 	mc manifestCache = manifestCache{
 		manifests: map[string]imgpull.ManifestHolder{},
 	}
+	// bc is the blob cache, keyed by digest with a ref count of cached manifests that
+	// reference each blob
 	bc blobCache = blobCache{
 		blobs: map[string]int{},
 	}
@@ -73,8 +79,8 @@ var (
 //
 // If multiple goroutines request to pull the same image at the same time, then only the first goroutine
 // will actually perform the pull, and all other goroutines will wait for the first goroutine to complete
-// the pull and add the image to the cache. Then, the waiting goroutine(s) will simply pull from the cache
-// entry created by the first goroutine.
+// the pull and add the image to the cache. Then, the waiting goroutine(s) will simply get the manifest
+// from the cache entry created by the first goroutine.
 func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, forcePull bool) (imgpull.ManifestHolder, error) {
 	url := pr.Url()
 	if mh, ch, exists := getManifestOrEnqueue(url, imagePath, forcePull); exists {
@@ -90,7 +96,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 		}
 		if forcePull {
 			// remove the old because it will be replaced by the new
-			prune(mh, imagePath)
+			prune(mh, imagePath) // TODO don't delete the blobs because 99.999% of the time latest will pull the same blobs and its wasteful
 		}
 		addToCache(pr, mh, imagePath, true)
 		return mh, nil
@@ -254,6 +260,15 @@ func getManifestOrEnqueue(url string, imagePath string, forcePull bool) (imgpull
 		}
 	}
 	return emptyManifestHolder, enqueuePull(url), false
+}
+
+// IsCached checks if the manifest is cached to support efficiently handle air-gapped
+// sites. If the manifest is cached, true is returned, else false.
+func IsCached(pr pullrequest.PullRequest) bool {
+	mc.Lock()
+	defer mc.Unlock()
+	_, exists := mc.manifests[pr.Url()]
+	return exists
 }
 
 // getManifestFromCache gets a manifest from the in-mem manifest cache, or returns

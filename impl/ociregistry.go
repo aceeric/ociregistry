@@ -19,8 +19,11 @@ type OciRegistry struct {
 	// base location of the image and metadata cache
 	imagePath string
 	// timeout in milliseconds for pulling from upstreams
-	pullTimeout      int
+	pullTimeout int
+	// if true then always pull images with tag 'latest' (act liek a simple proxy)
 	alwaysPullLatest bool
+	// if air-gapped, we can't pull so don't try just return 404
+	airGapped bool
 }
 
 // NewOciRegistry creates and returns an OciRegistry struct from the passed args. The
@@ -32,6 +35,7 @@ func NewOciRegistry() *OciRegistry { //api.ServerInterface {
 		imagePath:        config.GetImagePath(),
 		pullTimeout:      int(config.GetPullTimeout()),
 		alwaysPullLatest: config.GetAlwaysPullLatest(),
+		airGapped:        config.GetAirGapped(),
 	}
 }
 

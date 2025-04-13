@@ -12,9 +12,14 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// fromCmdline will be populated with flags indicating which configuration settings were
+// specified on the command line.
 var fromCmdline config.FromCmdLine
+
+// cfg has the parsed configuration - including defaults (e.g. port) if the user does not override
 var cfg = config.Configuration{}
 
+// cmds is for the command line parsed
 var cmds = &cli.Command{
 	Name:  "ociregistry",
 	Usage: "a pull-only, pull-through, caching OCI distribution server",
@@ -174,6 +179,23 @@ var cmds = &cli.Command{
 				return nil
 			},
 			Flags: []cli.Flag{
+				&cli.StringFlag{
+					Name:        "image-file",
+					Usage:       "Loads images from a file containing a list of image refs",
+					Destination: &cfg.ImageFile,
+					Validator: func(path string) error {
+						if fi, err := os.Stat(path); err != nil {
+							return fmt.Errorf("file not found")
+						} else if fi.IsDir() {
+							return fmt.Errorf("not a file")
+						}
+						return nil
+					},
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.ImageFile = true
+						return nil
+					},
+				},
 				&cli.StringFlag{
 					Name:        "os",
 					Value:       runtime.GOOS,

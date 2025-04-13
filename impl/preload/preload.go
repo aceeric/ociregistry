@@ -61,14 +61,13 @@ var (
 // that contains a list of images. IMPORTANT: each item in the list MUST begin with
 // a remote registry ref - i.e. to the left of the first forward slash. (docker.io is
 // not inferred.)
-func Preload() error {
+func Preload(imageListFile string) error {
 
-	imageListFile := config.GetPreloadImages()
 	imagePath := config.GetImagePath()
 	platformArch := config.GetArch()
 	platformOs := config.GetOs()
 	pullTimeout := int(config.GetPullTimeout())
-	concurrent := 1
+	concurrent := 1 // TODO FOR NOW
 
 	start := time.Now()
 	log.Infof("loading images from file: %s", imageListFile)

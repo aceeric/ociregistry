@@ -96,7 +96,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 		}
 		if forcePull {
 			// remove the old because it will be replaced by the new
-			prune(mh, imagePath) // TODO don't delete the blobs because 99.999% of the time latest will pull the same blobs and its wasteful
+			prune(mh, imagePath)
 		}
 		addToCache(pr, mh, imagePath, true)
 		return mh, nil

@@ -67,7 +67,7 @@ func Preload(imageListFile string) error {
 	platformArch := config.GetArch()
 	platformOs := config.GetOs()
 	pullTimeout := int(config.GetPullTimeout())
-	concurrent := 1 // TODO FOR NOW
+	concurrent := 1
 
 	start := time.Now()
 	log.Infof("loading images from file: %s", imageListFile)

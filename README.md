@@ -533,12 +533,9 @@ project root
 
 ## REST API Implementation
 
-# TODO https://github.com/oapi-codegen/oapi-codegen#action-required-the-repository-for-this-project-has-changed
-
 go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 
-
-The OCI Distribution API is built by first creating an Open API spec using Swagger. See `ociregistry.yaml` in the project root. Then the [oapi-codegen](https://github.com/deepmap/oapi-codegen) tool is used to generate the API code and the Model code using configuration in the `api` directory. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/deepmap/oapi-codegen/tree/master/examples/petstore-expanded/echo) example.
+The OCI Distribution API is built by first creating an Open API spec using Swagger. See `ociregistry.yaml` in the project root. Then the [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen) tool is used to generate the API code and the Model code using configuration in the `api` directory. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/oapi-codegen/oapi-codegen/tree/main/examples/petstore-expanded) example.
 
 The key components of the API scaffolding supported by OAPI-Codegen are shown below:
 

@@ -50,7 +50,7 @@ func main() {
 				fmt.Printf("error listing the cache: %s\n", err)
 			}
 		case pruneCmd:
-			fmt.Printf("TODO\n")
+			fmt.Printf("in progress..\n")
 		case versionCmd:
 			fmt.Printf("ociregistry version: %s build date: %s\n", buildVer, buildDtm)
 		case serveCmd:

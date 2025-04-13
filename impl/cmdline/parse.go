@@ -31,7 +31,7 @@ var cmds = &cli.Command{
 		&cli.StringFlag{
 			Name:        "log-level",
 			Value:       "error",
-			Usage:       "Sets the minimum value for logging. values: debug, warn, info, error",
+			Usage:       "Sets the minimum value for logging: debug, warn, info, or error",
 			Destination: &cfg.LogLevel,
 			Validator: func(lvl string) error {
 				validValues := []string{"debug", "warn", "info", "error"}
@@ -47,7 +47,7 @@ var cmds = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:        "config-file",
-			Usage:       "Specifies a path to load configuration values from. Command line overrides file settings",
+			Usage:       "A path to load configuration values from (cmdline overrides file settings)",
 			Destination: &cfg.ConfigFile,
 			Validator: func(path string) error {
 				if fi, err := os.Stat(path); err != nil {
@@ -65,7 +65,7 @@ var cmds = &cli.Command{
 		&cli.StringFlag{
 			Name:        "image-path",
 			Value:       "/var/lib/ociregistry",
-			Usage:       "Specifies the path for the image cache",
+			Usage:       "The path for the image cache",
 			Destination: &cfg.ImagePath,
 			Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 				fromCmdline.ImagePath = true

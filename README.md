@@ -198,7 +198,7 @@ The configuration file is a yaml list of upstream registry entries. Each entry s
     ca: /my/ca.crt
     cert: /my/client.cert
     key: /my/client.key
-    insecure_skip_verify: true/false
+    insecureSkipVerify: true/false
 ```
 
 The `auth` section implements basic auth, just like your `~/.docker/config.json` file.
@@ -209,14 +209,14 @@ The `tls` section can implement multiple scenarios:
 
    ```yaml
    tls:
-     insecure_skip_verify: true
+     insecureSkipVerify: true
    ```
 
 2. One-way **secure** TLS, in which client certs are not provided to the remote, and the remote server cert **is** validated using the OS trust store:
 
    ```yaml
    tls:
-     insecure_skip_verify: false (or simply omit since it defaults to false)
+     insecureSkipVerify: false (or simply omit since it defaults to false)
    ```
 
 3. One-way **secure** TLS, in which client certs are not provided to the remote, and the remote server cert is validate using a **provided** CA cert:
@@ -241,20 +241,20 @@ The `tls` section can implement multiple scenarios:
      tls:
        cert: /my/client.cert
        key: /my/client.key
-       insecure_skip_verify: true
+       insecureSkipVerify: true
    - name foo.bar.2.io
      description: mTLS, verify server cert from OS trust store
      tls:
        cert: /my/client.cert
        key: /my/client.key
-       insecure_skip_verify: false
+       insecureSkipVerify: false
    - name foo.bar.3.io
      description: mTLS, verify server cert from provided CA
      tls:
        cert: /my/client.cert
        key: /my/client.key
        ca: /remote/ca.crt
-       insecure_skip_verify: false
+       insecureSkipVerify: false
    ```
 
 ## Command Line Options

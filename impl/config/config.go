@@ -20,10 +20,10 @@ type authCfg struct {
 
 // tlsCfg holds TLS configuration for registry access
 type tlsCfg struct {
-	Cert     string `yaml:"cert"`
-	Key      string `yaml:"key"`
-	CA       string `yaml:"ca"`
-	Insecure bool   `yaml:"insecure_skip_verify"` // TODO insecureSkipVerify
+	Cert               string `yaml:"cert"`
+	Key                string `yaml:"key"`
+	CA                 string `yaml:"ca"`
+	InsecureSkipVerify bool   `yaml:"insecureSkipVerify"`
 }
 
 // RegistryConfig combines authCfg and tlsCfg and configures the pull client
@@ -87,7 +87,7 @@ type FromCmdLine struct {
 var (
 	config    Configuration
 	emptyAuth = authCfg{User: "", Password: ""}
-	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", Insecure: false}
+	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", InsecureSkipVerify: false}
 	emptyOpts = imgpull.PullerOpts{}
 )
 
@@ -309,7 +309,7 @@ func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 			}
 		}
 		opts.TlsCfg = &tls.Config{
-			InsecureSkipVerify: found.Tls.Insecure,
+			InsecureSkipVerify: found.Tls.InsecureSkipVerify,
 			RootCAs:            cp,
 			Certificates:       clientCerts,
 		}

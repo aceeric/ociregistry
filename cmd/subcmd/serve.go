@@ -32,17 +32,15 @@ Command line: %v
 
 // Serve runs the OCI distribution server, blocking until stopped with CTRL-C
 // or via the command REST API.
-func Serve(buildVer string, buildDtm string) {
+func Serve(buildVer string, buildDtm string) error {
 	if config.GetPreloadImages() != "" {
 		if err := preload.Load(config.GetPreloadImages()); err != nil {
-			fmt.Printf("error pre-loading images: %s\n", err)
-			os.Exit(0)
+			return fmt.Errorf("error pre-loading images: %s", err)
 		}
 	}
 	swagger, err := api.GetSwagger()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error loading swagger spec: %s\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error loading swagger spec: %s", err)
 	}
 
 	// clear out the servers array in the swagger spec, that skips validating
@@ -61,8 +59,7 @@ func Serve(buildVer string, buildDtm string) {
 	e.Use(globals.GetEchoLoggingFunc())
 
 	if err := cache.RunPruner(); err != nil {
-		fmt.Fprintf(os.Stderr, "error starting the pruner: %s\n", err)
-		os.Exit(1)
+		return fmt.Errorf("error starting the pruner: %s", err)
 	}
 
 	// use Open API middleware to check all requests against the OpenAPI schema
@@ -70,7 +67,9 @@ func Serve(buildVer string, buildDtm string) {
 	//e.Use(middleware.OapiRequestValidator(swagger))
 
 	// load cached image metadata into mem
-	cache.Load(config.GetImagePath())
+	if err := cache.Load(config.GetImagePath()); err != nil {
+		return fmt.Errorf("error loading the image cache: %s", err)
+	}
 
 	// set up the command API
 	shutdownCh := make(chan bool)
@@ -90,6 +89,7 @@ func Serve(buildVer string, buildDtm string) {
 	log.Infof("received stop command - stopping")
 	e.Server.Shutdown(context.Background())
 	log.Infof("stopped")
+	return nil
 }
 
 // cmdApi implements the command API. Presently it consists of:

@@ -99,7 +99,7 @@ var (
 	emptyOpts = imgpull.PullerOpts{}
 )
 
-// getters for when I re-implement hot reload
+// getters and setters for when I re-implement hot reload
 
 func GetLogLevel() string {
 	return config.LogLevel
@@ -113,8 +113,16 @@ func GetImagePath() string {
 	return config.ImagePath
 }
 
+func SetImagePath(newVal string) {
+	config.ImagePath = newVal
+}
+
 func GetPreloadImages() string {
 	return config.PreloadImages
+}
+
+func SetPreloadImages(newVal string) {
+	config.PreloadImages = newVal
 }
 
 func GetImageFile() string {
@@ -143,6 +151,10 @@ func GetAlwaysPullLatest() bool {
 
 func GetAirGapped() bool {
 	return config.AirGapped
+}
+
+func SetAirGapped(newVal bool) {
+	config.AirGapped = newVal
 }
 
 func GetHelloWorld() bool {

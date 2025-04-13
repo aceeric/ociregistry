@@ -3,11 +3,13 @@
 - Prune changes (below)
 - Test continuous pruning
 - Command API: add to oapi spec
-- Implement --hello-world
-- impl/cache/cache.go - on force pull dont delete blobs BUT - need a background goroutine to clean orphaned blobs
+- impl/cache/cache.go - on force pull don't delete blobs BUT - then need a background orphaned blob cleaner
 - Instrumentation
-- Base URL support
+- Base URL support ?
 - Enable swagger UI
+- Why: bin/imgpull localhost:8888/docker.io/hello-world:latest deleteme.tar --scheme http
+       but cache has: docker.io/library/hello-world:latest
+       Should registry try "library" if omitted for docker?
 - Resolve all TODO
 
 ## Prune changes

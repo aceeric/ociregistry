@@ -1,6 +1,5 @@
 # TODO
 
-1. Load/Preload is broken - SIMPLIFY (concurrency)
 1. Command API:  /v2 and add to oapi spec
 1. Re-implement pruning vi cmd - just call API
 1. Implement --hello-world

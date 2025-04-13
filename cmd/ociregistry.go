@@ -29,7 +29,7 @@ const (
 // main is the entry point for the program
 func main() {
 	if command, err := getCfg(); err != nil {
-		fmt.Fprintf(os.Stderr, "error establishing configuration: %s\n", err)
+		fmt.Fprintf(os.Stderr, "error getting configuration: %s\n", err)
 		os.Exit(1)
 	} else {
 		if command != versionCmd {
@@ -42,7 +42,7 @@ func main() {
 		}
 		switch command {
 		case loadCmd:
-			if err := preload.Preload(config.GetImageFile()); err != nil {
+			if err := preload.Load(config.GetImageFile()); err != nil {
 				fmt.Printf("error loading images: %s\n", err)
 			}
 		case listCmd:

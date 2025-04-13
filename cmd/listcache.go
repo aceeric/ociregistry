@@ -10,7 +10,7 @@ import (
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )
 
-// listCache lists the image cache
+// listCache lists the image cache to the console.
 func listCache() error {
 	images := []struct {
 		ImageUrl     string

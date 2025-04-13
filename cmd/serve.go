@@ -34,7 +34,7 @@ Command line: %v
 // or via the command REST API.
 func serve(buildVer string, buildDtm string) {
 	if config.GetPreloadImages() != "" {
-		if err := preload.Preload(config.GetPreloadImages()); err != nil {
+		if err := preload.Load(config.GetPreloadImages()); err != nil {
 			fmt.Printf("error pre-loading images: %s\n", err)
 			os.Exit(0)
 		}

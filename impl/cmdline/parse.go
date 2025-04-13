@@ -12,22 +12,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-type FromCmdLine struct {
-	Command          string `yaml:"command"`
-	LogLevel         bool   `yaml:"logLevel"`
-	ConfigFile       bool   `yaml:"configFile"`
-	ImagePath        bool   `yaml:"imagePath"`
-	PreloadImages    bool   `yaml:"preloadImages"`
-	Port             bool   `yaml:"port"`
-	Os               bool   `yaml:"os"`
-	Arch             bool   `yaml:"arch"`
-	PullTimeout      bool   `yaml:"pullTimeout"`
-	AlwaysPullLatest bool   `yaml:"allwaysPullLatest"`
-	AirGapped        bool   `yaml:"airGapped"`
-	HelloWorld       bool   `yaml:"helloWorld"`
-}
-
-var fromCmdline FromCmdLine
+var fromCmdline config.FromCmdLine
 var cfg = config.Configuration{}
 
 var cmds = &cli.Command{
@@ -77,14 +62,6 @@ var cmds = &cli.Command{
 			Value:       "/var/lib/ociregistry",
 			Usage:       "Specifies the path for the image cache",
 			Destination: &cfg.ImagePath,
-			Validator: func(path string) error {
-				if fi, err := os.Stat(path); err != nil {
-					return fmt.Errorf("directory not found")
-				} else if !fi.IsDir() {
-					return fmt.Errorf("not a directory")
-				}
-				return nil
-			},
 			Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 				fromCmdline.ImagePath = true
 				return nil
@@ -256,9 +233,9 @@ var cmds = &cli.Command{
 //  2. The parsed configuration values. For any configuration flag in the FromCmdLine struct with
 //     a false value, the corresponding configuration value in *this* struct will be the default.
 //  3. An error, if the parser returned one, else nil.
-func Parse() (FromCmdLine, config.Configuration, error) {
+func Parse() (config.FromCmdLine, config.Configuration, error) {
 	if err := cmds.Run(context.Background(), os.Args); err != nil {
-		return FromCmdLine{}, config.Configuration{}, err
+		return config.FromCmdLine{}, config.Configuration{}, err
 	}
 	return fromCmdline, cfg, nil
 }

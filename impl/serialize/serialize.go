@@ -79,7 +79,7 @@ func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 		mfpath := filepath.Join(imagePath, subpath)
 		err := filepath.Walk(mfpath, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
-				return nil
+				return err
 			}
 			if info.IsDir() {
 				return nil

@@ -6,6 +6,7 @@ package impl
 import (
 	"net/http"
 	"ociregistry/api/models"
+	"ociregistry/impl/config"
 	"strings"
 
 	_ "crypto/sha256"
@@ -25,11 +26,12 @@ type OciRegistry struct {
 // NewOciRegistry creates and returns an OciRegistry struct from the passed args. The
 // OciRegistry struct implements the api.ServerInterface interface, which is generated from
 // the api/ociregistry.yaml openapi spec for the distribution server.
-func NewOciRegistry(imagePath string, pullTimeout int, alwaysPullLatest bool) *OciRegistry { //api.ServerInterface {
+func NewOciRegistry() *OciRegistry { //api.ServerInterface {
+
 	return &OciRegistry{
-		imagePath:        imagePath,
-		pullTimeout:      pullTimeout,
-		alwaysPullLatest: alwaysPullLatest,
+		imagePath:        config.GetImagePath(),
+		pullTimeout:      int(config.GetPullTimeout()),
+		alwaysPullLatest: config.GetAlwaysPullLatest(),
 	}
 }
 

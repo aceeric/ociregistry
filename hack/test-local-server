@@ -16,7 +16,7 @@ fi
 
 image_cache_dir=$(mktemp -d)
 
-./bin/server --image-path=$image_cache_dir --port=8888 --preload-images=$1 --log-level=debug
+./bin/ociregistry --image-path=$image_cache_dir --port=8888 --preload-images=$1 --log-level=debug
 
 echo "image cache is $image_cache_dir"
 echo "to shut the server down: curl localhost:8888/cmd/stop"

@@ -46,7 +46,7 @@ This command compiles the server and creates a binary called `server` in the `bi
 
 You provide an image storage location with the `--image-path` arg. If the directory doesn't exist the server will create it. The default is `/var/lib/ociregistry` but to kick the tires it makes more sense to use the system temp directory. By default the server listens on `8080`. If you have something running that is already bound to that port, specify `--port`. We'll specify it explicitly here with the default value:
 ```shell
-bin/server --image-path /tmp/images --port 8080
+bin/ociregistry --image-path /tmp/images --port 8080
 ```
 
 ### Result
@@ -117,7 +117,7 @@ The manifest list was saved in: `images/fat/4afe5bf0ee...` and the image manifes
 This time run with debug logging for more visibility into what the server is doing:
 
 ```shell
-bin/server --image-path /tmp/images --port 8080 --log-level debug
+bin/ociregistry --image-path /tmp/images --port 8080 --log-level debug
 ```
 
 Run the same two curl commands. You will notice that the manifest list and the image manifest are now being returned from cache. You can see this in the logs:
@@ -313,28 +313,28 @@ In the example, the tagged item is the manifest _list_ (of a multi-platform imag
 ### Sort by create date, most recent on top
 
 ```shell
-bin/server --image-path /var/lib/ociregistry/images --list-cache\
+bin/ociregistry --image-path /var/lib/ociregistry/images --list-cache\
   | column -t | sort -k3 -r | head
 ```
 
 ### Sort by URL
 
 ```shell
-bin/server --image-path /var/lib/ociregistry/images --list-cache\
+bin/ociregistry --image-path /var/lib/ociregistry/images --list-cache\
   | column -t | sort
 ```
 
 ### Find all the `kube-scheduler` images
 
 ```shell
-bin/server --image-path /var/lib/ociregistry/images --list-cache\
+bin/ociregistry --image-path /var/lib/ociregistry/images --list-cache\
   | grep kube-scheduler | column -t
 ```
 
 ### List everything cached on a given date
 
 ```shell
-bin/server --image-path /var/lib/ociregistry/images --list-cache\
+bin/ociregistry --image-path /var/lib/ociregistry/images --list-cache\
   | grep 2024-03-01 | sort | column -t
 ```
 
@@ -358,14 +358,14 @@ EOF
 
 Once you've configured your image list file, then:
 ```shell
-bin/server --image-path=/var/ociregistry/images --log-level=info --load-images=$PWD/imagelist --arch=amd64 --os=linux
+bin/ociregistry --image-path=/var/ociregistry/images --log-level=info --load-images=$PWD/imagelist --arch=amd64 --os=linux
 ```
 
 The registry executable will populate the cache and then exit.
 
 Or, do the same thing as a startup task and leave the server running to serve the loaded images:
 ```shell
-bin/server --image-path=/var/ociregistry/images --log-level=info --preload-images=$PWD/imagelist --arch=amd64 --os=linux
+bin/ociregistry --image-path=/var/ociregistry/images --log-level=info --preload-images=$PWD/imagelist --arch=amd64 --os=linux
 ```
 
 In the second example, the server populates the cache as a startup task and then continues to run and serve images.
@@ -374,7 +374,7 @@ In the second example, the server populates the cache as a startup task and then
 
 The server supports concurrency on loading and pre-loading. By default, only a single image at a time is loaded. In other words omitting the `--concurrent` arg is the same as specifying `--concurrent=1`. One thing to be aware of is the balance between concurrency and network utilization. Using a large number of goroutines also requires increasing the pull timeout since the concurrency increases network utilization. For example in desktop testing, the following command has been tested without experiencing image pull timeouts:
 ```shell
-bin/server --log-level=debug --image-path=/tmp/frobozz\
+bin/ociregistry --log-level=debug --image-path=/tmp/frobozz\
   --load-images=./hack/image-list\
   --pull-timeout=200000\
   --concurrent=50
@@ -420,11 +420,11 @@ It is strongly recommended to use the `--dry-run` arg to develop your pruning ex
 The `--prune` option accepts a single parameter consisting of one or more patterns separated by commas. The patterns are Golang regular expressions as documented in the [regexp/syntax](https://pkg.go.dev/regexp/syntax) package documentation. The expressions on the command line are passed _directly_ to the Golang `regex` parser _as received from the shell_, and are matched to manifest URLs. As such, shell expansion and escaping must be taken into consideration. Simplicity wins the day here. Examples:
 
 ```shell
-bin/server --image-path /var/lib/ociregistry/images --dry-run\
+bin/ociregistry --image-path /var/lib/ociregistry/images --dry-run\
   --prune kubernetesui/dashboard:v2.7.0
-bin/server --image-path /var/lib/ociregistry/images --dry-run\
+bin/ociregistry --image-path /var/lib/ociregistry/images --dry-run\
   --prune docker.io
-bin/server --image-path /var/lib/ociregistry/images --dry-run\
+bin/ociregistry --image-path /var/lib/ociregistry/images --dry-run\
   --prune curl,cilium
 ```
 
@@ -433,7 +433,7 @@ bin/server --image-path /var/lib/ociregistry/images --dry-run\
 The `--prune-before` option accepts a single parameter consisting of a local date/time in the form `YYYY-MM-DDTHH:MM:SS`. All manifests created **before** that time stamp will be selected. Example:
 
 ```shell
-bin/server --image-path /var/lib/ociregistry/images --dry-run\
+bin/ociregistry --image-path /var/lib/ociregistry/images --dry-run\
   --prune-before 2024-03-01T22:17:31
 ```
 
@@ -443,7 +443,7 @@ The intended workflow is to use the CLI with `--list-cache` and sorting as descr
 
 Generally, but not always, image list manifests have tags, and image manifests have digests. This is because in most cases, upstream images are multi-architecture. For example, this command specifies a tag:
 ```shell
-bin/server --image-path /var/lib/ociregistry/images --dry-run --prune calico/typha:v3.27.0
+bin/ociregistry --image-path /var/lib/ociregistry/images --dry-run --prune calico/typha:v3.27.0
 ```
 
 In this case, on a Linux/amd64 machine running the server the CLI will find **two** manifests:

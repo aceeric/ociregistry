@@ -33,6 +33,8 @@ pruneConfig:
   dryRun: false
 `
 
+// Test that the command line configuration is correctly merged into config from
+// a file.
 func TestCmdlineOverridesConfig(t *testing.T) {
 	td, err := os.MkdirTemp("", "")
 	if err != nil {
@@ -43,7 +45,7 @@ func TestCmdlineOverridesConfig(t *testing.T) {
 	os.WriteFile(dummyFile, []byte("foo"), 0755)
 	cfgFile := filepath.Join(td, "testcfg.yaml")
 	os.WriteFile(cfgFile, []byte(cfgYaml), 0700)
-	os.Args = []string{"bin/server", "--image-path", td, "--log-level", "info", "--config-file", cfgFile, "serve", "--port", "22", "--os", "foobar", "--arch", "frobozz", "--preload-images", dummyFile, "--pull-timeout", "123", "--air-gapped", "--hello-world", "--always-pull-latest"}
+	os.Args = []string{"bin/ociregistry", "--image-path", td, "--log-level", "info", "--config-file", cfgFile, "serve", "--port", "22", "--os", "foobar", "--arch", "frobozz", "--preload-images", dummyFile, "--pull-timeout", "123", "--air-gapped", "--hello-world", "--always-pull-latest"}
 
 	command, err := getCfg()
 	if err != nil {
@@ -52,31 +54,31 @@ func TestCmdlineOverridesConfig(t *testing.T) {
 	switch {
 	case command != "serve":
 		t.Fail()
-	case config.NewConfig.LogLevel != "info":
+	case config.GetLogLevel() != "info":
 		t.Fail()
-	case config.NewConfig.ConfigFile != cfgFile:
+	case config.GetConfigFile() != cfgFile:
 		t.Fail()
-	case config.NewConfig.ImagePath != td:
+	case config.GetImagePath() != td:
 		t.Fail()
-	case config.NewConfig.PreloadImages != dummyFile:
+	case config.GetPreloadImages() != dummyFile:
 		t.Fail()
-	case config.NewConfig.Port != 22:
+	case config.GetPort() != 22:
 		t.Fail()
-	case config.NewConfig.Os != "foobar":
+	case config.GetOs() != "foobar":
 		t.Fail()
-	case config.NewConfig.Arch != "frobozz":
+	case config.GetArch() != "frobozz":
 		t.Fail()
-	case config.NewConfig.PullTimeout != 123:
+	case config.GetPullTimeout() != 123:
 		t.Fail()
-	case !config.NewConfig.AlwaysPullLatest:
+	case !config.GetAlwaysPullLatest():
 		t.Fail()
-	case !config.NewConfig.AirGapped:
+	case !config.GetAirGapped():
 		t.Fail()
-	case !config.NewConfig.HelloWorld:
+	case !config.GetHelloWorld():
 		t.Fail()
-	case len(config.NewConfig.Registries) != 2:
+	case len(config.GetRegistries()) != 2:
 		t.Fail()
-	case config.NewConfig.PruneConfig.Duration != "30d":
+	case config.GetPruneConfig().Duration != "30d":
 		t.Fail()
 	}
 }

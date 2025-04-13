@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"ociregistry/impl/config"
 	"ociregistry/impl/pullrequest"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -17,6 +17,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Test the mechanics of pruning
 func TestPrune(t *testing.T) {
 	resetCache()
 	td, _ := os.MkdirTemp("", "")
@@ -64,6 +65,8 @@ func TestPrune(t *testing.T) {
 	}
 }
 
+// Test a simple comparer to test the functionality that traverses the manifest cache
+// and calls the comparer.
 func TestGetManifestsToPrune(t *testing.T) {
 	resetCache()
 	for i := 0; i < 100; i++ {
@@ -76,7 +79,7 @@ func TestGetManifestsToPrune(t *testing.T) {
 			Digest:   strconv.Itoa(i),
 			ImageUrl: pr.Url(),
 		}
-		addToCache(pr, mh, "")
+		addToCache(pr, mh, "", false)
 	}
 	comparer := func(mh imgpull.ManifestHolder) bool {
 		return strings.Contains(mh.ImageUrl, "2")
@@ -89,43 +92,20 @@ func TestGetManifestsToPrune(t *testing.T) {
 	}
 }
 
-func TestParsePruneCfg(t *testing.T) {
-	type parseTest struct {
-		str        string
-		expected   PruneConfig
-		shouldPass bool
-	}
-	parseTests := []parseTest{
-		{`{"duration": "1d"}`, PruneConfig{Duration: "1d"}, true},
-		{`{"type": "accessed"}`, PruneConfig{Type: "accessed"}, true},
-		{`{"type": "created"}`, PruneConfig{Type: "created"}, true},
-		{`{"freq": "3h"}`, PruneConfig{Freq: "3h"}, true},
-		{`{"count": 11}`, PruneConfig{Count: 11}, true},
-		{`{"duration": 11}`, PruneConfig{}, false},
-	}
-	for _, parseTest := range parseTests {
-		parseResult, err := parseConfig(parseTest.str)
-		if (err != nil && parseTest.shouldPass) || (err == nil && !parseTest.shouldPass) {
-			t.FailNow()
-		} else if !reflect.DeepEqual(parseResult, parseTest.expected) {
-			t.FailNow()
-		}
-	}
-}
-
+// Test creating comparers from various prune configurations
 func TestParseCriteria(t *testing.T) {
 	type parseTest struct {
-		cfg        PruneConfig
+		cfg        config.PruneConfig
 		shouldPass bool
 	}
 	parseTests := []parseTest{
-		{PruneConfig{Duration: "invalid", Type: "created"}, false},
-		{PruneConfig{Duration: "1d", Type: "created"}, true},
-		{PruneConfig{Duration: "1d", Type: "accessed"}, true},
-		{PruneConfig{Duration: "12h", Type: "accessed"}, true},
-		{PruneConfig{Duration: "", Type: "accessed"}, false},
-		{PruneConfig{Duration: "1d", Type: ""}, false},
-		{PruneConfig{Duration: "1d", Type: "invalid"}, false},
+		{config.PruneConfig{Duration: "invalid", Type: "created"}, false},
+		{config.PruneConfig{Duration: "1d", Type: "created"}, true},
+		{config.PruneConfig{Duration: "1d", Type: "accessed"}, true},
+		{config.PruneConfig{Duration: "12h", Type: "accessed"}, true},
+		{config.PruneConfig{Duration: "", Type: "accessed"}, false},
+		{config.PruneConfig{Duration: "1d", Type: ""}, false},
+		{config.PruneConfig{Duration: "1d", Type: "invalid"}, false},
 	}
 	for _, parseTest := range parseTests {
 		_, err := parseCriteria(parseTest.cfg)
@@ -135,6 +115,8 @@ func TestParseCriteria(t *testing.T) {
 	}
 }
 
+// Create comparers from various prune configuration and test that they find images
+// correctly.
 func TestComparer(t *testing.T) {
 	log.SetOutput(io.Discard)
 	timeStr := func(dur string) string {
@@ -144,7 +126,7 @@ func TestComparer(t *testing.T) {
 		return t.Format(dateFormat)
 	}
 	type parseTest struct {
-		cfg           PruneConfig
+		cfg           config.PruneConfig
 		mh            imgpull.ManifestHolder
 		shouldPrune   bool
 		failureReason string
@@ -154,16 +136,16 @@ func TestComparer(t *testing.T) {
 	present := timeStr("0h")
 
 	parseTests := []parseTest{
-		{PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: present}, false, "not earlier"},
-		{PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: threeDaysAgo}, true, ""},
-		{PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: oneDayAgo}, false, "not earlier"},
-		{PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: present}, false, "not earlier"},
-		{PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: threeDaysAgo}, true, ""},
-		{PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: oneDayAgo}, false, "not earlier"},
-		{PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{}, false, "no date to compare"},
-		{PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{}, false, "no date to compare"},
-		{PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: "foobar"}, false, "un-parseable date"},
-		{PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: "foobar"}, false, "un-parseable date"},
+		{config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: present}, false, "not earlier"},
+		{config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: threeDaysAgo}, true, ""},
+		{config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: oneDayAgo}, false, "not earlier"},
+		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: present}, false, "not earlier"},
+		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: threeDaysAgo}, true, ""},
+		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: oneDayAgo}, false, "not earlier"},
+		{config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{}, false, "no date to compare"},
+		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{}, false, "no date to compare"},
+		{config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: "foobar"}, false, "un-parseable date"},
+		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: "foobar"}, false, "un-parseable date"},
 	}
 	for _, parseTest := range parseTests {
 		comparer, err := parseCriteria(parseTest.cfg)

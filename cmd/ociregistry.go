@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,29 +22,6 @@ import (
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
-
-type cmdLine struct {
-	logLevel         string
-	imagePath        string
-	port             string
-	configPath       string
-	loadImages       string
-	preloadImages    string
-	arch             string
-	os               string
-	pullTimeout      int
-	listCache        bool
-	prune            string
-	pruneBefore      string
-	pruneConfig      string
-	dryRun           bool
-	concurrent       int
-	version          bool
-	alwaysPullLatest bool
-	buildVer         string
-	buildDtm         string
-	fix              string // DELETEME
-}
 
 const startupBanner = `----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
@@ -63,21 +40,49 @@ var (
 )
 
 func main() {
-	args := parseCmdline()
-	postprocessArgs(args)
+	command, err := getCfg()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error establishing configuration: %s\n", err)
+		os.Exit(1)
+	}
 
-	globals.ConfigureLogging(args.logLevel)
-	imgpull.SetConcurrentBlobs(args.pullTimeout * 1000)
+	globals.ConfigureLogging(config.GetLogLevel())
+	imgpull.SetConcurrentBlobs(int(config.GetPullTimeout()) * 1000)
 
-	cliCommands(args)
+	switch command {
+	case "load":
+		if err := preload.Preload(); err != nil {
+			fmt.Printf("error loading images: %s\n", err)
+		}
+	case "list":
+		if err := listCache(); err != nil {
+			fmt.Printf("error listing the cache: %s\n", err)
+		}
+	case "prune":
+		fmt.Printf("TODO\n")
+	case "version":
+		fmt.Printf("ociregistry version: %s build date: %s\n", buildVer, buildDtm)
+	case "serve":
+		serve()
+	}
+}
 
-	fmt.Fprintf(os.Stderr, startupBanner, args.buildVer, args.buildDtm,
-		time.Unix(0, time.Now().UnixNano()), args.port,
+// serve runs the OCI distribution server, blocking until stopped with CTRL-C
+// or via the command API.
+func serve() {
+	if config.GetPreloadImages() != "" {
+		if err := preload.Preload(); err != nil {
+			fmt.Printf("error pre-loading images: %s\n", err)
+			os.Exit(0)
+		}
+	}
+	fmt.Fprintf(os.Stderr, startupBanner, buildVer, buildDtm,
+		time.Unix(0, time.Now().UnixNano()), config.GetPort(),
 		os.Getuid(), os.Getgid(), os.Getpid(),
 		strings.Join(os.Args, " "))
 
-	if args.preloadImages != "" {
-		err := preload.Preload(args.preloadImages, args.imagePath, args.arch, args.os, args.pullTimeout, args.concurrent)
+	if config.GetPreloadImages() != "" {
+		err := preload.Preload()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error preloading images: %s\n", err)
 			os.Exit(1)
@@ -94,7 +99,7 @@ func main() {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
-	ociRegistry := impl.NewOciRegistry(args.imagePath, args.pullTimeout, args.alwaysPullLatest)
+	ociRegistry := impl.NewOciRegistry()
 
 	// Echo router
 	e := echo.New()
@@ -105,9 +110,7 @@ func main() {
 	// have Echo use the global logging
 	e.Use(globals.GetEchoLoggingFunc())
 
-	go config.ConfigLoader(args.configPath, 30)
-
-	if err := cache.RunPruner(args.pruneConfig, args.imagePath); err != nil {
+	if err := cache.RunPruner(); err != nil {
 		fmt.Fprintf(os.Stderr, "error starting the pruner: %s\n", err)
 		os.Exit(1)
 	}
@@ -117,7 +120,7 @@ func main() {
 	//e.Use(middleware.OapiRequestValidator(swagger))
 
 	// load cached image metadata into mem
-	cache.Load(args.imagePath)
+	cache.Load(config.GetImagePath())
 
 	// set up the command API
 	shutdownCh := make(chan bool)
@@ -125,7 +128,7 @@ func main() {
 
 	// start the API server
 	go func() {
-		if err := e.Start(net.JoinHostPort("0.0.0.0", args.port)); err != nil && err != http.ErrServerClosed {
+		if err := e.Start(net.JoinHostPort("0.0.0.0", strconv.Itoa(int(config.GetPort())))); err != nil && err != http.ErrServerClosed {
 			e.Logger.Fatal("shutting down the server")
 		}
 	}()
@@ -134,34 +137,6 @@ func main() {
 	log.Infof("received stop command - stopping")
 	e.Server.Shutdown(context.Background())
 	log.Infof("stopped")
-}
-
-// parseCmdline defines configuration defaults, parses the command line to
-// potentially override defaults and returns the resulting program configuration.
-func parseCmdline() cmdLine {
-	args := cmdLine{}
-	flag.StringVar(&args.logLevel, "log-level", "error", "Log level. Defaults to 'error'")
-	flag.StringVar(&args.imagePath, "image-path", "/var/lib/ociregistry", "Path for the image store. Defaults to '/var/lib/ociregistry'")
-	flag.StringVar(&args.configPath, "config-path", "", "Remote registry configuration file. Defaults to empty string (all remotes anonymous)")
-	flag.StringVar(&args.port, "port", "8080", "Port for server. Defaults to 8080")
-	flag.StringVar(&args.loadImages, "load-images", "", "Loads images enumerated in the specified file into cache and then exits")
-	flag.StringVar(&args.preloadImages, "preload-images", "", "Loads images enumerated in the specified file into cache at startup and then continues to serve")
-	flag.StringVar(&args.arch, "arch", "amd64", "Architecture for the --load-images and --preload-images args")
-	flag.StringVar(&args.os, "os", "linux", "Operating system for the --load-images and --preload-images args")
-	flag.IntVar(&args.concurrent, "concurrent", 1, "Specify --concurrent=n for --load-images and --preload-images args to use multiple goroutines")
-	flag.IntVar(&args.pullTimeout, "pull-timeout", 60000, "Max time in millis to pull an image from an upstream. Defaults to one minute")
-	flag.BoolVar(&args.listCache, "list-cache", false, "Lists the cached images and exits")
-	flag.StringVar(&args.prune, "prune", "", "Prunes from the cache matching comma-separated pattern(s)")
-	flag.StringVar(&args.pruneConfig, "prune-config", "", "Defines the prune configuration")
-	flag.StringVar(&args.pruneBefore, "prune-before", "", "Prunes from the cache created earlier than the specified datetime")
-	flag.BoolVar(&args.dryRun, "dry-run", false, "Runs other commands in dry-run mode")
-	flag.BoolVar(&args.version, "version", false, "Displays the version and exits")
-	flag.BoolVar(&args.alwaysPullLatest, "always-pull-latest", false, "Never cache images pulled with the 'latest' tag")
-	flag.StringVar(&args.fix, "fix", "", "Soon to be deleted...") // DELETEME
-	flag.Parse()
-	args.buildDtm = buildDtm
-	args.buildVer = buildVer
-	return args
 }
 
 // cmdApi implements the command API. Presently it consists of:
@@ -180,27 +155,11 @@ func cmdApi(e *echo.Echo, ch chan bool) {
 		})
 }
 
-// postProcessArgs does some modification to the args. If anything fails, the
-// program is terminated
-func postprocessArgs(args cmdLine) {
-	absPath, err := makeDirs(args.imagePath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error initializing image directory: %s, error: %s\n", args.imagePath, err)
-		os.Exit(1)
-	} else {
-		args.imagePath = absPath
+// makeDirs ensures that the configured image path exists or returns an error
+// if it cannot.
+func makeDirs() error {
+	if absPath, err := filepath.Abs(config.GetImagePath()); err == nil {
+		return os.MkdirAll(absPath, 0755)
 	}
-}
-
-// makeDirs creates all directories up to and including the passed directory.
-// The passed directory can be relative or absolute.
-func makeDirs(path string) (string, error) {
-	if absPath, err := filepath.Abs(path); err == nil {
-		if err := os.MkdirAll(absPath, 0755); err != nil {
-			return "", err
-		}
-		return absPath, nil
-	} else {
-		return "", err
-	}
+	return nil
 }

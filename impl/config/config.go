@@ -1,29 +1,24 @@
 package config
 
 import (
-	"crypto/md5"
 	"crypto/tls"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"os"
 	"runtime"
-	"sync"
-	"time"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
-	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/yaml.v3"
 )
 
-// authCfg holds basic auth user/pass
+// authCfg holds basic auth user/pass for registry access
 type authCfg struct {
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
 }
 
-// tlsCfg holds TLS configuration
+// tlsCfg holds TLS configuration for registry access
 type tlsCfg struct {
 	Cert     string `yaml:"cert"`
 	Key      string `yaml:"key"`
@@ -31,7 +26,8 @@ type tlsCfg struct {
 	Insecure bool   `yaml:"insecure_skip_verify"` // TODO insecureSkipVerify
 }
 
-// RegistryConfig combines authCfg and tlsCfg
+// RegistryConfig combines authCfg and tlsCfg and configures the pull client
+// for access to one upstream registry
 type RegistryConfig struct {
 	Name        string             `yaml:"name"`
 	Description string             `yaml:"description"`
@@ -41,6 +37,7 @@ type RegistryConfig struct {
 	Opts        imgpull.PullerOpts `yaml:"opts,omitempty"`
 }
 
+// PruneConfig configures the prune behavior
 type PruneConfig struct {
 	Enabled  bool   `yaml:"enabled"`
 	Duration string `yaml:"duration"`
@@ -49,6 +46,9 @@ type PruneConfig struct {
 	Count    int    `yaml:"count"`
 	DryRun   bool   `yaml:"dryrun"`
 }
+
+// Configuration brings together all the structs above and represents the totality
+// of configuration knobs and dials for the server.
 type Configuration struct {
 	LogLevel         string           `yaml:"logLevel"`
 	ConfigFile       string           `yaml:"configFile"`
@@ -58,110 +58,166 @@ type Configuration struct {
 	Os               string           `yaml:"os"`
 	Arch             string           `yaml:"arch"`
 	PullTimeout      int64            `yaml:"pullTimeout"`
-	AlwaysPullLatest bool             `yaml:"allwaysPullLatest"`
+	AlwaysPullLatest bool             `yaml:"alwaysPullLatest"`
 	AirGapped        bool             `yaml:"airGapped"`
 	HelloWorld       bool             `yaml:"helloWorld"`
 	Registries       []RegistryConfig `yaml:"registries"`
 	PruneConfig      PruneConfig      `yaml:"pruneConfig"`
 }
 
+// FromCmdLine has a flag for every command-line option. The parsing code
+// sets the flag to true if the option was explicitly provided on the command
+// line by the user.
+type FromCmdLine struct {
+	Command          string //`yaml:"command"`
+	LogLevel         bool   //`yaml:"logLevel"`
+	ConfigFile       bool   //`yaml:"configFile"`
+	ImagePath        bool   //`yaml:"imagePath"`
+	PreloadImages    bool   //`yaml:"preloadImages"`
+	Port             bool   //`yaml:"port"`
+	Os               bool   //`yaml:"os"`
+	Arch             bool   //`yaml:"arch"`
+	PullTimeout      bool   //`yaml:"pullTimeout"`
+	AlwaysPullLatest bool   //`yaml:"alwaysPullLatest"`
+	AirGapped        bool   //`yaml:"airGapped"`
+	HelloWorld       bool   //`yaml:"helloWorld"`
+}
+
 var (
-	NewConfig Configuration
-	config    map[string]RegistryConfig = make(map[string]RegistryConfig)
-	mu        sync.Mutex
+	config    Configuration
 	emptyAuth = authCfg{User: "", Password: ""}
 	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", Insecure: false}
 	emptyOpts = imgpull.PullerOpts{}
 )
 
-// ConfigLoader loads remote registry configurations from the file referenced by the
-// 'configPath' arg. If the arg is the empty string then nothing is done and no remote
-// registry configs are defined. In that case, every remote registry will be accessed
-// anonymously.
-//
-// The function loops forever checking the config file for changes every 'chkSeconds' seconds
-// (unless chkSeconds is zero in which case it only runs once.) The config file can contain
-// multiple entries (it is a yaml list.) A fully-populated single configuration entry looks like:
-//
-//	---
-//	- name: localhost:5001
-//	  description: An optional mnemonic that you deem useful
-//	  scheme: https (the default, or, http)
-//	  auth:
-//	    user: foo
-//	    password: bar
-//	  tls:
-//	    ca: /etc/certs/ca.crt
-//	    cert: /etc/certs/server.crt
-//	    key: /etc/certs/server.key
-//	    insecure_skip_verify: true
-//
-// The only mandatory key is 'name'. Everything else is optional. So if 'auth' is omitted then
-// there's no basic auth. If 'tls' is omitted then insecure is the default (because zero is
-// false.) If scheme is omitted the default is 'https'.
-func ConfigLoader(configPath string, chkSeconds int) {
-	if configPath != "" {
-		var lastHash [md5.Size]byte
-		for {
-			func() {
-				_, err := os.Stat(configPath)
-				if err != nil {
-					if errors.Is(err, os.ErrNotExist) {
-						log.Warnf("config file does not exist, ignoring: %s", configPath)
-					} else {
-						log.Errorf("unable to stat configuration file: %s", configPath)
-					}
-					return
-				}
-				contents, err := os.ReadFile(configPath)
-				if err != nil {
-					log.Errorf("error reading configuration from %s", configPath)
-					return
-				}
-				hash := md5.Sum(contents)
-				if hash != lastHash {
-					start := time.Now()
-					lastHash = hash
-					log.Info("load remote registry configuration")
-					newConfig, err := parseConfig(contents)
-					if err != nil {
-						log.Error("error parsing configuration")
-						return
-					}
-					mu.Lock()
-					config = newConfig
-					mu.Unlock()
-					log.Infof("loaded %d registry configurations from %s in %s", len(config), configPath, time.Since(start))
-				}
-			}()
-			if chkSeconds <= 0 {
-				break
-			}
-			time.Sleep(time.Second * time.Duration(chkSeconds))
-		}
-	}
+// getters for when I re-implement hot reload
+
+func GetLogLevel() string {
+	return config.LogLevel
 }
 
+func GetConfigFile() string {
+	return config.ConfigFile
+}
+
+func GetImagePath() string {
+	return config.ImagePath
+}
+
+func GetPreloadImages() string {
+	return config.PreloadImages
+}
+
+func GetPort() int64 {
+	return config.Port
+}
+
+func GetOs() string {
+	return config.Os
+}
+
+func GetArch() string {
+	return config.Arch
+}
+
+func GetPullTimeout() int64 {
+	return config.PullTimeout
+}
+
+func GetAlwaysPullLatest() bool {
+	return config.AlwaysPullLatest
+}
+
+func GetAirGapped() bool {
+	return config.AirGapped
+}
+
+func GetHelloWorld() bool {
+	return config.HelloWorld
+}
+
+func GetRegistries() []RegistryConfig {
+	return config.Registries
+}
+
+func GetPruneConfig() PruneConfig {
+	return config.PruneConfig
+}
+
+// Load loads the passed configuration file into the configuration struct
 func Load(configFile string) error {
 	if _, err := os.Stat(configFile); err != nil {
 		return fmt.Errorf("unable to stat configuration file: %s", configFile)
 	}
 	if contents, err := os.ReadFile(configFile); err != nil {
 		return fmt.Errorf("error reading configuration file: %s", configFile)
-	} else if err := yaml.Unmarshal(contents, &NewConfig); err != nil {
+	} else if err := SetConfigFromStr(contents); err != nil {
 		return fmt.Errorf("error parsing configuration file: %s, the error was: %s", configFile, err)
 	}
 	return nil
 }
 
-// AddConfig supports unit testing by creating an upstream config from the passed bytes as if they
-// had been read from a config file. It doesn't have any concurrency because it expects to be called
-// by a unit test running in isolation.
-func AddConfig(configBytes []byte) error {
-	if newConfig, err := parseConfig(configBytes); err != nil {
+// Merge takes a struct indicating which configuration options have been provided on the command
+// line, as well as a configuration struct parsed from the command line which ALSO includes defaults
+// that the user didn't specify. For example the default port is 8080 and if you don't specify
+// that on the command line - it gets defaulted into the parsed configuration struct. So:
+//
+//  1. User provided a value: overwrite current config using the user's value
+//  2. User did not provide a value, current config is unspecified: use the default in the parsed config
+//  3. User did not provide a value, current config is specified: leave the current config untouched
+func Merge(fromCmdline FromCmdLine, cfg Configuration) {
+	switch {
+	case fromCmdline.LogLevel || config.LogLevel == "":
+		config.LogLevel = cfg.LogLevel
+		fallthrough
+	case fromCmdline.ConfigFile || config.ConfigFile == "":
+		config.ConfigFile = cfg.ConfigFile
+		fallthrough
+	case fromCmdline.ImagePath || config.ImagePath == "":
+		config.ImagePath = cfg.ImagePath
+		fallthrough
+	case fromCmdline.PreloadImages || config.PreloadImages == "":
+		config.PreloadImages = cfg.PreloadImages
+		fallthrough
+	case fromCmdline.Port || config.Port == 0:
+		config.Port = cfg.Port
+		fallthrough
+	case fromCmdline.Os || config.Os == "":
+		config.Os = cfg.Os
+		fallthrough
+	case fromCmdline.Arch || config.Arch == "":
+		config.Arch = cfg.Arch
+		fallthrough
+	case fromCmdline.PullTimeout || config.PullTimeout == 0:
+		config.PullTimeout = cfg.PullTimeout
+		fallthrough
+	case fromCmdline.AlwaysPullLatest || !config.AlwaysPullLatest:
+		config.AlwaysPullLatest = cfg.AlwaysPullLatest
+		fallthrough
+	case fromCmdline.AirGapped || !config.AirGapped:
+		config.AirGapped = cfg.AirGapped
+		fallthrough
+	case fromCmdline.HelloWorld || !config.HelloWorld:
+		config.HelloWorld = cfg.HelloWorld
+	}
+}
+
+// Get gets the current configuration
+func Get() Configuration {
+	return config
+}
+
+// Set replaces the configuration with the passed configuration
+func Set(cfg Configuration) {
+	config = cfg
+}
+
+// SetConfigFromStr parses the yaml input and sets the configuration from it
+func SetConfigFromStr(configBytes []byte) error {
+	if cfg, err := parseConfig(configBytes); err != nil {
 		return err
 	} else {
-		config = newConfig
+		config = cfg
 	}
 	return nil
 }
@@ -172,21 +228,13 @@ func AddConfig(configBytes []byte) error {
 // the caller. The map key is the 'name' element of each configuration which must exactly match
 // a remote registry URL with no scheme, e.g.: quay.io, or: our.private.registry.gov:6443, or
 // 129.168.1.1:8080, or index.docker.io, etc.
-func parseConfig(configBytes []byte) (map[string]RegistryConfig, error) {
-	var entries []RegistryConfig
-	err := yaml.Unmarshal(configBytes, &entries)
+func parseConfig(configBytes []byte) (Configuration, error) {
+	var cfg Configuration
+	err := yaml.Unmarshal(configBytes, &cfg)
 	if err != nil {
-		return map[string]RegistryConfig{}, err
+		return Configuration{}, err
 	}
-	config := make(map[string]RegistryConfig)
-
-	for _, entry := range entries {
-		_, exists := config[entry.Name]
-		if !exists {
-			config[entry.Name] = entry
-		}
-	}
-	return config, nil
+	return cfg, nil
 }
 
 // ConfigFor looks for a configuration entry keyed by the passed 'registry' arg (e.g.
@@ -206,57 +254,58 @@ func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 		ArchType: runtime.GOARCH,
 	}
 
-	mu.Lock()
-	regCfg, exists := config[registry]
-	mu.Unlock()
+	found := RegistryConfig{}
+	for _, reg := range config.Registries {
+		if reg.Name == registry {
+			found = reg
+			break
+		}
+	}
 
-	if !exists {
+	if found == (RegistryConfig{}) {
 		return opts, nil
 	}
 
-	if regCfg.Opts != emptyOpts {
+	if found.Opts != emptyOpts {
 		// already parsed
-		return regCfg.Opts, nil
+		return found.Opts, nil
 	}
 
-	if regCfg.Scheme != "" {
-		opts.Scheme = regCfg.Scheme
+	if found.Scheme != "" {
+		opts.Scheme = found.Scheme
 	}
 
-	if regCfg.Auth != emptyAuth {
-		opts.Username = regCfg.Auth.User
-		opts.Password = regCfg.Auth.Password
+	if found.Auth != emptyAuth {
+		opts.Username = found.Auth.User
+		opts.Password = found.Auth.Password
 	}
 
-	if regCfg.Tls != emptyTls {
+	if found.Tls != emptyTls {
 		var cp *x509.CertPool
 		var clientCerts []tls.Certificate = []tls.Certificate{}
-		if regCfg.Tls.CA != "" {
+		if found.Tls.CA != "" {
 			cp = x509.NewCertPool()
-			caCert, err := os.ReadFile(regCfg.Tls.CA)
+			caCert, err := os.ReadFile(found.Tls.CA)
 			if err == nil {
 				cp.AppendCertsFromPEM(caCert)
 			} else {
-				return opts, fmt.Errorf("unable to load CA for config entry %s from file: %s", registry, regCfg.Tls.CA)
+				return opts, fmt.Errorf("unable to load CA for config entry %s from file: %s", registry, found.Tls.CA)
 			}
 		}
-		if regCfg.Tls.Cert != "" && regCfg.Tls.Key != "" {
-			cert, err := tls.LoadX509KeyPair(regCfg.Tls.Cert, regCfg.Tls.Key)
+		if found.Tls.Cert != "" && found.Tls.Key != "" {
+			cert, err := tls.LoadX509KeyPair(found.Tls.Cert, found.Tls.Key)
 			if err == nil {
 				clientCerts = []tls.Certificate{cert}
 			} else {
-				return opts, fmt.Errorf("unable to load client cert and/or key for config entry %s from files: cert: %s, key: %s", registry, regCfg.Tls.Cert, regCfg.Tls.Key)
+				return opts, fmt.Errorf("unable to load client cert and/or key for config entry %s from files: cert: %s, key: %s", registry, found.Tls.Cert, found.Tls.Key)
 			}
 		}
 		opts.TlsCfg = &tls.Config{
-			InsecureSkipVerify: regCfg.Tls.Insecure,
+			InsecureSkipVerify: found.Tls.Insecure,
 			RootCAs:            cp,
 			Certificates:       clientCerts,
 		}
 	}
-	regCfg.Opts = opts
-	mu.Lock()
-	config[registry] = regCfg
-	mu.Unlock()
+	found.Opts = opts
 	return opts, nil
 }

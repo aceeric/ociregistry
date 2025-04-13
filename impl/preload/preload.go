@@ -2,6 +2,7 @@ package preload
 
 import (
 	"bufio"
+	"ociregistry/impl/config"
 	"os"
 	"strings"
 	"sync"
@@ -60,7 +61,15 @@ var (
 // that contains a list of images. IMPORTANT: each item in the list MUST begin with
 // a remote registry ref - i.e. to the left of the first forward slash. (docker.io is
 // not inferred.)
-func Preload(imageListFile string, imagePath string, platformArch string, platformOs string, pullTimeout int, concurrent int) error {
+func Preload() error {
+
+	imageListFile := config.GetPreloadImages()
+	imagePath := config.GetImagePath()
+	platformArch := config.GetArch()
+	platformOs := config.GetOs()
+	pullTimeout := int(config.GetPullTimeout())
+	concurrent := 1
+
 	start := time.Now()
 	log.Infof("loading images from file: %s", imageListFile)
 	taskChan = make(chan bool, concurrent)

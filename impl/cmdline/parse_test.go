@@ -16,7 +16,7 @@ func TestParse(t *testing.T) {
 	afile := filepath.Join(td, "foo")
 	os.WriteFile(afile, []byte("foo"), 0755)
 
-	os.Args = []string{"bin/server", "--image-path", td, "--log-level", "info", "--config-file", afile, "serve", "--port", "22", "--os", "linux", "--arch", "amd64", "--preload-images", afile, "--pull-timeout", "123", "--air-gapped", "--hello-world", "--always-pull-latest"}
+	os.Args = []string{"bin/ociregistry", "--image-path", td, "--log-level", "info", "--config-file", afile, "serve", "--port", "22", "--os", "linux", "--arch", "amd64", "--preload-images", afile, "--pull-timeout", "123", "--air-gapped", "--hello-world", "--always-pull-latest"}
 	fromCmdline, _, err := Parse()
 	if err != nil {
 		t.Fail()

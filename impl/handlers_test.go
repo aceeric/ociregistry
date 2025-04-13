@@ -20,10 +20,14 @@ func init() {
 
 // configures the OCI distribution server's connection to the upstream
 // mock server.
-var regConfig = `
+var serverCfg = `
 ---
-- name: %s
-  scheme: http
+imagePath: %s
+pullTimeout: %d
+alwaysPullLatest: %t
+registries:
+  - name: %s
+    scheme: http
 `
 
 // Gets a manifest from the ociregistry server with the mock distribution
@@ -31,6 +35,11 @@ var regConfig = `
 // that the first pull talks to the upstream (the mock distribution server
 // in this case) and all other pulls get from the ociregistry server cache.
 func TestManifestGetWithNs(t *testing.T) {
+	td, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.RemoveAll(td)
 	cnt := 0
 	callback := func(url string) {
 		if url == "/v2/hello-world/manifests/latest" {
@@ -38,18 +47,13 @@ func TestManifestGetWithNs(t *testing.T) {
 		}
 	}
 	server, url := mock.ServerWithCallback(mock.NewMockParams(mock.NONE, mock.HTTP), &callback)
-	cfg := fmt.Sprintf(regConfig, url)
-	if err := config.AddConfig([]byte(cfg)); err != nil {
+	cfg := fmt.Sprintf(serverCfg, td, 1000, false, url)
+	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
 		t.Fail()
 	}
 	defer server.Close()
-	d, err := os.MkdirTemp("", "")
-	if err != nil {
-		t.Fail()
-	}
-	defer os.RemoveAll(d)
 
-	r := NewOciRegistry(d, 1000, false)
+	r := NewOciRegistry()
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -69,6 +73,11 @@ func TestManifestGetWithNs(t *testing.T) {
 // Test proxy mode for "latest". In this mode, all pulls of "latest" go to the
 // upstream.
 func TestNeverCacheLatest(t *testing.T) {
+	td, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.RemoveAll(td)
 	cnt := 0
 	callback := func(url string) {
 		if url == "/v2/hello-world/manifests/latest" {
@@ -76,18 +85,13 @@ func TestNeverCacheLatest(t *testing.T) {
 		}
 	}
 	server, url := mock.ServerWithCallback(mock.NewMockParams(mock.NONE, mock.HTTP), &callback)
-	cfg := fmt.Sprintf(regConfig, url)
-	if err := config.AddConfig([]byte(cfg)); err != nil {
+	cfg := fmt.Sprintf(serverCfg, td, 1000, true, url)
+	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
 		t.Fail()
 	}
 	defer server.Close()
-	td, err := os.MkdirTemp("", "")
-	if err != nil {
-		t.Fail()
-	}
-	defer os.RemoveAll(td)
 
-	r := NewOciRegistry(td, 1000, true)
+	r := NewOciRegistry()
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -137,19 +141,19 @@ func TestParseNamespace(t *testing.T) {
 // Tests getting a blob. Since no manifests have been pulled thru a 404
 // should be returned.
 func TestBlobGetFails(t *testing.T) {
-	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
-	cfg := fmt.Sprintf(regConfig, url)
-	if err := config.AddConfig([]byte(cfg)); err != nil {
-		t.Fail()
-	}
-	defer server.Close()
 	td, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fail()
 	}
 	defer os.RemoveAll(td)
+	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
+	cfg := fmt.Sprintf(serverCfg, td, 1000, false, url)
+	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
+		t.Fail()
+	}
+	defer server.Close()
 
-	r := NewOciRegistry(td, 1000, false)
+	r := NewOciRegistry()
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -162,19 +166,19 @@ func TestBlobGetFails(t *testing.T) {
 
 // gets an image manifest which triggers also pulling the blobs.
 func TestPullImageAndBlob(t *testing.T) {
-	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
-	cfg := fmt.Sprintf(regConfig, url)
-	if err := config.AddConfig([]byte(cfg)); err != nil {
-		t.Fail()
-	}
-	defer server.Close()
-	d, err := os.MkdirTemp("", "")
+	td, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fail()
 	}
-	defer os.RemoveAll(d)
+	defer os.RemoveAll(td)
+	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
+	cfg := fmt.Sprintf(serverCfg, td, 1000, false, url)
+	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
+		t.Fail()
+	}
+	defer server.Close()
 
-	r := NewOciRegistry(d, 1000, false)
+	r := NewOciRegistry()
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()

@@ -13,8 +13,9 @@ import (
 // configures the mock distribution server
 var regConfig = `
 ---
-- name: %s
-  scheme: http
+registries:
+  - name: %s
+    scheme: http
 `
 
 // Tests the preload capability
@@ -22,7 +23,7 @@ func TestPreload(t *testing.T) {
 	globals.ConfigureLogging("error")
 	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
 	cfg := fmt.Sprintf(regConfig, url)
-	if err := config.AddConfig([]byte(cfg)); err != nil {
+	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
 		t.Fail()
 	}
 	defer server.Close()

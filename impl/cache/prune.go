@@ -1,9 +1,9 @@
 package cache
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"ociregistry/impl/config"
 	"ociregistry/impl/helpers"
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/serialize"
@@ -25,36 +25,15 @@ const (
 	defaultPruneFreq = "5h"
 )
 
-// PruneConfig configures pruning.
-type PruneConfig struct {
-	// Created is a duration used in tandem with Type.
-	Duration string `json:"duration"`
-	// Type is a prune type used in tandem with Duration. Valid values are 'created' and 'accessed'.
-	// E.g. Duration "30d" and Type "created" is interpreted as: "prune all manifests that were created
-	// more than 30 days ago." Duration "30d" and Type "accessed" is interpreted as: "prune all manifests
-	// that have not been accessed (pulled) in the last 30 days"
-	Type string `json:"type"`
-	// Freq is a duration. Eg. "12h" means run the pruner every 12 hours. The default is
-	// 5 hours
-	Freq string `json:"freq"`
-	// Count is the max number of manifests to prune on every run. The default is no
-	// limit (every cached manifest matching the prune criteria could be pruned.)
-	Count int `json:"count"`
-	// If DryRun is true then nothing is pruned but logging is performed to show what would be pruned
-	DryRun bool `json:"dryrun"`
-}
-
 // RunPruner runs the pruner, performing the prune according to the criteria and frequency
 // specified in the passed prune configuration. For example, if the configuration string has
 // `{"accessed": "15d"}` then using built-in defaults, the pruner will run every 5 hours, and
 // remove images that have not been accessed (pulled) in over 15 days.
-func RunPruner(cfgStr string, imagePath string) error {
-	if cfgStr == "" {
+func RunPruner() error {
+	cfg := config.GetPruneConfig()
+	if !cfg.Enabled {
+		log.Info("pruning not enabled - exiting")
 		return nil
-	}
-	cfg, err := parseConfig(cfgStr)
-	if err != nil {
-		return err
 	}
 	comparer, err := parseCriteria(cfg)
 	if err != nil {
@@ -75,23 +54,15 @@ func RunPruner(cfgStr string, imagePath string) error {
 	go func() {
 		for {
 			time.Sleep(runFreq)
-			doPrune(imagePath, comparer, count, cfg.DryRun)
+			doPrune(config.GetImagePath(), comparer, count, cfg.DryRun)
 		}
 	}()
 	return nil
 }
 
-// parseConfig takes a string like `{"duration": "24h", "type": "created", "freq": "3h",
-// "count": 11, "dryrun": true}` and returns a PruneConfig struct.
-func parseConfig(cfg string) (PruneConfig, error) {
-	var parseResult PruneConfig
-	err := json.Unmarshal([]byte(cfg), &parseResult)
-	return parseResult, err
-}
-
 // parseCriteria parses the prune criteria in the receiver and returns a prune comparer
 // function.
-func parseCriteria(cfg PruneConfig) (PruneComparer, error) {
+func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
 	// duration has to minimally be a value and a type like "1h"
 	if len(cfg.Duration) < 2 || cfg.Type == "" {
 		return nil, errors.New("missing/invalid duration/type in prune criteria")
@@ -146,7 +117,7 @@ func parseCriteria(cfg PruneConfig) (PruneComparer, error) {
 // doPrune makes one pass through the cache and evaluates each manifest according to the passed
 // comparer. If the comparer indicates that a manifest matches the prune criteria it is pruned.
 // The count arg is the max number of manifests to prune. If noLimit (-1) then there is no limit.
-// If druRun then the function logs what would be pruned but does not prune.
+// If druRun then the function logs what would be pruned but does not actually prune.
 func doPrune(imagePath string, comparer PruneComparer, count int, dryRun bool) {
 	toPrune := getManifestsToPrune(comparer, count)
 	for _, mh := range toPrune {
@@ -202,7 +173,9 @@ func prune(mh imgpull.ManifestHolder, imagePath string) {
 // rmManifest removes the passed manifest from the manifest cache and the file system. If the
 // manifest is by tag, then the pair by-digest manifest is also removed from in-mem cache.
 // (Manifests only exists once on the file system, but may exist twice in the in-mem cache:
-// once by tag and once by digest for efficient retrieval.)
+// once by tag and once by digest for efficient retrieval. Manifests that were only pulled by
+// digest are only represented in the in-mem cache once because we don't know the tag if the
+// image was pulled by digest.)
 func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
 	pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
 	if err != nil {
@@ -218,8 +191,8 @@ func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
 	}
 }
 
-// rmBlobs decrements the ref count pf all blobs in the passed image manifest in the in-mem
-// blob map and if the ref count is zero, the blob is removed from the file system.
+// rmBlobs decrements the ref count of all blobs in the passed image manifest in the in-mem
+// blob map and if the ref count is zero, the blob is removed from the map and the file system.
 func rmBlobs(mh imgpull.ManifestHolder, imagePath string) {
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)
@@ -236,8 +209,8 @@ func rmBlobs(mh imgpull.ManifestHolder, imagePath string) {
 }
 
 // days2hrs converts a days string like "-1d" to an hours string like "-24h" because
-// the Go Duration parser doesn't support days. The the passed value is not days then
-// it is simply returned unaltered.
+// the Go Duration parser doesn't support days. If the passed value is not days then
+// it is simply returned unchanged.
 func days2hrs(v string) (string, error) {
 	if v[len(v)-1] == 'd' {
 		days := v[0 : len(v)-1]

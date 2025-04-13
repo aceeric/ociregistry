@@ -92,7 +92,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 			// remove the old because it will be replaced by the new
 			prune(mh, imagePath)
 		}
-		addToCache(pr, mh, imagePath)
+		addToCache(pr, mh, imagePath, true)
 		return mh, nil
 	} else {
 		select {
@@ -162,7 +162,7 @@ func Load(imagePath string) error {
 			return err
 		}
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
-		addToCache(pr, mh, imagePath)
+		addToCache(pr, mh, imagePath, false)
 		itemcnt++
 		return nil
 	})
@@ -172,10 +172,12 @@ func Load(imagePath string) error {
 
 // addToCache adds the passed ManifestHolder to the manifest cache. If the manifest is an image
 // manifest then the blobs are added to the blob cache.
-func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string) {
+func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string, readOnly bool) {
 	mc.Lock()
 	defer mc.Unlock()
-	mh.Created = curTime()
+	if !readOnly {
+		mh.Created = curTime()
+	}
 	addManifestToCache(pr, mh)
 	if mh.IsImageManifest() {
 		bc.Lock()

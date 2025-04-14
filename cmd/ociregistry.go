@@ -51,8 +51,7 @@ func realMain() int {
 		} else {
 			defer os.RemoveAll(tmpDir)
 		}
-	}
-	if err := ensureImagePaths(); err != nil {
+	} else if err := ensureImagePaths(); err != nil {
 		fmt.Fprintf(os.Stderr, "unable to verify image path: %s\n", err)
 		return 1
 	}

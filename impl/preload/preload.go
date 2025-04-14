@@ -63,7 +63,7 @@ func Load(imageListFile string) error {
 	return nil
 }
 
-// doPull pulls the passed url from theu pstream registry. If a manifest list comes back from th
+// doPull pulls the passed url from the pstream registry. If a manifest list comes back from the
 // upstream then an image is also pulled. A return value of 1 means the passed url got an image.
 // A return value of 2 means the passed url got an image list, and so an image for the passed OS and
 // architecture was also pulled.
@@ -129,7 +129,9 @@ func getFromCacheOrRemote(puller imgpull.Puller, digest string, isImageManifest 
 	if err != nil {
 		return imgpull.ManifestHolder{}, 0, err
 	}
-	serialize.MhToFilesystem(mh, imagePath, false)
+	if err := serialize.MhToFilesystem(mh, imagePath, false); err != nil {
+		return imgpull.ManifestHolder{}, 0, err
+	}
 	if mh.IsImageManifest() {
 		blobDir := filepath.Join(imagePath, globals.BlobsDir)
 		if err = puller.PullBlobs(mh, blobDir); err != nil {

@@ -3,12 +3,13 @@ package preload
 import (
 	"fmt"
 	"io"
-	"log"
 	"ociregistry/impl/config"
 	"ociregistry/mock"
 	"os"
 	"path/filepath"
 	"testing"
+
+	log "github.com/sirupsen/logrus"
 )
 
 var regConfig = `
@@ -18,10 +19,13 @@ registries:
     scheme: http
 `
 
+func init() {
+	log.SetOutput(io.Discard)
+}
+
 // Tests the cache capability. Ensures that an image is not re-downloaded if
 // already cached.
 func TestPreload(t *testing.T) {
-	log.SetOutput(io.Discard)
 	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
 	cfg := fmt.Sprintf(regConfig, url)
 	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {

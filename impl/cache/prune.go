@@ -134,21 +134,28 @@ func doPrune(imagePath string, comparer PruneComparer, count int, dryRun bool) {
 // getManifestsToPrune traverses the in-mem manifest cache and evaluates each manifest
 // according to the passed comparer. Manifests selected for pruning by the comparer are
 // returned to the caller in an array. The count arg is the max number of manifests to
-// prune. If noLimit (-1) then there is no limit.
+// prune. If noLimit (-1) then there is no limit. The purpose of the limit is to lock
+// the manifest cache in small pieces. Scheduling the prune more frequently with smaller
+// chunks should result in better concurrency this this function locks the entire
+// cache while it runs.
 func getManifestsToPrune(comparer PruneComparer, count int) []imgpull.ManifestHolder {
 	mc.Lock()
 	defer mc.Unlock()
 	mhs := make([]imgpull.ManifestHolder, 0, len(mc.manifests))
 	matches := 0
 	for url, mh := range mc.manifests {
+		if url != mh.ImageUrl {
+			// when manifests are added to the in-mem cache, if the manifest has a tag
+			// it is added by tag and again by digest so it is retrievable both ways. When
+			// added by digest (the 2nd one), the map key will have the digest in the url but
+			// the manifest produced by the map will still have the tag in its url. (It's a copy.)
+			// The second copy is only for lookup and is not considered to be a separate manifest.
+			// The prune will function handle the second copy so only add to the prune list if the
+			// lookup key matches the manifest url - this *guarantees* that the manifest to prune
+			// is not a 2nd copy.
+			continue
+		}
 		if comparer(mh) {
-			if url != mh.ImageUrl {
-				// when manifests are added to cache, if the manifest has a tag it is added
-				// by tag and again by digest so it is retrievable both ways. The pruner
-				// will handle this so only add to the prune list if the lookup key matches
-				// the manifest url
-				continue
-			}
 			matches++
 			if count != noLimit && matches > count {
 				break
@@ -173,11 +180,9 @@ func prune(mh imgpull.ManifestHolder, imagePath string) {
 }
 
 // rmManifest removes the passed manifest from the manifest cache and the file system. If the
-// manifest is by tag, then the pair by-digest manifest is also removed from in-mem cache.
-// (Manifests only exists once on the file system, but may exist twice in the in-mem cache:
-// once by tag and once by digest for efficient retrieval. Manifests that were only pulled by
-// digest are only represented in the in-mem cache once because we don't know the tag if the
-// image was pulled by digest.)
+// manifest is by tag, then the pair by-digest manifest is also removed from in-mem cache if
+// one exists. Manifests only exist once on the file system, but may exist twice in the in-mem
+// cache: once by tag and once by digest for retrieval both ways.
 func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
 	pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
 	if err != nil {
@@ -187,9 +192,9 @@ func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
 	delete(mc.manifests, pr.Url())
 	if pr.PullType == pullrequest.ByTag {
 		delete(mc.manifests, pr.UrlWithDigest("sha256:"+mh.Digest))
-		if err := serialize.RmManifest(imagePath, mh); err != nil {
-			log.Errorf("error removing manifest %q from the file system. the error was: %s", pr.Url(), err)
-		}
+	}
+	if err := serialize.RmManifest(imagePath, mh); err != nil {
+		log.Errorf("error removing manifest %q from the file system. the error was: %s", pr.Url(), err)
 	}
 }
 
@@ -200,12 +205,12 @@ func rmBlobs(mh imgpull.ManifestHolder, imagePath string) {
 		digest := helpers.GetDigestFrom(layer.Digest)
 		bc.blobs[digest]--
 		if bc.blobs[digest] == 0 {
+			delete(bc.blobs, digest)
 			if err := serialize.RmBlob(imagePath, digest); err != nil {
 				log.Errorf("error removing blob %q from the file system. the error was: %s", digest, err)
 			}
-			delete(bc.blobs, digest)
 		} else if bc.blobs[digest] < 0 {
-			log.Errorf("negative blob count for digest %q", digest)
+			log.Errorf("negative blob count for digest %q (should never happen)", digest)
 		}
 	}
 }

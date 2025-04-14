@@ -5,6 +5,8 @@ import (
 	"ociregistry/impl/config"
 	"ociregistry/impl/serialize"
 	"os"
+	"regexp"
+	"strings"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )
@@ -12,6 +14,14 @@ import (
 // listCache lists the image cache to the console.
 func ListCache() error {
 	listCfg := config.GetListConfig()
+	srchs := []*regexp.Regexp{}
+	for _, ref := range strings.Split(listCfg.Expr, ",") {
+		if exp, err := regexp.Compile(ref); err == nil {
+			srchs = append(srchs, exp)
+		} else {
+			return fmt.Errorf("regex did not compile: %q", ref)
+		}
+	}
 	images := []struct {
 		imageUrl     string
 		manifestType string
@@ -19,6 +29,18 @@ func ListCache() error {
 		pulled       string
 	}{}
 	err := serialize.WalkTheCache(config.GetImagePath(), func(mh imgpull.ManifestHolder, info os.FileInfo) error {
+		if len(srchs) != 0 {
+			matches := false
+			for _, srch := range srchs {
+				if srch.MatchString(mh.ImageUrl) {
+					matches = true
+					break
+				}
+			}
+			if !matches {
+				return nil
+			}
+		}
 		mt := "list"
 		if mh.IsImageManifest() {
 			mt = "image"

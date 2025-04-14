@@ -49,7 +49,8 @@ type PruneConfig struct {
 }
 
 type ListConfig struct {
-	Header bool `yaml:"header"`
+	Header bool   `yaml:"header"`
+	Expr   string `yaml:"expr"`
 }
 
 // Configuration represents the totality of configuration knobs and dials for the server.

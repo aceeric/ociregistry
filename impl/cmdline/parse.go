@@ -230,7 +230,7 @@ var cmds = &cli.Command{
 		},
 		{
 			Name:  "list",
-			Usage: "Lists the cache",
+			Usage: "Lists the cache as it is on the file system",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "list"
 				return nil
@@ -243,6 +243,16 @@ var cmds = &cli.Command{
 					Destination: &cfg.ListConfig.Header,
 					Action: func(ctx context.Context, cmd *cli.Command, _ bool) error {
 						fromCmdline.ListConfig = true
+						return nil
+					},
+				},
+				&cli.StringFlag{
+					Name:        "pattern",
+					Usage:       "List images matching the comma-separated pattern(s), e.g. '--pattern cilium,coredns'",
+					Destination: &cfg.ListConfig.Expr,
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.PruneConfig = true
+						cfg.PruneConfig.Type = "date"
 						return nil
 					},
 				},

@@ -1,44 +1,53 @@
 # TODO
 
-- Prune changes (below)
-- Test continuous pruning
-- Command API: add to oapi spec
-- impl/cache/cache.go - on force pull don't delete blobs BUT - then need a background orphaned blob cleaner
+- Prune - when removing a manifest if its url does not match its key it is a "dup" for lookup
+  and so in that case don't remove the blobs
+- Test continuous pruning ("Prune test" below)
+- Command API: add to oapi spec?
 - Instrumentation
-- Base URL support ?
-- Enable swagger UI
-- Why: bin/imgpull localhost:8888/docker.io/hello-world:latest deleteme.tar --scheme http
-       but cache has: docker.io/library/hello-world:latest
-       Should registry try "library" if omitted for docker?
+- Update Go version to latest
+- Base URL support? (Echo supports it...)
+- Enable swagger UI (https://github.com/go-swagger/go-swagger)?
+- bin/imgpull is inserting "library", on "docker.io" pulls should it? (Would it work otherwise?)
 - Resolve all TODO
+- low: impl/cache/cache.go - on force pull don't delete blobs BUT - then need a background orphaned blob cleaner
+  - if you set always pull latest, maybe its just inefficient
 
-## Prune changes
+## Prune Test
 
-1. When pruning, guarantee two removed if two added. If a manifest is keyed by digest but its
-   url is by tag then its the second one so in that case the tagged one should also be removed.
-   So:
-   - If by tag then get the digest and remove
-   - If by digest then get the tag and remove
-2. getManifestsToPrune should return map keys And ensure BOTH are returned. Process should be driven
-   by the map keys
+- Start docker daemon
+- run registry
+- load several images
+  - docker pull / docker tag / docker push
+- configure ociregistry for local registry (https/insecure)
+- configure ociregistry continuous prune
+- start ociregistry tee logs
+- start multiple consoles running imgpull cycling through all 10 images randomly
+- let run for some period
+- stop imgpull consoles
+- stop ociregistry
+- examine logs
 
 ## Prune API
 
 ```shell
-curl -X POST http://localhost:8080/cmd/prune/accessed?dur=1d&dryRun
-curl -X POST http://localhost:8080/cmd/prune/created?dur=1d&dryRun
-curl -X POST http://localhost:8080/cmd/prune/regex?kubernetesui/dashboard:v2.7.0&dryRun
+curl -X POST "http://localhost:8080/cmd/prune/accessed?dur=1d&dryrun"
+curl -X POST "http://localhost:8080/cmd/prune/created?dur=1d&dryrun"
+curl -X POST "http://localhost:8080/cmd/prune/regex?kubernetesui/dashboard:v2.7.0&dryrun"
 ```
 
-## Support API
+## Admin API
 
 ```shell
-curl -X GET http://localhost:8080/cmd/manifest/list
-curl -X GET http://localhost:8080/cmd/blob/list
+curl -X GET "http://localhost:8080/cmd/manifest/list?<pattern>"
+curl -X GET "http://localhost:8080/cmd/blob/list?<pattern>"
+curl -X GET "http://localhost:8080/cmd/info?<pattern> <- get matching manifests and blobs"
+curl -X PUT "http://localhost:8080/cmd/manifest/patch?created=2025-04-01T22:08:34"
 ```
 
 ## Patch older manifest
 
+On the file system:
 ```shell
 sed  -i -e 's/}}$/},"Created":"2025-04-01T22:07:01","Pulled":"2025-04-01T22:08:34"}/' /tmp/images/img/* /tmp/images/fat/*
 ```

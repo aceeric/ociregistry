@@ -98,7 +98,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 			// remove the old because it will be replaced by the new
 			prune(mh, imagePath)
 		}
-		addToCache(pr, mh, imagePath, true)
+		addToCache(pr, mh, imagePath)
 		return mh, nil
 	} else {
 		select {
@@ -141,7 +141,11 @@ func DoPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolde
 	if err != nil {
 		return emptyManifestHolder, err
 	}
-	serialize.MhToFilesystem(mh, imagePath, true)
+	mh.Created = curTime()
+	mh.Pulled = curTime()
+	if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
+		return emptyManifestHolder, err
+	}
 	if mh.IsImageManifest() {
 		blobDir := filepath.Join(imagePath, globals.BlobsDir)
 		err = puller.PullBlobs(mh, blobDir)
@@ -168,7 +172,7 @@ func Load(imagePath string) error {
 			return err
 		}
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
-		addToCache(pr, mh, imagePath, false)
+		addToCache(pr, mh, imagePath)
 		itemcnt++
 		return nil
 	})
@@ -177,13 +181,11 @@ func Load(imagePath string) error {
 }
 
 // addToCache adds the passed ManifestHolder to the manifest cache. If the manifest is an image
-// manifest then the blobs are added to the blob cache.
-func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string, readOnly bool) {
+// manifest then the blobs are added to the blob cache. If not readOnly, then the create date
+// on the manifest is set to the current time.
+func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string) {
 	mc.Lock()
 	defer mc.Unlock()
-	if !readOnly {
-		mh.Created = curTime()
-	}
 	addManifestToCache(pr, mh)
 	if mh.IsImageManifest() {
 		bc.Lock()
@@ -280,8 +282,11 @@ func getManifestFromCache(url string, imagePath string) (imgpull.ManifestHolder,
 	defer mc.Unlock()
 	if mh, exists := mc.manifests[url]; exists {
 		mh.Pulled = curTime()
-		serialize.MhToFilesystem(mh, imagePath, true)
-		return mh, exists
+		if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
+			log.Errorf("error serializing manifest %q, the error was: %s", url, err)
+			return emptyManifestHolder, false
+		}
+		return mh, true
 	}
 	return emptyManifestHolder, false
 }

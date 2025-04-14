@@ -3,6 +3,7 @@ package cache
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand/v2"
 	"ociregistry/impl/serialize"
 	"os"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/opencontainers/go-digest"
+	log "github.com/sirupsen/logrus"
 )
 
 // copy impull test?? ALL PULLS
@@ -66,6 +68,10 @@ var v1ociIndex = `{
 	"manifests": [
 	]
 }`
+
+func init() {
+	log.SetOutput(io.Discard)
+}
 
 func resetCache() {
 	cp = concurrentPulls{

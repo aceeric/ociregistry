@@ -1,4 +1,4 @@
-// package cache in the in-memory representation of the image cache. It has all the
+// Package cache in the in-memory representation of the image cache. It has all the
 // manifests in a map keyed by manifest URL (like quay.io/curl/curl:8.10.1). It also
 // has a map of blobs with refcount.
 //

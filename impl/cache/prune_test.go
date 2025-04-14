@@ -17,6 +17,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func init() {
+	log.SetOutput(io.Discard)
+}
+
 // Test the mechanics of pruning
 func TestPrune(t *testing.T) {
 	resetCache()
@@ -79,7 +83,7 @@ func TestGetManifestsToPrune(t *testing.T) {
 			Digest:   strconv.Itoa(i),
 			ImageUrl: pr.Url(),
 		}
-		addToCache(pr, mh, "", false)
+		addToCache(pr, mh, "")
 	}
 	comparer := func(mh imgpull.ManifestHolder) bool {
 		return strings.Contains(mh.ImageUrl, "2")
@@ -107,6 +111,7 @@ func TestParseCriteria(t *testing.T) {
 		{config.PruneConfig{Duration: "1d", Type: ""}, false},
 		{config.PruneConfig{Duration: "1d", Type: "invalid"}, false},
 	}
+
 	for _, parseTest := range parseTests {
 		_, err := parseCriteria(parseTest.cfg)
 		if (err != nil && parseTest.shouldPass) || (err == nil && !parseTest.shouldPass) {
@@ -118,7 +123,6 @@ func TestParseCriteria(t *testing.T) {
 // Create comparers from various prune configuration and test that they find images
 // correctly.
 func TestComparer(t *testing.T) {
-	log.SetOutput(io.Discard)
 	timeStr := func(dur string) string {
 		t := time.Now()
 		d, _ := time.ParseDuration(dur)

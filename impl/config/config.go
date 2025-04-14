@@ -48,6 +48,7 @@ type PruneConfig struct {
 	DryRun   bool   `yaml:"dryrun"`
 }
 
+// ListConfig configures the list sub-command
 type ListConfig struct {
 	Header bool   `yaml:"header"`
 	Expr   string `yaml:"expr"`
@@ -251,27 +252,13 @@ func Set(cfg Configuration) {
 
 // SetConfigFromStr parses the yaml input and sets the configuration from it
 func SetConfigFromStr(configBytes []byte) error {
-	if cfg, err := parseConfig(configBytes); err != nil {
+	var cfg Configuration
+	if err := yaml.Unmarshal(configBytes, &cfg); err != nil {
 		return err
 	} else {
 		config = cfg
 	}
 	return nil
-}
-
-// parseConfig parses the remote registry yaml config in the passed 'configBytes' arg. which
-// consists of some number of entries, each describing the auth and TLS configuration to access
-// one remote registry. The results are parsed into a map of 'cfgEntry' structs and returned to
-// the caller. The map key is the 'name' element of each configuration which must exactly match
-// a remote registry URL with no scheme, e.g.: quay.io, or: our.private.registry.gov:6443, or
-// 129.168.1.1:8080, or index.docker.io, etc.
-func parseConfig(configBytes []byte) (Configuration, error) {
-	var cfg Configuration
-	err := yaml.Unmarshal(configBytes, &cfg)
-	if err != nil {
-		return Configuration{}, err
-	}
-	return cfg, nil
 }
 
 // ConfigFor looks for a configuration entry keyed by the passed 'registry' arg (e.g.

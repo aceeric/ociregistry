@@ -11,7 +11,7 @@ import (
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )
 
-// listCache lists the image cache to the console.
+// listCache lists the image cache to the console as it appears on the file system.
 func ListCache() error {
 	listCfg := config.GetListConfig()
 	srchs := []*regexp.Regexp{}

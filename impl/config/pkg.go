@@ -1,3 +1,2 @@
-// Package config manages configuration for upstream OCI distribution servers, like
-// auth and TLS.
+// Package config manages system configuration
 package config

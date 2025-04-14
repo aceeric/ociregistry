@@ -12,12 +12,16 @@ import (
 )
 
 const (
-	// fatPath is the subdirectory under the image cache root where the "fat" manifests are
-	// stored (meaning the manifests that are lists of image manifests)
+	// fatPath is the subdirectory under the image cache root where image list manifests
+	// are stored.
 	fatPath = "fat"
-	// imgPath is the subdirectory under the image cache root where the image manifests are stored
+	// imgPath is the subdirectory under the image cache root where image manifests are stored
 	imgPath = "img"
 )
+
+// subDirs allows getting the correct subdirectory name based on whether a manifest is (or is not)
+// an image manifest.
+var subDirs = map[bool]string{true: "img", false: "fat"}
 
 // CacheEntryHandler defines a function that can act on a ManifestHolder instance
 // from the metadata cache
@@ -27,12 +31,9 @@ type CacheEntryHandler func(imgpull.ManifestHolder, os.FileInfo) error
 // If not found, returns an empty ManifestHolder and false, else the ManifestHolder
 // from the file system and true
 func MhFromFilesystem(digest string, isImageManifest bool, imagePath string) (imgpull.ManifestHolder, bool) {
-	var subdir = fatPath
-	if isImageManifest {
-		subdir = imgPath
-	}
+	subDir := subDirs[isImageManifest]
 	digest = helpers.GetDigestFrom(digest)
-	fname := filepath.Join(imagePath, subdir, digest)
+	fname := filepath.Join(imagePath, subDir, digest)
 	if _, err := os.Stat(fname); err == nil {
 		b, err := os.ReadFile(fname)
 		if err != nil {
@@ -47,13 +48,13 @@ func MhFromFilesystem(digest string, isImageManifest bool, imagePath string) (im
 	return imgpull.ManifestHolder{}, false
 }
 
-// MhToFilesystem writes a ManifestHolder to the file system
+// MhToFilesystem writes the passed ManifestHolder to the file system if the
+// 'replace' arg is true. The the arg is false then the function checks the file system
+// first and if the manifest already exists, nothing is done. The manifests aren't
+// compared. Its a simple "file exists" check.
 func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) error {
-	var subdir = fatPath
-	if mh.IsImageManifest() {
-		subdir = imgPath
-	}
-	fname := filepath.Join(imagePath, subdir, mh.Digest)
+	subDir := subDirs[mh.IsImageManifest()]
+	fname := filepath.Join(imagePath, subDir, mh.Digest)
 	if !replace {
 		if _, err := os.Stat(fname); err == nil {
 			log.Infof("manifest already in cache %q", fname)
@@ -61,10 +62,14 @@ func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) e
 		}
 	}
 	if err := os.MkdirAll(filepath.Dir(fname), 0755); err != nil {
-		log.Errorf("unable to create directory %q, error: %q", filepath.Dir(fname), err)
+		log.Errorf("unable to create directory %s, error: %s", filepath.Dir(fname), err)
 		return err
 	}
-	mb, _ := json.Marshal(mh)
+	mb, err := json.Marshal(mh)
+	if err != nil {
+		log.Errorf("error marshalling manifest for %q, error: %q", mh.ImageUrl, err)
+		return err
+	}
 	if err := os.WriteFile(fname, mb, 0755); err != nil {
 		log.Errorf("error serializing manifest for %q, error: %q", mh.ImageUrl, err)
 		return err
@@ -128,11 +133,8 @@ func BlobExists(imagePath string, digest string) bool {
 // RmManifest removes the passed manifest from the fle system. If the manifest file does not exist,
 // no error is returned.
 func RmManifest(imagePath string, mh imgpull.ManifestHolder) error {
-	subPath := fatPath
-	if mh.IsImageManifest() {
-		subPath = imgPath
-	}
-	mPath := filepath.Join(imagePath, subPath, mh.Digest)
+	subDir := subDirs[mh.IsImageManifest()]
+	mPath := filepath.Join(imagePath, subDir, mh.Digest)
 	if _, err := os.Stat(mPath); err == nil {
 		return os.Remove(mPath)
 	}

@@ -49,3 +49,12 @@ On the file system:
 ```shell
 sed  -i -e 's/}}$/},"Created":"2025-04-01T22:07:01","Pulled":"2025-04-01T22:08:34"}/' /var/lib/ociregistry/images/img/* /var/lib/ociregistry/images/fat/*
 ```
+
+## Prune contention
+
+```
+blob not in cache cause by:
+
+puller 1 ---> get manifest ----------------------------------> come back for blob (not found)
+puller 2 -------------------> lock manifest -> delete blobs -> exit
+```

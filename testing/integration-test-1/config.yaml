@@ -1,0 +1,15 @@
+logLevel: debug
+port: 8888
+logFile: /tmp/ociregistry.log
+registries:
+  - name: localhost:5000
+    description: docker registry running as a container in docker daemon
+    scheme: http
+pruneConfig:
+  enabled: true
+  duration: 0d
+  type: pattern
+  expr: 1.31
+  frequency: 1s
+  count: -1
+  dryRun: false

@@ -57,6 +57,7 @@ type ListConfig struct {
 // Configuration represents the totality of configuration knobs and dials for the server.
 type Configuration struct {
 	LogLevel         string           `yaml:"logLevel"`
+	LogFile          string           `yaml:"logFile"`
 	ConfigFile       string           `yaml:"configFile"`
 	ImagePath        string           `yaml:"imagePath"`
 	PreloadImages    string           `yaml:"preloadImages"`
@@ -79,6 +80,7 @@ type Configuration struct {
 type FromCmdLine struct {
 	Command          string
 	LogLevel         bool
+	LogFile          bool
 	ConfigFile       bool
 	ImagePath        bool
 	PreloadImages    bool
@@ -105,6 +107,10 @@ var (
 
 func GetLogLevel() string {
 	return config.LogLevel
+}
+
+func GetLogFile() string {
+	return config.LogFile
 }
 
 func GetConfigFile() string {
@@ -197,45 +203,49 @@ func Load(configFile string) error {
 //  2. User did not provide a value, current config is unspecified: use the default in the parsed config
 //  3. User did not provide a value, current config is specified: leave the current config untouched
 func Merge(fromCmdline FromCmdLine, cfg Configuration) {
-	switch {
-	case fromCmdline.LogLevel || config.LogLevel == "":
+	if fromCmdline.LogLevel || config.LogLevel == "" {
 		config.LogLevel = cfg.LogLevel
-		fallthrough
-	case fromCmdline.ConfigFile || config.ConfigFile == "":
+	}
+	if fromCmdline.LogFile || config.LogFile == "" {
+		config.LogFile = cfg.LogFile
+	}
+	if fromCmdline.ConfigFile || config.ConfigFile == "" {
 		config.ConfigFile = cfg.ConfigFile
-		fallthrough
-	case fromCmdline.ImagePath || config.ImagePath == "":
+	}
+	if fromCmdline.ImagePath || config.ImagePath == "" {
 		config.ImagePath = cfg.ImagePath
-		fallthrough
-	case fromCmdline.PreloadImages || config.PreloadImages == "":
+	}
+	if fromCmdline.PreloadImages || config.PreloadImages == "" {
 		config.PreloadImages = cfg.PreloadImages
-		fallthrough
-	case fromCmdline.ImageFile || config.ImageFile == "":
+	}
+	if fromCmdline.ImageFile || config.ImageFile == "" {
 		config.ImageFile = cfg.ImageFile
-		fallthrough
-	case fromCmdline.Port || config.Port == 0:
+	}
+	if fromCmdline.Port || (config.Port == 0) {
 		config.Port = cfg.Port
-		fallthrough
-	case fromCmdline.Os || config.Os == "":
+	}
+	if fromCmdline.Os || config.Os == "" {
 		config.Os = cfg.Os
-		fallthrough
-	case fromCmdline.Arch || config.Arch == "":
+	}
+	if fromCmdline.Arch || config.Arch == "" {
 		config.Arch = cfg.Arch
-		fallthrough
-	case fromCmdline.PullTimeout || config.PullTimeout == 0:
+	}
+	if fromCmdline.PullTimeout || config.PullTimeout == 0 {
 		config.PullTimeout = cfg.PullTimeout
-		fallthrough
-	case fromCmdline.AlwaysPullLatest || !config.AlwaysPullLatest:
+	}
+	if fromCmdline.AlwaysPullLatest || !config.AlwaysPullLatest {
 		config.AlwaysPullLatest = cfg.AlwaysPullLatest
-		fallthrough
-	case fromCmdline.AirGapped || !config.AirGapped:
+	}
+	if fromCmdline.AirGapped || !config.AirGapped {
 		config.AirGapped = cfg.AirGapped
-		fallthrough
-	case fromCmdline.HelloWorld || !config.HelloWorld:
+	}
+	if fromCmdline.HelloWorld || !config.HelloWorld {
 		config.HelloWorld = cfg.HelloWorld
-	case fromCmdline.PruneConfig || config.PruneConfig == PruneConfig{}:
+	}
+	if fromCmdline.PruneConfig || config.PruneConfig == (PruneConfig{}) {
 		config.PruneConfig = cfg.PruneConfig
-	case fromCmdline.ListConfig || config.ListConfig == ListConfig{}:
+	}
+	if fromCmdline.ListConfig || config.ListConfig == (ListConfig{}) {
 		config.ListConfig = cfg.ListConfig
 	}
 }

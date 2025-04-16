@@ -13,6 +13,7 @@ var testCfg = `
 ---
 imagePath: /var/lib/ociregistry
 logLevel: error
+logFile: /foo/bar/baz.log
 preloadImages: /foo/bar
 imageFile: /bar/baz
 port: 8080
@@ -38,6 +39,7 @@ pruneConfig:
 var expectConfig = Configuration{
 	ImagePath:        "/var/lib/ociregistry",
 	LogLevel:         "error",
+	LogFile:          "/foo/bar/baz.log",
 	PreloadImages:    "/foo/bar",
 	ImageFile:        "/bar/baz",
 	Port:             8080,

@@ -1,6 +1,7 @@
 package globals
 
 import (
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -14,12 +15,18 @@ const srch = `.*sha256:([a-f0-9]{64}).*`
 
 var re = regexp.MustCompile(srch)
 
-// ConfigureLogging sets the logger level
-func ConfigureLogging(level string) {
+// ConfigureLogging sets logging attributes
+func ConfigureLogging(level string, logfile string) error {
 	log.SetLevel(xlatLogLevel(level))
-	//log.SetFormatter(&log.JSONFormatter{})
 	log.SetFormatter(&log.TextFormatter{})
-	//log.SetReportCaller(true)
+	if logfile != "" {
+		lf, err := os.OpenFile(logfile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
+		log.SetOutput(lf)
+	}
+	return nil
 }
 
 // xlatLogLevel translates the passed 'level' string to a logger const

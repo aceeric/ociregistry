@@ -7,6 +7,7 @@ import (
 	"ociregistry/impl/helpers"
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/serialize"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -16,27 +17,31 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Type PruneComparer applies a function to the passed manifest holder
+// and returns true if the manifest matches the function selection logic
+// else false.
 type PruneComparer func(imgpull.ManifestHolder) bool
 
-// only accept created and accessed types
 const (
 	createdType      = "created"
 	accessedType     = "accessed"
+	patternType      = "pattern"
 	noLimit          = -1
 	defaultPruneFreq = "5h"
 )
 
-// RunPruner runs the pruner, performing the prune according to the criteria and frequency
-// specified in the passed prune configuration. For example, if the configuration string has
-// `{"accessed": "15d"}` then using built-in defaults, the pruner will remove images that have
-// not been accessed (pulled) within the last 15 days. Unless configured differently, the process
-// will run every 5 hours.
+// RunPruner runs the pruner if enabled, performing the prune according to the criteria and
+// frequency specified in the passed prune configuration. For example, if the configuration
+// string has `{"accessed": "15d"}` then using built-in defaults, the pruner will remove images
+// that have not been accessed (pulled) within the last 15 days. Unless configured differently,
+// the process will run every 5 hours.
 func RunPruner() error {
 	cfg := config.GetPruneConfig()
 	if !cfg.Enabled {
 		log.Info("pruning not enabled")
 		return nil
 	}
+	log.Info("pruning enabled - parsing configuration")
 	comparer, err := parseCriteria(cfg)
 	if err != nil {
 		return err
@@ -53,6 +58,7 @@ func RunPruner() error {
 	if err != nil {
 		return err
 	}
+	log.Infof("starting prune goroutine with configuration %v", cfg)
 	go func() {
 		for {
 			time.Sleep(runFreq)
@@ -62,8 +68,8 @@ func RunPruner() error {
 	return nil
 }
 
-// parseCriteria parses the prune criteria in the receiver and returns a prune comparer
-// function.
+// parseCriteria parses the prune criteria in the passed arg and returns a prune comparer
+// function implementing the logic expressed in the config.
 func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
 	// duration has to minimally be a value and a type like "1h"
 	if len(cfg.Duration) < 2 || cfg.Type == "" {
@@ -112,6 +118,25 @@ func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
 			}
 			return manifestPullDt.Before(cutoffDate)
 		}, nil
+	case patternType:
+		srchs := []*regexp.Regexp{}
+		for _, ref := range strings.Split(cfg.Expr, ",") {
+			if exp, err := regexp.Compile(ref); err == nil {
+				srchs = append(srchs, exp)
+			} else {
+				return nil, fmt.Errorf("regex did not compile: %q", ref)
+			}
+		}
+		return func(mh imgpull.ManifestHolder) bool {
+			if len(srchs) != 0 {
+				for _, srch := range srchs {
+					if srch.MatchString(mh.ImageUrl) {
+						return true
+					}
+				}
+			}
+			return false
+		}, nil
 	}
 	return nil, fmt.Errorf("unsupported prune type %q", cfg.Type)
 }
@@ -122,6 +147,7 @@ func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
 // If dryRun then the function logs what would be pruned but does not actually prune.
 func doPrune(imagePath string, comparer PruneComparer, count int, dryRun bool) {
 	toPrune := getManifestsToPrune(comparer, count)
+	log.Infof("begin prune - count of manifests to prune: %d", len(toPrune))
 	for _, mh := range toPrune {
 		if dryRun {
 			log.Infof("doPrune - dry run specified, skipping prune of manifest %q", mh.ImageUrl)
@@ -136,7 +162,7 @@ func doPrune(imagePath string, comparer PruneComparer, count int, dryRun bool) {
 // returned to the caller in an array. The count arg is the max number of manifests to
 // prune. If noLimit (-1) then there is no limit. The purpose of the limit is to lock
 // the manifest cache in small pieces. Scheduling the prune more frequently with smaller
-// chunks should result in better concurrency this this function locks the entire
+// chunks should result in better concurrency since this function locks the entire
 // cache while it runs.
 func getManifestsToPrune(comparer PruneComparer, count int) []imgpull.ManifestHolder {
 	mc.Lock()
@@ -167,7 +193,9 @@ func getManifestsToPrune(comparer PruneComparer, count int) []imgpull.ManifestHo
 }
 
 // prune removes the passed manifest (and blobs if the manifest is an image manifest)
-// from the in-mem cache and from the file system.
+// from the in-mem cache and from the file system. A lock is held on the manifest cache while
+// blobs are being pruned so the cache reports existence or non-existence of an image manifest
+// and its blobs as a single unit.
 func prune(mh imgpull.ManifestHolder, imagePath string) {
 	mc.Lock()
 	defer mc.Unlock()
@@ -196,9 +224,10 @@ func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
 	if err := serialize.RmManifest(imagePath, mh); err != nil {
 		log.Errorf("error removing manifest %q from the file system. the error was: %s", pr.Url(), err)
 	}
+	log.Infof("pruned: %s", pr.Url())
 }
 
-// rmBlobs decrements the ref count of all blobs in the passed image manifest in the in-mem
+// rmBlobs decrements the ref count of all blobs ref'd by the passed image manifest in the in-mem
 // blob map and if the ref count is zero, the blob is removed from the map and the file system.
 func rmBlobs(mh imgpull.ManifestHolder, imagePath string) {
 	for _, layer := range mh.Layers() {
@@ -211,6 +240,8 @@ func rmBlobs(mh imgpull.ManifestHolder, imagePath string) {
 			}
 		} else if bc.blobs[digest] < 0 {
 			log.Errorf("negative blob count for digest %q (should never happen)", digest)
+		} else {
+			log.Infof("pruned blob: %s", digest)
 		}
 	}
 }

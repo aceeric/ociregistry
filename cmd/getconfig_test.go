@@ -4,6 +4,7 @@ import (
 	"ociregistry/impl/config"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -81,4 +82,46 @@ func TestCmdlineOverridesConfig(t *testing.T) {
 	case config.GetPruneConfig().Duration != "30d":
 		t.Fail()
 	}
+}
+
+var pruneCfg = `
+---
+pruneConfig:
+  enabled: true
+  duration: 30d
+  type: accessed
+  frequency: 1d
+  count: -1
+  expr: testing-123
+  dryRun: false
+`
+
+func TestPruneCfgEnabled(t *testing.T) {
+	td, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.Remove(td)
+	cfgFile := filepath.Join(td, "testcfg.yaml")
+	os.WriteFile(cfgFile, []byte(pruneCfg), 0700)
+	os.Args = []string{"bin/ociregistry", "--config-file", cfgFile, "serve"}
+
+	_, err = getCfg()
+	if err != nil {
+		t.Fail()
+	}
+	parsedCfg := config.GetPruneConfig()
+	expectCfg := config.PruneConfig{
+		Enabled:  true,
+		Duration: "30d",
+		Type:     "accessed",
+		Freq:     "1d",
+		Count:    -1,
+		Expr:     "testing-123",
+		DryRun:   false,
+	}
+	if !reflect.DeepEqual(parsedCfg, expectCfg) {
+		t.Fail()
+	}
+
 }

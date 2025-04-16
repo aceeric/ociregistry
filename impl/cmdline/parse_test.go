@@ -1,13 +1,21 @@
 package cmdline
 
 import (
+	"ociregistry/impl/config"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
+func clearParse() {
+	fromCmdline = config.FromCmdLine{}
+	cfg = config.Configuration{}
+}
+
 // Test that the parser detects when defaults are overridden on the command line for the serve command
 func TestParseServe(t *testing.T) {
+	clearParse()
 	td, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fail()
@@ -52,6 +60,7 @@ func TestParseServe(t *testing.T) {
 
 // Test that the parser detects when defaults are overridden on the command line for the prune command
 func TestParsePrune(t *testing.T) {
+	clearParse()
 	td, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fail()
@@ -71,6 +80,60 @@ func TestParsePrune(t *testing.T) {
 	fromCmdline, cfg, err = Parse()
 	if err != nil || fromCmdline.Command != "prune" || !fromCmdline.PruneConfig || cfg.PruneConfig.DryRun ||
 		cfg.PruneConfig.Expr != "2025-02-28T12:59:59" || cfg.PruneConfig.Type != "date" {
+		t.Fail()
+	}
+}
+
+var testCfg = `
+---
+imagePath: /foo/test
+logLevel: test1
+logFile: /foo/bar/baz.log
+preloadImages: /foo/bar
+imageFile: /bar/baz
+port: 8888
+os: red
+arch: yellow
+pullTimeout: 123
+alwaysPullLatest: true
+airGapped: true
+helloWorld: true
+`
+
+var expectConfig = config.Configuration{
+	ImagePath:        "/foo/test",
+	LogLevel:         "test1",
+	LogFile:          "/foo/bar/baz.log",
+	PreloadImages:    "/foo/bar",
+	ImageFile:        "/bar/baz",
+	Port:             8888,
+	Os:               "red",
+	Arch:             "yellow",
+	PullTimeout:      123,
+	AlwaysPullLatest: true,
+	AirGapped:        true,
+	HelloWorld:       true,
+}
+
+// Test that a command line with nothing specified does not overwrite any part of
+// existing config.
+func TestMergeConfig(t *testing.T) {
+	clearParse()
+	if err := config.SetConfigFromStr([]byte(testCfg)); err != nil {
+		t.Fail()
+	}
+	parsedCfg := config.Get()
+	if !reflect.DeepEqual(parsedCfg, expectConfig) {
+		t.Fail()
+	}
+	os.Args = []string{"bin/ociregistry", "serve"}
+	fromCmdline, cfg, err := Parse()
+	if err != nil {
+		t.Fail()
+	}
+	config.Merge(fromCmdline, cfg)
+	newCfg := config.Get()
+	if !reflect.DeepEqual(newCfg, expectConfig) {
 		t.Fail()
 	}
 }

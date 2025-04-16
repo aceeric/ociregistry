@@ -81,7 +81,7 @@ func Serve(buildVer string, buildDtm string) error {
 	// start the API server
 	go func() {
 		if err := e.Start(net.JoinHostPort("0.0.0.0", strconv.Itoa(int(config.GetPort())))); err != nil && err != http.ErrServerClosed {
-			e.Logger.Fatal("shutting down the server")
+			e.Logger.Fatal("shutting down the server. error:", err)
 		}
 	}()
 	log.Info("server is running")

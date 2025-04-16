@@ -72,6 +72,16 @@ var cmds = &cli.Command{
 				return nil
 			},
 		},
+		&cli.StringFlag{
+			Name:        "log-file",
+			Value:       "",
+			Usage:       "log to the specified file rather than the console",
+			Destination: &cfg.LogFile,
+			Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+				fromCmdline.LogFile = true
+				return nil
+			},
+		},
 	},
 	Commands: []*cli.Command{
 		{

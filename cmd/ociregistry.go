@@ -56,7 +56,7 @@ func realMain() int {
 		return 1
 	}
 
-	globals.ConfigureLogging(config.GetLogLevel())
+	globals.ConfigureLogging(config.GetLogLevel(), config.GetLogFile())
 	imgpull.SetConcurrentBlobs(int(config.GetPullTimeout()) * 1000)
 
 	switch command {

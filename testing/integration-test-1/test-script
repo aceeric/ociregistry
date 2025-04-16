@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+#
+# testing/integration-test-1
+# testing/integration-test-1 --start-docker --load-images
+
+set -e
+
+if [[ ! -f bin/ociregistry ]]; then
+  echo "must run in project root"
+  exit 1
+fi
+
+start_docker=0
+load_images=0
+cleanup=0
+
+for opt in "$@"; do
+  if [[ $opt == "--start-docker" ]]; then
+    start_docker=1
+  fi
+  if [[ $opt == "--load-images" ]]; then
+    load_images=1
+  fi
+  if [[ $opt == "--cleanup" ]]; then
+    cleanup=1
+  fi
+done
+
+if [[ $start_docker -eq 1 ]]; then
+  docker run\
+    --name registry\
+    --detach\
+    --publish 5000:5000\
+    registry:3.0.0
+fi
+
+# these images have some common blobs and some disjoint blobs
+images=(
+  registry.k8s.io/kube-scheduler:v1.31.0
+  registry.k8s.io/kube-scheduler:v1.30.0
+)
+
+if [[ $load_images -eq 1 ]]; then
+  for image in "${images[@]}"; do
+    echo docker pull $image
+    new_image=$(echo $image | sed 's/registry.k8s.io/localhost:5000/')
+    echo docker tag $image $new_image
+    echo docker push $new_image
+    echo docker rmi --force $image
+  done
+fi
+
+# start the pull-through server
+temp_dir=$(mktemp -d)
+truncate -s0 /tmp/ociregistry.log
+bin/ociregistry --config-file testing/integration-test-1/config.yaml --image-path $temp_dir serve &
+
+sleep 2s && read -p 'press any key to end the test'
+
+curl localhost:8888/cmd/stop
+
+if [[ $cleanup -eq 1 ]]; then
+  docker stop registry
+  docker container rm registry
+  rm -rf $temp_dir
+fi

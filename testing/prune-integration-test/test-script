@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 #
-# testing/integration-test-1
-# testing/integration-test-1 --start-docker --load-images
+# usage: testing/integration-test-1/test-script --start-docker --load-images --cleanup
 
 set -e
 
 if [[ ! -f bin/ociregistry ]]; then
-  echo "must run in project root"
+  echo "must run in project root and build the server first"
   exit 1
 fi
 
@@ -51,7 +50,7 @@ if [[ $load_images -eq 1 ]]; then
 fi
 
 # start the pull-through server
-temp_dir=$(mktemp -d)
+temp_dir=$(mktemp -d) && echo "IMAGEPATH=$temp_dir"
 truncate -s0 /tmp/ociregistry.log
 bin/ociregistry --config-file testing/integration-test-1/config.yaml --image-path $temp_dir serve &
 

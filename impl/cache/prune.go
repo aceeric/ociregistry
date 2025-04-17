@@ -75,7 +75,7 @@ func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
 	if len(cfg.Duration) < 2 || cfg.Type == "" {
 		return nil, errors.New("missing/invalid duration/type in prune criteria")
 	}
-	if !slices.Contains([]string{createdType, accessedType}, strings.ToLower(cfg.Type)) {
+	if !slices.Contains([]string{createdType, accessedType, patternType}, strings.ToLower(cfg.Type)) {
 		return nil, fmt.Errorf("unknown criteria type %q, expect %q or %q", cfg.Type, createdType, accessedType)
 	}
 	durStr := cfg.Duration

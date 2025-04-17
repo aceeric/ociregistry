@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+imagefile=$(echo $1 | sed 's/[\./:]/-/g')
+
+MYPID=$BASHPID
+
+while true; do
+  imgpull "$1" "$imagefile.tar" --scheme http >> $imagefile.$MYPID.log
+  rm -f $imagefile.tar
+done

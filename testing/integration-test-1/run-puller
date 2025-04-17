@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-imagefile=$(echo $1 | sed 's/[\./:]/-/g')
-
-while true
-  if !imgpull "$1" "$imagefile.tar" --scheme http; then
-    echo "error pulling $1 >> $imagefile.pull.log"
-  fi
-done

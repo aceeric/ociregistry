@@ -10,6 +10,6 @@ pruneConfig:
   duration: 0d
   type: pattern
   expr: 1.31
-  frequency: 1s
+  frequency: 0s
   count: -1
   dryRun: false

@@ -1,6 +1,7 @@
 # TODO
 
 - Test continuous pruning ("Prune test" below)
+- graceful shutdown - after echo stops: wait for prune to finish, wait for GETs to finish (probably with timeout)
 - Command API: add to oapi spec?
 - Instrumentation
 - Update Go version to latest

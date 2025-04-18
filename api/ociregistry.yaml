@@ -997,3 +997,51 @@ paths:
           description:
         '404':
           description:
+  /cmd/blob/list:
+    get:
+      tags: []
+      summary:
+      description:
+      operationId: cmd-bloblist
+      parameters:
+      - name: substr
+        in: query
+        description:
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description:
+          content: {}
+        '400':
+          description:
+        '404':
+          description:
+  /cmd/image/list:
+    get:
+      tags: []
+      summary:
+      description:
+      operationId: cmd-imagelist
+      parameters:
+      - name: pattern
+        in: query
+        description:
+        required: false
+        schema:
+          type: string
+      - name: digest
+        in: query
+        description:
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description:
+          content: {}
+        '400':
+          description:
+        '404':
+          description:

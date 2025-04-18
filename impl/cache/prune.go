@@ -17,11 +17,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Type ManifestComparer applies a function to the passed manifest holder
-// and returns true if the manifest matches the function selection logic
-// else false.
-type ManifestComparer func(imgpull.ManifestHolder) bool
-
 const (
 	createdType      = "created"
 	accessedType     = "accessed"
@@ -155,42 +150,6 @@ func doPrune(imagePath string, comparer ManifestComparer, count int, dryRun bool
 		}
 		prune(mh, imagePath)
 	}
-}
-
-// TODO MOVE TO QUERY.GO (SAME PACKAGE)
-
-// GetManifestsCompare traverses the in-mem manifest cache and evaluates each manifest
-// according to the passed comparer. Manifests selected by the comparer are returned to
-// the caller in an array. The count arg is the max number of manifests to include. If
-// noLimit (-1) then there is no limit. The purpose of the limit is to lock the manifest
-// cache in small pieces. Querying more frequently with smaller chunks should result in
-// better concurrency since this function locks the entire cache while it runs.
-func GetManifestsCompare(comparer ManifestComparer, count int) []imgpull.ManifestHolder {
-	mc.Lock()
-	defer mc.Unlock()
-	mhs := make([]imgpull.ManifestHolder, 0, len(mc.manifests))
-	matches := 0
-	for url, mh := range mc.manifests {
-		if url != mh.ImageUrl {
-			// when manifests are added to the in-mem cache, if the manifest has a tag
-			// it is added by tag and again by digest so it is retrievable both ways. When
-			// added by digest (the 2nd one), the map key will have the digest in the url but
-			// the manifest produced by the map will still have the tag in its url. (It's a copy.)
-			// The second copy is only for lookup and is not considered to be a separate manifest.
-			// The prune will function handle the second copy so only add to the prune list if the
-			// lookup key matches the manifest url - this *guarantees* that the manifest to prune
-			// is not a 2nd copy.
-			continue
-		}
-		if comparer(mh) {
-			matches++
-			if count != noLimit && matches > count {
-				break
-			}
-			mhs = append(mhs, mh)
-		}
-	}
-	return mhs
 }
 
 // prune removes the passed manifest (and blobs if the manifest is an image manifest)

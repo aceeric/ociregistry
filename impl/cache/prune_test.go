@@ -88,7 +88,7 @@ func TestGetManifestsToPrune(t *testing.T) {
 	comparer := func(mh imgpull.ManifestHolder) bool {
 		return strings.Contains(mh.ImageUrl, "2")
 	}
-	toPrune := getManifestsToPrune(comparer, -1)
+	toPrune := GetManifestsCompare(comparer, -1)
 	for _, mh := range toPrune {
 		if !strings.Contains(mh.ImageUrl, "2") {
 			t.Fail()

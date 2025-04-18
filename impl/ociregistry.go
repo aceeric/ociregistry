@@ -24,17 +24,20 @@ type OciRegistry struct {
 	alwaysPullLatest bool
 	// if air-gapped, we can't pull so don't try just return 404
 	airGapped bool
+	// allows to shut down the echo server
+	shutdownCh chan bool
 }
 
 // NewOciRegistry creates and returns an OciRegistry struct from the passed args. The
 // OciRegistry struct implements the api.ServerInterface interface, which is generated from
 // the api/ociregistry.yaml openapi spec for the distribution server.
-func NewOciRegistry() *OciRegistry { //api.ServerInterface {
+func NewOciRegistry(ch chan bool) *OciRegistry { //api.ServerInterface {
 	return &OciRegistry{
 		imagePath:        config.GetImagePath(),
 		pullTimeout:      int(config.GetPullTimeout()),
 		alwaysPullLatest: config.GetAlwaysPullLatest(),
 		airGapped:        config.GetAirGapped(),
+		shutdownCh:       ch,
 	}
 }
 

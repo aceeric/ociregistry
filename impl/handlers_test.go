@@ -53,7 +53,7 @@ func TestManifestGetWithNs(t *testing.T) {
 	}
 	defer server.Close()
 
-	r := NewOciRegistry()
+	r := NewOciRegistry(nil)
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -91,7 +91,7 @@ func TestNeverCacheLatest(t *testing.T) {
 	}
 	defer server.Close()
 
-	r := NewOciRegistry()
+	r := NewOciRegistry(nil)
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -153,7 +153,7 @@ func TestBlobGetFails(t *testing.T) {
 	}
 	defer server.Close()
 
-	r := NewOciRegistry()
+	r := NewOciRegistry(nil)
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -178,7 +178,7 @@ func TestPullImageAndBlob(t *testing.T) {
 	}
 	defer server.Close()
 
-	r := NewOciRegistry()
+	r := NewOciRegistry(nil)
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()

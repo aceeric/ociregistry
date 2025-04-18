@@ -17,10 +17,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Type PruneComparer applies a function to the passed manifest holder
+// Type ManifestComparer applies a function to the passed manifest holder
 // and returns true if the manifest matches the function selection logic
 // else false.
-type PruneComparer func(imgpull.ManifestHolder) bool
+type ManifestComparer func(imgpull.ManifestHolder) bool
 
 const (
 	createdType      = "created"
@@ -30,8 +30,8 @@ const (
 	defaultPruneFreq = "5h"
 )
 
-// RunPruner runs the pruner if enabled, performing the prune according to the criteria and
-// frequency specified in the passed prune configuration. For example, if the configuration
+// RunPruner runs the pruner goroutine if enabled, performing the prune according to the criteria
+// and frequency specified in the passed prune configuration. For example, if the configuration
 // string has `{"accessed": "15d"}` then using built-in defaults, the pruner will remove images
 // that have not been accessed (pulled) within the last 15 days. Unless configured differently,
 // the process will run every 5 hours.
@@ -68,9 +68,9 @@ func RunPruner() error {
 	return nil
 }
 
-// parseCriteria parses the prune criteria in the passed arg and returns a prune comparer
+// parseCriteria parses the prune criteria in the passed arg and returns a manifest comparer
 // function implementing the logic expressed in the config.
-func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
+func parseCriteria(cfg config.PruneConfig) (ManifestComparer, error) {
 	// duration has to minimally be a value and a type like "1h"
 	if len(cfg.Duration) < 2 || cfg.Type == "" {
 		return nil, errors.New("missing/invalid duration/type in prune criteria")
@@ -95,12 +95,12 @@ func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
 	case createdType:
 		return func(mh imgpull.ManifestHolder) bool {
 			if mh.Created == "" {
-				log.Debugf("prune comparer - manifest has no create date, skipping %q", mh.ImageUrl)
+				log.Debugf("comparer - manifest has no create date, skipping %q", mh.ImageUrl)
 				return false
 			}
 			manifestCreateDt, err := time.Parse(dateFormat, mh.Created)
 			if err != nil {
-				log.Errorf("prune comparer - error parsing manifest create date %q for manifest %q", mh.Created, mh.ImageUrl)
+				log.Errorf("comparer - error parsing manifest create date %q for manifest %q", mh.Created, mh.ImageUrl)
 				return false
 			}
 			return manifestCreateDt.Before(cutoffDate)
@@ -108,12 +108,12 @@ func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
 	case accessedType:
 		return func(mh imgpull.ManifestHolder) bool {
 			if mh.Pulled == "" {
-				log.Debugf("prune comparer - manifest has no pull date, skipping %q", mh.ImageUrl)
+				log.Debugf("comparer - manifest has no pull date, skipping %q", mh.ImageUrl)
 				return false
 			}
 			manifestPullDt, err := time.Parse(dateFormat, mh.Pulled)
 			if err != nil {
-				log.Errorf("prune comparer - error parsing parse manifest pull date %q for manifest %q", mh.Pulled, mh.ImageUrl)
+				log.Errorf("comparer - error parsing parse manifest pull date %q for manifest %q", mh.Pulled, mh.ImageUrl)
 				return false
 			}
 			return manifestPullDt.Before(cutoffDate)
@@ -145,8 +145,8 @@ func parseCriteria(cfg config.PruneConfig) (PruneComparer, error) {
 // comparer. If the comparer indicates that a manifest matches the prune criteria it is pruned.
 // The count arg is the max number of manifests to prune. If noLimit (-1) then there is no limit.
 // If dryRun then the function logs what would be pruned but does not actually prune.
-func doPrune(imagePath string, comparer PruneComparer, count int, dryRun bool) {
-	toPrune := getManifestsToPrune(comparer, count)
+func doPrune(imagePath string, comparer ManifestComparer, count int, dryRun bool) {
+	toPrune := GetManifestsCompare(comparer, count)
 	log.Infof("begin prune - count of manifests to prune: %d", len(toPrune))
 	for _, mh := range toPrune {
 		if dryRun {
@@ -157,14 +157,15 @@ func doPrune(imagePath string, comparer PruneComparer, count int, dryRun bool) {
 	}
 }
 
-// getManifestsToPrune traverses the in-mem manifest cache and evaluates each manifest
-// according to the passed comparer. Manifests selected for pruning by the comparer are
-// returned to the caller in an array. The count arg is the max number of manifests to
-// prune. If noLimit (-1) then there is no limit. The purpose of the limit is to lock
-// the manifest cache in small pieces. Scheduling the prune more frequently with smaller
-// chunks should result in better concurrency since this function locks the entire
-// cache while it runs.
-func getManifestsToPrune(comparer PruneComparer, count int) []imgpull.ManifestHolder {
+// TODO MOVE TO QUERY.GO (SAME PACKAGE)
+
+// GetManifestsCompare traverses the in-mem manifest cache and evaluates each manifest
+// according to the passed comparer. Manifests selected by the comparer are returned to
+// the caller in an array. The count arg is the max number of manifests to include. If
+// noLimit (-1) then there is no limit. The purpose of the limit is to lock the manifest
+// cache in small pieces. Querying more frequently with smaller chunks should result in
+// better concurrency since this function locks the entire cache while it runs.
+func GetManifestsCompare(comparer ManifestComparer, count int) []imgpull.ManifestHolder {
 	mc.Lock()
 	defer mc.Unlock()
 	mhs := make([]imgpull.ManifestHolder, 0, len(mc.manifests))

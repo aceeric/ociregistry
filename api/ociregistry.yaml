@@ -954,3 +954,46 @@ paths:
           description:
         '404':
           description:
+  /cmd/stop:
+    get:
+      tags: []
+      summary:
+      description:
+      operationId: cmd-stop
+      parameters: []
+      responses:
+        '200':
+          description:
+          content: {}
+  /health:
+    get:
+      tags: []
+      summary:
+      description:
+      operationId: cmd-health
+      parameters: []
+      responses:
+        '200':
+          description:
+          content: {}
+  /cmd/manifest/list:
+    get:
+      tags: []
+      summary:
+      description:
+      operationId: cmd-manifestlist
+      parameters:
+      - name: pattern
+        in: query
+        description:
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description:
+          content: {}
+        '400':
+          description:
+        '404':
+          description:

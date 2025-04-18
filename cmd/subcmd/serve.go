@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	middleware "github.com/oapi-codegen/echo-middleware"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -47,33 +48,28 @@ func Serve(buildVer string, buildDtm string) error {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
-	ociRegistry := impl.NewOciRegistry()
+	shutdownCh := make(chan bool)
+	ociRegistry := impl.NewOciRegistry(shutdownCh)
 
 	// Echo router
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
+
+	// Use our validation middleware to check all requests against the OpenAPI schema.
+	e.Use(middleware.OapiRequestValidator(swagger))
+
 	api.RegisterHandlers(e, ociRegistry)
 
-	// have Echo use the global logging
 	e.Use(globals.GetEchoLoggingFunc())
 
 	if err := cache.RunPruner(); err != nil {
 		return fmt.Errorf("error starting the pruner: %s", err)
 	}
 
-	// use Open API middleware to check all requests against the OpenAPI schema
-	// for now, don't do this until I add the cmd api to the Swagger spec
-	//e.Use(middleware.OapiRequestValidator(swagger))
-
-	// load cached image metadata into mem
 	if err := cache.Load(config.GetImagePath()); err != nil {
 		return fmt.Errorf("error loading the image cache: %s", err)
 	}
-
-	// set up the command API
-	shutdownCh := make(chan bool)
-	cmdApi(e, shutdownCh)
 
 	fmt.Fprintf(os.Stderr, startupBanner, buildVer, buildDtm, time.Unix(0, time.Now().UnixNano()), config.GetPort(),
 		os.Getuid(), os.Getgid(), os.Getpid(), strings.Join(os.Args, " "))
@@ -90,20 +86,4 @@ func Serve(buildVer string, buildDtm string) error {
 	e.Server.Shutdown(context.Background())
 	log.Infof("stopped")
 	return nil
-}
-
-// cmdApi implements the command API. Presently it consists of:
-//
-//	GET /cmd/stop to shutdown the server
-//	GET /health (intended for k8s)
-func cmdApi(e *echo.Echo, ch chan bool) {
-	e.GET("/cmd/stop",
-		func(ctx echo.Context) error {
-			ch <- true
-			return nil
-		})
-	e.GET("/health",
-		func(ctx echo.Context) error {
-			return ctx.NoContent(http.StatusOK)
-		})
 }

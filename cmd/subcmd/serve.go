@@ -49,6 +49,8 @@ func Serve(buildVer string, buildDtm string) error {
 	swagger.Servers = nil
 
 	shutdownCh := make(chan bool)
+	stopPruneCh := make(chan bool)
+	pruneStoppedCh := make(chan bool)
 	ociRegistry := impl.NewOciRegistry(shutdownCh)
 
 	// Echo router
@@ -63,7 +65,7 @@ func Serve(buildVer string, buildDtm string) error {
 
 	e.Use(globals.GetEchoLoggingFunc())
 
-	if err := cache.RunPruner(); err != nil {
+	if err := cache.RunPruner(stopPruneCh, pruneStoppedCh); err != nil {
 		return fmt.Errorf("error starting the pruner: %s", err)
 	}
 
@@ -84,6 +86,13 @@ func Serve(buildVer string, buildDtm string) error {
 	<-shutdownCh
 	log.Infof("received stop command - stopping")
 	e.Server.Shutdown(context.Background())
+	if config.GetPruneConfig().Enabled {
+		stopPruneCh <- true
+		log.Infof("waiting for pruner to stop")
+		<-pruneStoppedCh
+		log.Infof("pruner stopped")
+	}
+	cache.WaitPulls()
 	log.Infof("stopped")
 	return nil
 }

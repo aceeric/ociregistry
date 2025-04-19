@@ -1,0 +1,8 @@
+---
+pruneConfig:
+  enabled: true
+  duration: 30d
+  type: accessed
+  frequency: 10s
+  count: -1
+  dryRun: false

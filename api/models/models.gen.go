@@ -6,17 +6,29 @@ package models
 // CmdBloblistParams defines parameters for CmdBloblist.
 type CmdBloblistParams struct {
 	Substr *string `form:"substr,omitempty" json:"substr,omitempty"`
+	Count  *int    `form:"count,omitempty" json:"count,omitempty"`
 }
 
 // CmdImagelistParams defines parameters for CmdImagelist.
 type CmdImagelistParams struct {
 	Pattern *string `form:"pattern,omitempty" json:"pattern,omitempty"`
 	Digest  *string `form:"digest,omitempty" json:"digest,omitempty"`
+	Count   *int    `form:"count,omitempty" json:"count,omitempty"`
 }
 
 // CmdManifestlistParams defines parameters for CmdManifestlist.
 type CmdManifestlistParams struct {
 	Pattern *string `form:"pattern,omitempty" json:"pattern,omitempty"`
+	Count   *int    `form:"count,omitempty" json:"count,omitempty"`
+}
+
+// CmdPruneParams defines parameters for CmdPrune.
+type CmdPruneParams struct {
+	Type   string  `form:"type" json:"type"`
+	Dur    *string `form:"dur,omitempty" json:"dur,omitempty"`
+	Expr   *string `form:"expr,omitempty" json:"expr,omitempty"`
+	DryRun *string `form:"dryRun,omitempty" json:"dryRun,omitempty"`
+	Count  *int    `form:"count,omitempty" json:"count,omitempty"`
 }
 
 // V2AuthParams defines parameters for V2Auth.

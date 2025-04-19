@@ -7,6 +7,7 @@ import (
 	"ociregistry/impl/helpers"
 	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/serialize"
+	"os"
 	"regexp"
 	"slices"
 	"strconv"
@@ -25,19 +26,23 @@ const (
 	defaultPruneFreq = "5h"
 )
 
+type logWriter struct {
+	log string
+}
+
 // RunPruner runs the pruner goroutine if enabled, performing the prune according to the criteria
 // and frequency specified in the passed prune configuration. For example, if the configuration
 // string has `{"accessed": "15d"}` then using built-in defaults, the pruner will remove images
 // that have not been accessed (pulled) within the last 15 days. Unless configured differently,
 // the process will run every 5 hours.
-func RunPruner() error {
+func RunPruner(stopChan, stoppedChan chan bool) error {
 	cfg := config.GetPruneConfig()
 	if !cfg.Enabled {
 		log.Info("pruning not enabled")
 		return nil
 	}
 	log.Info("pruning enabled - parsing configuration")
-	comparer, err := parseCriteria(cfg)
+	comparer, err := ParseCriteria(cfg)
 	if err != nil {
 		return err
 	}
@@ -56,36 +61,99 @@ func RunPruner() error {
 	log.Infof("starting prune goroutine with configuration %v", cfg)
 	go func() {
 		for {
-			time.Sleep(runFreq)
-			doPrune(config.GetImagePath(), comparer, count, cfg.DryRun)
+			select {
+			case <-stopChan:
+				stoppedChan <- true
+				return
+			case <-time.After(runFreq):
+				doPrune(config.GetImagePath(), comparer, count, cfg.DryRun)
+			}
 		}
 	}()
 	return nil
 }
 
-// parseCriteria parses the prune criteria in the passed arg and returns a manifest comparer
-// function implementing the logic expressed in the config.
-func parseCriteria(cfg config.PruneConfig) (ManifestComparer, error) {
-	// duration has to minimally be a value and a type like "1h"
-	if len(cfg.Duration) < 2 || cfg.Type == "" {
-		return nil, errors.New("missing/invalid duration/type in prune criteria")
+// Prune is intended to be called by the REST API handlers. It parses the prune configuration
+// received on the API. It also "redirects" the logger so that all the logged messages can be
+// returned to the caller as a big newline-delimited string. The caller can then stream it
+// to the REST client if they choose. To do its work, it just doPrune, just like RunPruner.
+func Prune(pruneType string, dur *string, expr *string, dryRun *string, count *int) (string, error) {
+	lw := newLogWriter()
+	log.SetOutput(lw)
+	defer log.SetOutput(os.Stderr)
+	cfg := config.PruneConfig{
+		Enabled: true,
+		Type:    pruneType,
+		DryRun:  true,
+		Count:   5,
 	}
+	if dur != nil {
+		cfg.Duration = *dur
+	}
+	if expr != nil {
+		cfg.Expr = *expr
+	}
+	if count != nil {
+		cfg.Count = *count
+	}
+	if dryRun != nil {
+		b, err := strconv.ParseBool(*dryRun)
+		if err != nil {
+			return "", fmt.Errorf("invalid dry run param: %s", *dryRun)
+		}
+		cfg.DryRun = b
+	}
+	comparer, err := ParseCriteria(cfg)
+	if err != nil {
+		return "", errors.New("unable to parse prune params")
+	}
+	doPrune(config.GetImagePath(), comparer, cfg.Count, cfg.DryRun)
+	return lw.log, nil
+}
+
+// newLogWriter returns a strut that impements the io.Writer interface
+func newLogWriter() *logWriter {
+	return &logWriter{
+		log: "",
+	}
+}
+
+// io.Writer Write
+func (w *logWriter) Write(b []byte) (cnt int, err error) {
+	w.log += string(b)
+	return len(b), nil
+}
+
+// io.Writer Close
+func (w *logWriter) Close() error {
+	return nil
+}
+
+// ParseCriteria parses the prune criteria in the passed arg and returns a manifest comparer
+// function implementing the logic expressed in the config.
+func ParseCriteria(cfg config.PruneConfig) (ManifestComparer, error) {
 	if !slices.Contains([]string{createdType, accessedType, patternType}, strings.ToLower(cfg.Type)) {
 		return nil, fmt.Errorf("unknown criteria type %q, expect %q or %q", cfg.Type, createdType, accessedType)
 	}
-	durStr := cfg.Duration
-	if !strings.HasPrefix(cfg.Duration, "-") {
-		durStr = "-" + cfg.Duration
+	var cutoffDate time.Time
+	if slices.Contains([]string{createdType, accessedType}, strings.ToLower(cfg.Type)) {
+		if len(cfg.Duration) < 2 || cfg.Type == "" {
+			return nil, errors.New("missing/invalid duration/type in prune criteria")
+		}
+		durStr := cfg.Duration
+		if !strings.HasPrefix(cfg.Duration, "-") {
+			durStr = "-" + cfg.Duration
+		}
+		durStr, err := days2hrs(durStr)
+		if err != nil {
+			return nil, err
+		}
+		dur, err := time.ParseDuration(durStr)
+		if err != nil {
+			return nil, err
+		}
+		cutoffDate = time.Now().Add(dur)
 	}
-	durStr, err := days2hrs(durStr)
-	if err != nil {
-		return nil, err
-	}
-	dur, err := time.ParseDuration(durStr)
-	if err != nil {
-		return nil, err
-	}
-	cutoffDate := time.Now().Add(dur)
 	switch strings.ToLower(cfg.Type) {
 	case createdType:
 		return func(mh imgpull.ManifestHolder) bool {
@@ -148,6 +216,7 @@ func doPrune(imagePath string, comparer ManifestComparer, count int, dryRun bool
 			log.Infof("doPrune - dry run specified, skipping prune of manifest %q", mh.ImageUrl)
 			continue
 		}
+		log.Infof("pruning manifest %q", mh.ImageUrl)
 		prune(mh, imagePath)
 	}
 }

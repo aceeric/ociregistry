@@ -39,7 +39,7 @@ func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org s
 	}
 }
 
-// GET blob
+// GET /v2/org/image/blobs/digest
 func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
 	digest = helpers.GetDigestFrom(digest)
 	if refCnt := cache.GetBlob(digest); refCnt <= 0 {

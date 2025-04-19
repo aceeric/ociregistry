@@ -1,0 +1,54 @@
+package main
+
+import (
+	_ "embed"
+	"ociregistry/impl/config"
+	"os"
+	"path/filepath"
+)
+
+//go:embed hello_world/config.json
+var configJson []byte
+
+//go:embed hello_world/blob.tar.gz
+var blobTarGz []byte
+
+//go:embed hello_world/imageManifest.json
+var imageManifest []byte
+
+//go:embed hello_world/manifestList.json
+var manifestList []byte
+
+// helloWorldMode builds an image cache in the system temp directory from embedded files. The
+// resulting files look exactly as if you pulled and cached docker.io/library/hello-world:latest
+// then copied the image cache into the hello_world directory. It sets the server into air-gapped
+// mode and serves only that one image. Its for testing.
+func helloWorldMode() (string, error) {
+	tmpdir, err := os.MkdirTemp("", "")
+	if err != nil {
+		return "", err
+	}
+
+	config.SetAirGapped(true)
+	config.SetPreloadImages("")
+	config.SetImagePath(tmpdir)
+	if err := ensureImagePaths(); err != nil {
+		return "", err
+	}
+	filelist := []struct {
+		Name  string
+		Dir   string
+		Bytes *[]byte
+	}{
+		{Name: "424f1f86cdf501deb591ace8d14d2f40272617b51b374915a87a2886b2025ece", Dir: "fat", Bytes: &manifestList},
+		{Name: "03b62250a3cb1abd125271d393fc08bf0cc713391eda6b57c02d1ef85efcc25c", Dir: "img", Bytes: &imageManifest},
+		{Name: "74cc54e27dc41bb10dc4b2226072d469509f2f22f1a3ce74f4a59661a1d44602", Dir: "blobs", Bytes: &configJson},
+		{Name: "e6590344b1a5dc518829d6ea1524fc12f8bcd14ee9a02aa6ad8360cce3a9a9e9", Dir: "blobs", Bytes: &blobTarGz},
+	}
+	for _, file := range filelist {
+		if err := os.WriteFile(filepath.Join(tmpdir, file.Dir, file.Name), *file.Bytes, 0600); err != nil {
+			return "", err
+		}
+	}
+	return tmpdir, nil
+}

@@ -35,6 +35,9 @@ type ServerInterface interface {
 	// (GET /cmd/manifest/list)
 	CmdManifestlist(ctx echo.Context, params CmdManifestlistParams) error
 
+	// (DELETE /cmd/prune)
+	CmdPrune(ctx echo.Context, params CmdPruneParams) error
+
 	// (GET /cmd/stop)
 	CmdStop(ctx echo.Context) error
 
@@ -159,6 +162,13 @@ func (w *ServerInterfaceWrapper) CmdBloblist(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter substr: %s", err))
 	}
 
+	// ------------- Optional query parameter "count" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "count", ctx.QueryParams(), &params.Count)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter count: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CmdBloblist(ctx, params)
 	return err
@@ -184,6 +194,13 @@ func (w *ServerInterfaceWrapper) CmdImagelist(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digest: %s", err))
 	}
 
+	// ------------- Optional query parameter "count" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "count", ctx.QueryParams(), &params.Count)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter count: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CmdImagelist(ctx, params)
 	return err
@@ -202,8 +219,61 @@ func (w *ServerInterfaceWrapper) CmdManifestlist(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter pattern: %s", err))
 	}
 
+	// ------------- Optional query parameter "count" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "count", ctx.QueryParams(), &params.Count)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter count: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CmdManifestlist(ctx, params)
+	return err
+}
+
+// CmdPrune converts echo context to params.
+func (w *ServerInterfaceWrapper) CmdPrune(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CmdPruneParams
+	// ------------- Required query parameter "type" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "type", ctx.QueryParams(), &params.Type)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter type: %s", err))
+	}
+
+	// ------------- Optional query parameter "dur" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "dur", ctx.QueryParams(), &params.Dur)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter dur: %s", err))
+	}
+
+	// ------------- Optional query parameter "expr" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "expr", ctx.QueryParams(), &params.Expr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter expr: %s", err))
+	}
+
+	// ------------- Optional query parameter "dryRun" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "dryRun", ctx.QueryParams(), &params.DryRun)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter dryRun: %s", err))
+	}
+
+	// ------------- Optional query parameter "count" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "count", ctx.QueryParams(), &params.Count)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter count: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CmdPrune(ctx, params)
 	return err
 }
 
@@ -1212,6 +1282,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/cmd/blob/list", wrapper.CmdBloblist)
 	router.GET(baseURL+"/cmd/image/list", wrapper.CmdImagelist)
 	router.GET(baseURL+"/cmd/manifest/list", wrapper.CmdManifestlist)
+	router.DELETE(baseURL+"/cmd/prune", wrapper.CmdPrune)
 	router.GET(baseURL+"/cmd/stop", wrapper.CmdStop)
 	router.GET(baseURL+"/health", wrapper.CmdHealth)
 	router.GET(baseURL+"/v2/", wrapper.V2Default)
@@ -1250,22 +1321,23 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -19,22 +19,27 @@ var re = regexp.MustCompile(srch)
 // else false.
 type ManifestComparer func(imgpull.ManifestHolder) bool
 
+// Type MHReader is a reader over a list of manifests
 type MHReader struct {
 	mh        []imgpull.ManifestHolder
 	withBlobs bool
 	idx       int
 }
 
+// Type BlobReader is a reader over a list of blobs
 type BlobReader struct {
 	blobs []blobResult
 	idx   int
 }
 
+// type blobResult is a blob and its ref counts
 type blobResult struct {
 	digest string
 	refCnt int
 }
 
+// NewMFReader returns a reader over a list of manifests. The reader will only
+// show manifests
 func NewMFReader(mh []imgpull.ManifestHolder) *MHReader {
 	sort.Slice(mh, func(i, j int) bool {
 		return mh[i].ImageUrl < mh[j].ImageUrl
@@ -45,6 +50,8 @@ func NewMFReader(mh []imgpull.ManifestHolder) *MHReader {
 	}
 }
 
+// NewMFReaderWithBlobs returns a reader over a list of manifests. The reader
+// shows manifests and the blobs in the manifest
 func NewMFReaderWithBlobs(mh []imgpull.ManifestHolder) *MHReader {
 	sort.Slice(mh, func(i, j int) bool {
 		return mh[i].ImageUrl < mh[j].ImageUrl
@@ -56,6 +63,7 @@ func NewMFReaderWithBlobs(mh []imgpull.ManifestHolder) *MHReader {
 	}
 }
 
+// Read reads from the manifest reader in the receiver.
 func (mhr *MHReader) Read(b []byte) (n int, err error) {
 	if mhr.idx >= len(mhr.mh) {
 		return 0, io.EOF
@@ -124,6 +132,7 @@ func GetManifestsCompare(comparer ManifestComparer, count int) []imgpull.Manifes
 	return mhs
 }
 
+// Read reads from the blob reader in the receiver
 func (br *BlobReader) Read(b []byte) (n int, err error) {
 	if br.idx >= len(br.blobs) {
 		return 0, io.EOF
@@ -140,6 +149,7 @@ func (br *BlobReader) Read(b []byte) (n int, err error) {
 	return n, nil
 }
 
+// NewBlobReader returns a reader over an array of blobs and ref counts
 func NewBlobReader(blobs []blobResult) *BlobReader {
 	sort.Slice(blobs, func(i, j int) bool {
 		return blobs[i].digest < blobs[j].digest
@@ -150,12 +160,19 @@ func NewBlobReader(blobs []blobResult) *BlobReader {
 	}
 }
 
+// GetBlobsSubstr gets a list of blobs whose digests contain the passed
+// substring like "4c9126d4"
 func GetBlobsSubstr(substr string, count int) []blobResult {
 	bc.RLock()
 	defer bc.RUnlock()
 	blobs := make([]blobResult, 0, len(bc.blobs))
+	found := 0
 	for digest, refCnt := range bc.blobs {
 		if substr == "" || strings.Contains(digest, substr) {
+			found++
+			if found > count {
+				break
+			}
 			blobs = append(blobs, blobResult{digest, refCnt})
 		}
 	}

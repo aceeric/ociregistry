@@ -16,7 +16,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// magic numbers from 'format.go' in package 'time'
+// dateFormat has magic numbers from 'format.go' in package 'time' that
+// support date parsing
 const dateFormat = "2006-01-02T15:04:05"
 
 // Type concurrentPulls handles the case where multiple goroutines request a manifest from
@@ -172,17 +173,66 @@ func Load(imagePath string) error {
 			return err
 		}
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
-		addToCache(pr, mh, imagePath)
-		itemcnt++
+		if canAdd(mh, imagePath) {
+			addToCache(pr, mh, imagePath)
+			itemcnt++
+		}
 		return nil
 	})
 	log.Infof("loaded %d manifest(s) from the file system in %s", itemcnt, time.Since(start))
 	return outerErr
 }
 
+func canAdd(mh imgpull.ManifestHolder, imagePath string) bool {
+	if !mh.IsImageManifest() {
+		return true
+	}
+	canAdd := true
+	for _, layer := range mh.Layers() {
+		digest := helpers.GetDigestFrom(layer.Digest)
+		if !serialize.BlobExists(imagePath, digest) {
+			canAdd = false
+			log.Errorf("load: blob %q referenced by manifest %q not found on the filesystem - manifest will not be loaded", digest, mh.ImageUrl)
+		}
+	}
+	return canAdd
+}
+
+// WaitPulls waits 60 seconds for any in-progress pulls to complete and then
+// returns. If a pull in progress is part-way complete (some of the blobs are written
+// and some aren't) then the cache will be in an inconsistent state. When the server
+// is restarted - it should detect this and remove any manifests from the in-mem cache
+// that don't have all the blobs in cache.
+func WaitPulls() {
+	log.Info("checking for pulls in progress")
+	if pullsInProgress() == 0 {
+		log.Info("no pulls in progress")
+		return
+	}
+	log.Info("waiting for pulls in progress to complete")
+	start := time.Now()
+	for {
+		time.Sleep(time.Second * 2)
+		if pullsInProgress() == 0 {
+			break
+		}
+		if time.Since(start) > time.Minute {
+			log.Error("timeout waiting for pulls in progress to complete")
+		}
+	}
+	log.Info("in-progress pulls have completed")
+}
+
+func pullsInProgress() int {
+	cp.Lock()
+	defer cp.Unlock()
+	return len(cp.pulls)
+}
+
 // addToCache adds the passed ManifestHolder to the manifest cache. If the manifest is an image
 // manifest then the blobs are added to the blob cache. If not readOnly, then the create date
-// on the manifest is set to the current time.
+// on the manifest is set to the current time. The filesystem is expected to have been updated
+// before this function is called.
 func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string) {
 	mc.Lock()
 	defer mc.Unlock()
@@ -207,7 +257,8 @@ func addManifestToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
 
 // addBlobsToCache adds entries to the in-mem blob map and/or increments the ref count
 // for existing blobs in the blob map based on the layers (and the config blob) in the
-// passed manifest.
+// passed manifest. The filesystem is expected to have been updated before this function
+// is called.
 func addBlobsToCache(mh imgpull.ManifestHolder, imagePath string) {
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)

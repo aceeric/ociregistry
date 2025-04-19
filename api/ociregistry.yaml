@@ -989,6 +989,12 @@ paths:
         required: false
         schema:
           type: string
+      - name: count
+        in: query
+        description:
+        required: false
+        schema:
+          type: integer
       responses:
         '200':
           description:
@@ -1010,6 +1016,12 @@ paths:
         required: false
         schema:
           type: string
+      - name: count
+        in: query
+        description:
+        required: false
+        schema:
+          type: integer
       responses:
         '200':
           description:
@@ -1037,6 +1049,57 @@ paths:
         required: false
         schema:
           type: string
+      - name: count
+        in: query
+        description:
+        required: false
+        schema:
+          type: integer
+      responses:
+        '200':
+          description:
+          content: {}
+        '400':
+          description:
+        '404':
+          description:
+  /cmd/prune:
+    delete:
+      tags: []
+      summary:
+      description:
+      operationId: cmd-prune
+      parameters:
+      - name: type
+        in: query
+        description:
+        required: true
+        schema:
+          type: string
+      - name: dur
+        in: query
+        description:
+        required: false
+        schema:
+          type: string
+      - name: expr
+        in: query
+        description:
+        required: false
+        schema:
+          type: string
+      - name: dryRun
+        in: query
+        description:
+        required: false
+        schema:
+          type: string
+      - name: count
+        in: query
+        description:
+        required: false
+        schema:
+          type: integer
       responses:
         '200':
           description:

@@ -113,7 +113,7 @@ func TestParseCriteria(t *testing.T) {
 	}
 
 	for _, parseTest := range parseTests {
-		_, err := parseCriteria(parseTest.cfg)
+		_, err := ParseCriteria(parseTest.cfg)
 		if (err != nil && parseTest.shouldPass) || (err == nil && !parseTest.shouldPass) {
 			t.FailNow()
 		}
@@ -152,7 +152,7 @@ func TestComparer(t *testing.T) {
 		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: "foobar"}, false, "un-parseable date"},
 	}
 	for _, parseTest := range parseTests {
-		comparer, err := parseCriteria(parseTest.cfg)
+		comparer, err := ParseCriteria(parseTest.cfg)
 		if err != nil {
 			t.FailNow()
 		}

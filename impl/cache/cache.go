@@ -158,9 +158,13 @@ func DoPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolde
 	return mh, nil
 }
 
-// Load copies all the manifests and blobs into the two in-memory caches - mc.manifests,
-// and bc.blobs. The manifests are loaded in their entirety. For the blobs, only the digests
-// are loaded with a ref count indicating the number of manifests that ref each blob.
+// Load copies all the manifests and blobs from the file system into the two in-memory
+// caches - mc.manifests, and bc.blobs. The manifests are loaded in their entirety. For
+// the blobs, only the digests are loaded with a ref count indicating the number of
+// manifests that ref each blob. This function performs a consistency check: if any blobs
+// associated with a manifest are not present on the file system then the function will
+// not load the manifest into cache. The manifest technically does not exist then from
+// the perspective of a client. (A re-pull will heal that.)
 func Load(imagePath string) error {
 	start := time.Now()
 	log.Infof("load in-mem cache from file system")
@@ -176,6 +180,8 @@ func Load(imagePath string) error {
 		if canAdd(mh, imagePath) {
 			addToCache(pr, mh, imagePath)
 			itemcnt++
+		} else {
+			log.Errorf("load: manifest %q missing blobs - will not be cached", mh.ImageUrl)
 		}
 		return nil
 	})
@@ -183,26 +189,11 @@ func Load(imagePath string) error {
 	return outerErr
 }
 
-func canAdd(mh imgpull.ManifestHolder, imagePath string) bool {
-	if !mh.IsImageManifest() {
-		return true
-	}
-	canAdd := true
-	for _, layer := range mh.Layers() {
-		digest := helpers.GetDigestFrom(layer.Digest)
-		if !serialize.BlobExists(imagePath, digest) {
-			canAdd = false
-			log.Errorf("load: blob %q referenced by manifest %q not found on the filesystem - manifest will not be loaded", digest, mh.ImageUrl)
-		}
-	}
-	return canAdd
-}
-
 // WaitPulls waits 60 seconds for any in-progress pulls to complete and then
 // returns. If a pull in progress is part-way complete (some of the blobs are written
 // and some aren't) then the cache will be in an inconsistent state. When the server
-// is restarted - it should detect this and remove any manifests from the in-mem cache
-// that don't have all the blobs in cache.
+// is restarted - it will detect this and exclude any such manifests from being
+// loaded into the in-mem cache.
 func WaitPulls() {
 	log.Info("checking for pulls in progress")
 	if pullsInProgress() == 0 {
@@ -223,6 +214,23 @@ func WaitPulls() {
 	log.Info("in-progress pulls have completed")
 }
 
+// canAdd checks to see if all the blobs referenced by the passed manifest exist on the file
+// system (and can therefore be served.) If all blobs exist then true is returned, else
+// false.
+func canAdd(mh imgpull.ManifestHolder, imagePath string) bool {
+	canAdd := true
+	for _, layer := range mh.Layers() {
+		digest := helpers.GetDigestFrom(layer.Digest)
+		if !serialize.BlobExists(imagePath, digest) {
+			canAdd = false
+			log.Debugf("load: blob %q referenced by manifest %q not found on the filesystem", digest, mh.ImageUrl)
+		}
+	}
+	return canAdd
+}
+
+// pullsInProgress returns the count of in-progress pulls from any upstream
+// OCI distribution server.
 func pullsInProgress() int {
 	cp.Lock()
 	defer cp.Unlock()

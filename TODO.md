@@ -4,7 +4,6 @@
 - Enable swagger UI (https://github.com/go-swagger/go-swagger)?
 - bin/imgpull is inserting "library", on "docker.io" pulls should it? (Would it work otherwise?)
 
-
 ## Patch older manifest
 
 On the file system:

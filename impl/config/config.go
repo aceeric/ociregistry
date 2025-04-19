@@ -278,8 +278,7 @@ func SetConfigFromStr(configBytes []byte) error {
 //
 // Since the config might involve loading and calculating a tls.Config with certs, once the
 // parsing is complete, the final config struct saved for reuse so it doesn't need to be
-// re-parsed in the future. (Unless the config file changes, which is handled by the
-// ConfigLoader func.)
+// re-parsed in the future.
 func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 	// default options if no configuration
 	opts := imgpull.PullerOpts{

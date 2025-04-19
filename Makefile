@@ -17,6 +17,14 @@ oapi-codegen:
 test:
 	go test $(ROOT)/cmd $(ROOT)/impl/... $(ROOT)/mock -v -cover -coverprofile=$(ROOT)/prof.out
 
+.PHONY: vet
+vet:
+	go vet $(ROOT)/cmd $(ROOT)/impl/... $(ROOT)/mock
+
+.PHONY: gocyclo
+gocyclo:
+	gocyclo -over 15 -ignore "Merge|_test" $(ROOT)/cmd $(ROOT)/impl/
+
 .PHONY: coverprof
 coverprof: test
 	go tool cover -html=$(ROOT)/prof.out
@@ -49,6 +57,10 @@ define HELPTEXT
 This make file provides the following targets:
 
 test          Runs the unit tests.
+
+vet           Runs go vet.
+
+gocyclo       Runs gocyclo.
 
 coverprof     Runs the unit tests, then runs 'go tool cover' to show coverage in
               a browser window.

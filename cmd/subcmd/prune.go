@@ -115,63 +115,13 @@ func patternHandler(pattern string) (serialize.CacheEntryHandler, error) {
 // in the passed map are removed.
 func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 	blobs := serialize.GetAllBlobs(imagePath)
-
-	// tally the blob ref counts of all cached images into the 'blobs' map
-	serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
-		if mh.IsImageManifest() {
-			for _, layer := range mh.Layers() {
-				digest := helpers.GetDigestFrom(layer.Digest)
-				if cnt, exists := blobs[digest]; exists {
-					blobs[digest] = cnt + 1
-				} else {
-					fmt.Printf("warning: blob %q ref'd by manifest URL %q does not exist in the blobs dir\n", digest, mh.ImageUrl)
-				}
-			}
-		}
-		return nil
-	})
-
-	// for all image *list* manifests in the match list, find cached *image* manifests.
-	// Handles the case where a narrow search like 'nginx:1.14-4' would find only a
-	// manifest *list*, but the intent is to prune all cached *images*.
-	for _, match := range matches {
-		if !match.mh.IsImageManifest() {
-			for _, sha256 := range match.mh.ImageManifestDigests() {
-				pr, err := pullrequest.NewPullRequestFromUrl(match.mh.ImageUrl)
-				if err != nil {
-					return err
-				}
-				url := pr.UrlWithDigest(sha256)
-				if _, exists := matches[url]; !exists {
-					if mh, found := serialize.MhFromFilesystem(sha256, true, imagePath); found {
-						matches[url] = struct {
-							mh imgpull.ManifestHolder
-						}{mh}
-					}
-				}
-			}
-		}
+	tallyBlobCount(blobs, imagePath)
+	if err := addImageManifests(matches, imagePath); err != nil {
+		return err
 	}
-
-	// for all matching image manifests (that are about to be deleted), decrement
-	// the blob count in the 'blobs' map. Those blobs that dec to zero refs will be
-	// removed below.
-	for _, match := range matches {
-		if match.mh.IsImageManifest() {
-			for _, layer := range match.mh.Layers() {
-				digest := helpers.GetDigestFrom(layer.Digest)
-				if cnt, exists := blobs[digest]; exists {
-					blobs[digest] = cnt - 1
-					if blobs[digest] < 0 {
-						return fmt.Errorf("blob %q decremented negative (should never happen)", digest)
-					}
-				} else {
-					return fmt.Errorf("blob %q for manifest %q not found (should never happen)", digest, match.mh.ImageUrl)
-				}
-			}
-		}
+	if err := decBlobCounts(matches, blobs); err != nil {
+		return err
 	}
-
 	dryRunMsg := ""
 	if dryRun {
 		dryRunMsg = " (dry run)"
@@ -193,6 +143,71 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 		if !dryRun {
 			if err := serialize.RmManifest(imagePath, match.mh); err != nil {
 				return err
+			}
+		}
+	}
+	return nil
+}
+
+// tallyBlobCount computes the ref counts for all blobs based on cached
+// image manifests.
+func tallyBlobCount(blobs map[string]int, imagePath string) {
+	serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
+		if mh.IsImageManifest() {
+			for _, layer := range mh.Layers() {
+				digest := helpers.GetDigestFrom(layer.Digest)
+				if cnt, exists := blobs[digest]; exists {
+					blobs[digest] = cnt + 1
+				} else {
+					fmt.Printf("warning: blob %q ref'd by manifest URL %q does not exist in the blobs dir\n", digest, mh.ImageUrl)
+				}
+			}
+		}
+		return nil
+	})
+}
+
+// addImageManifests finds all image *list* manifests in the match list, and for each, finds
+// cached *image* manifests. This handles the case where a narrow search like 'nginx:1.14-4'
+// would find only a manifest *list*, but the intent is to prune all cached *images*.
+func addImageManifests(matches map[string]match, imagePath string) error {
+	for _, match := range matches {
+		if !match.mh.IsImageManifest() {
+			for _, sha256 := range match.mh.ImageManifestDigests() {
+				pr, err := pullrequest.NewPullRequestFromUrl(match.mh.ImageUrl)
+				if err != nil {
+					return err
+				}
+				url := pr.UrlWithDigest(sha256)
+				if _, exists := matches[url]; !exists {
+					if mh, found := serialize.MhFromFilesystem(sha256, true, imagePath); found {
+						matches[url] = struct {
+							mh imgpull.ManifestHolder
+						}{mh}
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// decBlobCounts iterates matching image manifests (that are about to be deleted), and decrements
+// the blob count in the 'blobs' map for those manifests. Those blobs that dec to zero refs can
+// be removed.
+func decBlobCounts(matches map[string]match, blobs map[string]int) error {
+	for _, match := range matches {
+		if match.mh.IsImageManifest() {
+			for _, layer := range match.mh.Layers() {
+				digest := helpers.GetDigestFrom(layer.Digest)
+				if cnt, exists := blobs[digest]; exists {
+					blobs[digest] = cnt - 1
+					if blobs[digest] < 0 {
+						return fmt.Errorf("blob %q decremented negative (should never happen)", digest)
+					}
+				} else {
+					return fmt.Errorf("blob %q for manifest %q not found (should never happen)", digest, match.mh.ImageUrl)
+				}
 			}
 		}
 	}

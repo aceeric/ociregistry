@@ -117,8 +117,9 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 }
 
 // GetBlob returns the ref count for the passed blob digest. If zero then the blob is not referenced
-// by any cached manifests and therefore technically does not exist and and will eventually be pruned.
-// If no map entry then zero is returned.
+// by any cached manifests. This should never happen because when a manifest is pruned, any blobs
+// ref'd by the deleted manifest that decrement to zero should be removed while the blob cache is
+// locked. In other words if this ever returns zero, that indicates a defect in the code.
 func GetBlob(digest string) int {
 	bc.RLock()
 	defer bc.RUnlock()
@@ -223,6 +224,7 @@ func canAdd(mh imgpull.ManifestHolder, imagePath string) bool {
 		digest := helpers.GetDigestFrom(layer.Digest)
 		if !serialize.BlobExists(imagePath, digest) {
 			canAdd = false
+			// don't break - display all the errors
 			log.Debugf("load: blob %q referenced by manifest %q not found on the filesystem", digest, mh.ImageUrl)
 		}
 	}
@@ -280,12 +282,12 @@ func addBlobsToCache(mh imgpull.ManifestHolder, imagePath string) {
 
 // getManifestOrEnqueue looks in the in-mem manifest cache for the passed manifest URL. If found,
 // then the manifest holder is returned. If not in cache, then the function enqueues a pull for
-// the manifest from the upstream. In that case, then the return values are to be handled in
-// specific ways as follows:
+// the manifest from the upstream. In that case, then the return values are to be handled by the
+// caller in specific ways as follows:
 //
 // 1) If the current goroutine is the first to enqueue a pull, then a nil channel is returned. This
-// means the current goroutine must pull the image and signal any other goroutines waiting for the
-// pull to complete.
+// means the caller must pull the image and signal any other goroutines waiting for the pull
+// to complete.
 //
 // 2) If a non-nil channel is returned, it means another goroutine is already doing the pull for the
 // requested url so the caller in *this* goroutine should wait to be signaled on the non-nil

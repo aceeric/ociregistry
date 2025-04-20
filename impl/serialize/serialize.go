@@ -48,10 +48,10 @@ func MhFromFilesystem(digest string, isImageManifest bool, imagePath string) (im
 	return imgpull.ManifestHolder{}, false
 }
 
-// MhToFilesystem writes the passed ManifestHolder to the file system if the
-// 'replace' arg is true. The the arg is false then the function checks the file system
-// first and if the manifest already exists, nothing is done. The manifests aren't
-// compared. Its a simple "file exists" check.
+// MhToFilesystem writes the passed ManifestHolder to the file system if the 'replace'
+// arg is true. The 'replace' is false then the function checks the file system first
+// and if the manifest already exists, nothing is done. The manifests aren't compared.
+// Its a simple "file exists" check.
 func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) error {
 	subDir := subDirs[mh.IsImageManifest()]
 	fname := filepath.Join(imagePath, subDir, mh.Digest)

@@ -269,14 +269,6 @@ var cmds = &cli.Command{
 			},
 		},
 		{
-			Name:  "version",
-			Usage: "Displays the version",
-			Action: func(ctx context.Context, cmd *cli.Command) error {
-				fromCmdline.Command = "version"
-				return nil
-			},
-		},
-		{
 			Name:  "prune",
 			Usage: "Prunes the cache on the filesystem (server should not be running)",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -314,6 +306,14 @@ var cmds = &cli.Command{
 						return nil
 					},
 				},
+			},
+		},
+		{
+			Name:  "version",
+			Usage: "Displays the version",
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				fromCmdline.Command = "version"
+				return nil
 			},
 		},
 	},

@@ -16,7 +16,7 @@ The goals of the project are:
 
 **Table of Contents**
 
-- [MAIN BRANCH CHANGES APRIL 2025](#main-branch-changes)
+- [MAIN BRANCH CHANGES APRIL 2025](#main-branch-changes-april-2025)
 - [Quick Start - Desktop](#quick-start---desktop)
 - [Quick Start - Kubernetes](#quick-start---kubernetes)
 - [Configuring `containerd`](#configuring-containerd)
@@ -33,16 +33,16 @@ The goals of the project are:
 - [Kubernetes Considerations](#kubernetes-considerations)
 - [Administrative REST API](#administrative-rest-api)
 
-## Main Branch Changes
+## Main Branch Changes April 2025
 
 The main branch implements substantial changes from prior releases. I am still testing and will soon tag with a new release. The changes are:
 
-1. Implemented a CLI using [urfave/cli](https://github.com/urfave/cli) and so the command line structure is completely new.
+1. Implemented a CLI using [urfave/cli](https://github.com/urfave/cli), so the command line structure is completely new.
 2. The server supports background cache pruning (while the server is running) and improves command line pruning of the file system (when the server isn't running).
 3. Replaced the Google Crane library with my own [Image Puller](https://github.com/aceeric/imgpull) library for pulling images from the upstream registries.
 4. Added the ability to supply full configuration from a config file (`--config-file`), the command line, or both.
 5. Added the `--air-gapped` flag so that in the air gap the server does not reach out to the upstream if an image is requested but not cached.
-6. Added a minimalist administrative REST API to get information about the in-mem cache, and perform ad-hoc pruning against the running server. Only accessible via `curl` for now.
+6. Added a lean administrative REST API to get information about the in-memory cache, and perform ad-hoc pruning against the running server. Only accessible via `curl` for now.
 
 **Important about pruning:**
 
@@ -53,7 +53,7 @@ Example:
 CREATED="2025-04-01T22:07:01"
 PULLED="2025-04-01T22:07:01"
 sed  -i -e 's/}}$/},"created":"$CREATED","pulled":"$PULLED"}/'\
-  /var/lib/ociregistry/images/img/* /var/lib/ociregistry/images/fat/*
+  /var/lib/ociregistry/img/* /var/lib/ociregistry/fat/*
 ```
 
 This works because the old manifests ended with two closing curly braces at the very end of the file.
@@ -88,16 +88,6 @@ Command line: bin/ociregistry --image-path /tmp/images serve --port 8080
 ----------------------------------------------------------------------
 ```
 
-
-
-
-<---------------------------------- HERE HERE HERE HERE HERE HERE HERE
-
-
-
-
-
-
 ### In Another Terminal
 
 Curl a manifest list. Note the `ns` query parameter in the URL below which tells the server to go to that upstream if the image isn't already locally cached. This is exactly how `containerd` does it when you configure it to mirror:
@@ -120,6 +110,7 @@ curl localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io | jq
         "os": "linux"
       }
     },
+  ...
 ```
 
 ### Curl an Image Manifest
@@ -138,27 +129,26 @@ find /tmp/images
 
 ### Result
 ```shell
-images
-images/blobs
-images/blobs/4873874c08efc72e9729683a83ffbb7502ee729e9a5ac097723806ea7fa13517
-images/blobs/fcb6f6d2c9986d9cd6a2ea3cc2936e5fc613e09f1af9042329011e43057f3265
-images/blobs/9457426d68990df190301d2e20b8450c4f67d7559bdb7ded6c40d41ced6731f7
-etc...
-images/fat
-images/fat/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
-images/img
-images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
-images/pulls
+/tmp/images
+/tmp/images/blobs
+/tmp/images/blobs/fcb6f6d2c9986d9cd6a2ea3cc2936e5fc613e09f1af9042329011e43057f3265
+/tmp/images/blobs/e5dbef90bae3c9df1dfd4ae7048c56226f6209d538c91f987aff4f54e888f566
+/tmp/images/blobs/e8c73c638ae9ec5ad70c49df7e484040d889cca6b4a9af056579c3d058ea93f0
+etc..
+/tmp/images/img
+/tmp/images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
+/tmp/images/fat
+/tmp/images/fat/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
 ```
 
 The manifest list was saved in: `images/fat/4afe5bf0ee...` and the image manifest was saved in: `images/img/019d7877d1...`.
 
 ### Restart the Server and Repeat
 
-This time run with debug logging for more visibility into what the server is doing:
+This time run with `info` logging for more visibility into what the server is doing:
 
 ```shell
-bin/ociregistry --image-path /tmp/images --port 8080 --log-level debug
+bin/ociregistry --image-path /tmp/images --log-level info serve --port 8080
 ```
 
 Run the same two curl commands. You will notice that the manifest list and the image manifest are now being returned from cache. You can see this in the logs:
@@ -168,15 +158,15 @@ DEBU[0010] serving manifest from cache: registry.k8s.io/kube-scheduler:v1.29.1
 DEBU[0148] serving manifest from cache: registry.k8s.io/kube-scheduler@sha256:019d7877...
 ```
 
-## Quick Start - Kubernetes UPDATE CHART
+## Quick Start - Kubernetes
 
-Install from ArtifactHub: https://artifacthub.io/packages/helm/ociregistry/ociregistry.
+I AM MOVING THE CHART INTO THIS REPO AND UPDATING IT. WILL REVISE THESE DOCS WHEN COMPLETE.
 
 > See [Kubernetes considerations](#kubernetes-considerations) below in this document for important things to be aware of to support your edge Kubernetes cluster.
 
 ## Configuring `containerd`
 
-This section shows how to configure containerd in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry. This has been tested with containerd >= v1.7.x:
+This section shows how to configure containerd in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry. This has been tested with containerd >= `v1.7`:
 
 Add a `config_path` entry to `/etc/containerd/config.toml` to tell containerd to load all registry mirror configurations from that directory:
 
@@ -211,27 +201,74 @@ echo server HEAD:/v2/appzygy/ociregistry/manifests/1.3.0?ns=quay.io status=200 l
 
 Notice the `?ns=quay.io` query parameter appended to the API call. This query parameter is added by containerd. The pull-through server uses this to determine which upstream registry to get images from.
 
-## Configuring the Server TODO TODO
+## Configuring the Server
 
-The OCI Distribution server may need configuration information to connect to upstream registries. If run with no upstream registry config, it will attempt anonymous plain HTTP access. Many OCI Distribution servers will reject HTTP and fail over to HTTPS. Then you're in the realm of TLS and PKI. Some servers require auth as well. To address all of these concerns the OCI Distribution server accepts an optional command line parameter `--config-path` which identifies a configuration file in the following format:
+The server will accept configuration on the command line, or via a config file. Most of the configuration file settings map directly to the command line. The exception is the `pruneConfig` which is only accepted in the configuration file at this time. Any configuration provided on the command line overrides configuration from the config file. To provide full configuration in a file, run the server this way:
+
+```shell
+bin/ociregistry --config-file <some file> serve
+```
+
+Here is a full configuration file showing all the defaults:
 
 ```yaml
+imagePath: /var/lib/ociregistry
+logLevel: error
+# empty means log to stderr
+logFile:
+# empty means don't preload
+preloadImages:
+# ignored unless preloadImages specified
+imageFile:
+port: 8080
+# OS and arch default to the  machine running the server
+#os: linux
+#arch: amd64
+pullTimeout: 60000
+alwaysPullLatest: false
+airGapped: false
+helloWorld: false
+# see further down for registry configuration
+registries: []
+pruneConfig:
+  # disabled by default
+  enabled: false
+  # see 'type'
+  duration: 30d
+  # if accessed, then prune if not pulled in duration. If
+  # created, then prune if create date is older than duration
+  type: accessed
+  # run the prune with this frequency
+  frequency: 1d
+  # no limit to the number of pruned images in a run
+  count: -1
+  # if true, just log messages, don't actually prune
+  dryRun: false
+```
+
+The OCI Distribution server may need configuration information to connect to upstream registries. If run with no upstream registry config, it will attempt anonymous insecure anonymous HTTPS access. You specify registry configuration using the `registries` list:
+
+```yaml
+registries:
 - name: upstream one
   description: foo
+  scheme: https
   auth: {}
   tls: {}
 - name: upstream two
   description: bar
+  scheme: http
   auth: {}
   tls: {}
 - etc...
 ```
 
-The configuration file is a yaml list of upstream registry entries. Each entry supports the following configuration structure:
+Each entry supports the following configuration structure:
 
 ```yaml
-- name: my-upstream (or my-upstream:PORT)
+- name: my-upstream # or my-upstream:PORT
   description: Something that makes sense to you (or omit it - it is optional)
+  scheme: https # (the default), also accepts http
   auth:
     user: theuser
     password: thepass
@@ -257,7 +294,7 @@ The `tls` section can implement multiple scenarios:
 
    ```yaml
    tls:
-     insecureSkipVerify: false (or simply omit since it defaults to false)
+     insecureSkipVerify: false # (or simply omit since it defaults to false)
    ```
 
 3. One-way **secure** TLS, in which client certs are not provided to the remote, and the remote server cert is validate using a **provided** CA cert:
@@ -300,7 +337,7 @@ The `tls` section can implement multiple scenarios:
 
 ## Command Line Options
 
-Running the server with no args shows the following sub-commands:
+Running the server with no arguments shows the following sub-commands:
 
 ```shell
 NAME:
@@ -325,7 +362,7 @@ GLOBAL OPTIONS:
    --help, -h            show help
 ```
 
-I will supply better documentation when `1.8.0` is released.
+Documentation is in progress and will be available when `1.8.0` is released.
 
 ## Pre-Loading the Server
 
@@ -354,10 +391,10 @@ EOF
 
 ## Image Store
 
-The image store is persisted to the file system. This includes blobs and manifests. Let's say you run the server with `--image-path=/var/ociregistry/images`, which is the default. Then:
+The image store is persisted to the file system. This includes blobs and manifests. Let's say you run the server with `--image-path=/var/lib/ociregistry`, which is the default. Then:
 
 ```shell
-/var/ociregistry/images
+/var/lib/ociregistry
 ├── blobs
 ├── fat
 └── img
@@ -369,7 +406,7 @@ The image store is persisted to the file system. This includes blobs and manifes
 
 Manifests are all stored by digest. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
 
-The program uses a data structure called a `ManifestHolder` to hold all the image metadata and the actual manifest from the upstream registry. These are simply serialized to the file system as JSON. (So you can find and inspect them if needed for troubleshooting with `grep`, `cat`, and `jq`.)
+The program uses a data structure called a `ManifestHolder` to hold all the image metadata and the actual manifest bytes from the upstream registry. These are simply serialized to the file system as JSON. (So you can find and inspect them if needed for troubleshooting with `grep`, `cat`, and `jq`.)
 
 ## Pruning the cache
 
@@ -377,7 +414,7 @@ The compiled binary can be used as a CLI to prune the cache on the file system.
 
 > The server must be stopped while pruning because the CLI only manipulates the file system, not the in-memory representation of the cache. There is a REST API to prune the running server cache documented below.
 
-Pruning removes manifest lists, manifests, and possibly blobs (more on blobs below.) Three options support pruning:
+Pruning removes manifest lists, manifests, and possibly blobs (more on blobs below.)
 
 ### Dry Run
 
@@ -407,7 +444,7 @@ The intended workflow is to use the CLI with `list` sub-command to determine des
 
 Generally, but not always, image list manifests have tags, and image manifests have digests. This is because in most cases, upstream images are multi-architecture. For example, this command specifies a tag:
 ```shell
-bin/ociregistry --image-path /var/lib/ociregistry/images --dry-run --prune calico/typha:v3.27.0
+bin/ociregistry --image-path /var/lib/ociregistry --dry-run --prune calico/typha:v3.27.0
 ```
 
 In this case, on a Linux/amd64 machine running the server the CLI will find **two** manifests:
@@ -443,37 +480,34 @@ By way of background, a typical image pull sequence is:
 
 ![design](resources/pull-seq-diagram.png)
 
-To support this, the server caches both the fat manifest and the image manifest. (Two manifests for every one pull.) The pre-loader does the same so you need to provide the tags or digest of the fat manifest in your list.
+To support this, the server caches both the image list manifest and the image manifest. The pre-loader does the same so you need to provide the tags or digest of the image list manifest in your list.
 
->  **Gotcha**: If you cache a fat manifest by digest and later run a workload in an air-gapped environment that attempts to get the fat manifest by tag, the registry will not know the tag and so will not be able to provide that image from cache.
+>  **Gotcha**: If you cache an image list manifest by digest and later run a workload in an air-gapped environment that attempts to get the same manifest by tag, the registry will not know the tag and so will not be able to provide that image from cache.
 
 The pre-loader logic is similar to the client pull logic:
 
-1. Get the fat manifest by tag from the upstream registry and cache it
-2. Pick the digest from the image manifest list in the fat manifest that matches the requested architecture and OS
+1. Get the image list manifest by tag from the upstream registry and cache it
+2. Pick the digest from the image manifest list in the image list manifest that matches the requested architecture and OS
 3. Get the image manifest by digest and the blobs and cache them.
 
 ## Code Structure
 
-TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 The source code is organized as shown:
+
 ```shell
 project root
 ├── api
 ├── bin
 ├── cmd
 ├── impl
-│   ├── extractor
+│   ├── cache
+│   ├── cmdline
+│   ├── config
 │   ├── globals
 │   ├── helpers
-│   ├── memcache
 │   ├── preload
 │   ├── pullrequest
 │   ├── serialize
-│   ├── upstream
-│   │   ├── v1oci
-│   │   └── v2docker
-│   ├── handlers.go
 │   └── ociregistry.go
 └── mock
 ```
@@ -482,27 +516,29 @@ project root
 |-|-|
 | `api`  | Mostly generated by `oapi-codegen`. |
 | `bin`  | Has the compiled server after `make desktop`. |
-| `cmd`  | Entry point. |
+| `cmd`  | Entry point and sub-commands. |
 | `impl` | Has the implementation of the server. |
-| `impl/extractor` | Extracts blobs from downloaded image tarballs. |
-| `impl/globals` | Globals and the logging implementation (uses [Logrus](https://github.com/sirupsen/logrus)). |
+| `impl/cache` | Implements the in-mem cache. |
+| `impl/cmdline` | Parses the command line. |
+| `impl/config` | Has system configuration. |
+| `impl/globals` | Globals. |
 | `impl/helpers` | Helpers. |
-| `impl/memcache` | The in-memory representation of the image metadata. If a "typical" image manifest is about 3K, and two manifests are cached per image then a cache with 100 images would consume 3000 x 2 x 100 bytes, or 600K of RAM. (The blobs are not stored in memory.) |
 | `impl/preload` | Implements the pre-load capability. |
 | `impl/pullrequest` | Abstracts an image pull. |
 | `impl/serialize` | Reads/writes from/to the file system. |
-| `impl/upstream` | Talks to the upstream registries, like Docker Hub, Quay, etc. |
 | `impl/handlers.go` | Has the code for the subset of the OCI Distribution Server API spec that the server implements. |
 | `impl/ociregistry.go` | A veneer that the embedded [Echo](https://echo.labstack.com/) server calls that simply delegates to `impl/handlers.go`. See the next section - _REST API Implementation_ for some details on the REST API. |
 | `mock` | Runs a mock OCI Distribution server used by the unit tests. |
 
 ## REST API Implementation
 
-IMPROVE THIS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1111
 
+The OCI Distribution API is built by first creating an Open API spec using Swagger. See `ociregistry.yaml` in the `api` directory. Then the [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen) tool is used to generate the API code and the Model code using configuration in the `api` directory. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/oapi-codegen/oapi-codegen/tree/main/examples/petstore-expanded) example.
+
+Oapi-codegen is installed by the following command:
+```
 go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
-
-The OCI Distribution API is built by first creating an Open API spec using Swagger. See `ociregistry.yaml` in the project root. Then the [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen) tool is used to generate the API code and the Model code using configuration in the `api` directory. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/oapi-codegen/oapi-codegen/tree/main/examples/petstore-expanded) example.
+```
 
 The key components of the API scaffolding supported by OAPI-Codegen are shown below:
 
@@ -544,4 +580,65 @@ The risk is that the image cache only exists on one cluster instance. If this in
 
 ## Administrative REST API
 
-TODO
+The following REST endpoints are supported for administration of the image cache.
+
+### /cmd/prune
+
+Prunes the in-mem cache and the file system while the server is running.
+
+| Query param | Description |
+|-|-|
+| type | Valid values: `accessed`, `created`, `pattern`. |
+| dur | A duration like `30d`. If `type` is `accessed`, then images that have not been accessed within the duration are pruned. If `type` is `created`, then images created earlier than the duration ago are pruned. (E.g.: created more than 30 days agoe.) If `type` is `pattern`, then ignored. |
+| expr | If `type` is `pattern`, then a manifest URL pattern like `calico`, else ignored. |
+| count | Max manifests to prune. Defaults to `5`. |
+| dryRun | If `true` then logs messages but does not prune. **Defaults to false, meaning: will prune by default.** |
+
+Example: `curl "http://hostname:8080/cmd/prune?type=created&dur=10d&count=50&dryRun=true"`
+
+Explanation: Prunes manifests created (initially downloaded) more than 10 days ago. Only prune a max of 50. Since _dry run_ is true, doesn't actually prune - only shows what prune would do.
+
+### /cmd/image/list
+
+Lists image manifests, and the blobs that are referenced by the selected manifests.
+
+| Query param | Description |
+|-|-|
+| pattern | Comma-separated go regex expressions. |
+| digest | Digest (or substring) |
+| count | Max number of manifests to return |
+
+Example: `curl "http://hostname:8080/cmd/image/list?pattern=docker.io&count=10"`
+
+Explanation: List a max of 10 image manifests with `docker.io` in the URL.
+
+### /cmd/blob/list
+
+Lists blobs and ref counts.
+
+| Query param | Description |
+|-|-|
+| substr | Digest (or substring) |
+| count | Max number of manifests to return |
+
+Example: `curl "http://hostname:8080/cmd/blob/list?substr=56aebe9b&count=10"`
+
+### /cmd/manifest/list
+
+List manifests.
+
+| Query param | Description |
+|-|-|
+| pattern | Comma-separated go regex expressions. |
+| count | Max number of manifests to return |
+
+Example: `curl "http://hostname:8080/cmd/manifest/list?pattern=calico,cilium&count=10"`
+
+### /cmd/stop
+
+Stops the server.
+
+### /health
+
+Returns 200 if the server is running.
+

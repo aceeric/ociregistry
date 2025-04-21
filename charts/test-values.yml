@@ -1,0 +1,12 @@
+# helm upgrade --install ociregistry ociregistry  --values /tmp/deleteme.yml  --namespace ociregistry  --create-namespace
+ingress:
+  enabled: true
+  hosts:
+  - host: dtk.io
+    paths:
+    - path: /
+      pathType: ImplementationSpecific
+
+image:
+  ociregistry:
+    tag: 1.7.1-experimental

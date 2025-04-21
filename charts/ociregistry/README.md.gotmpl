@@ -1,0 +1,78 @@
+# Pull-only, pull-through caching OCI Distribution Server
+
+The chart installs a pull-only, pull-through caching OCI Distribution server. That means:
+
+1. It exclusively provides _pull_ capability.
+2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public; supporting the following types of access: anonymous, basic auth, HTTP, HTTPS, one-way TLS, and mTLS.
+
+This OCI distribution server is intended to satisfy one use case: the need for a Kubernetes caching pull-through registry that enables a k8s cluster to run reliably in an air-gapped network or in a network with intermittent/degraded connectivity to upstream registries.
+
+## Quick Start (three steps)
+
+## 1) Install the chart
+
+```
+helm repo add ociregistry https://aceeric.github.io/ociregistry-helm/
+helm -n ociregistry install ociregistry ociregistry --create-namespace
+```
+
+## 2) Configure `containerd`
+
+Configure containerd in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry. (This has been tested with containerd v1.7.6):
+
+First, add a `config_path` entry to `/etc/containerd/config.toml` to tell containerd to load all registry mirror configurations from that directory:
+
+```shell
+   ...
+   [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = "/etc/containerd/certs.d"
+   ...
+```
+
+Then create a configuration file that tells containerd to pull from the caching pull-through registry server in the cluster. This is an example for `_default` which indicates to containerd that **all** images should be mirrored:
+
+```shell
+mkdir -p /etc/containerd/certs.d/_default && \
+cat <<EOF > /etc/containerd/certs.d/_default/hosts.toml
+[host."http://localhost:31080"]
+  capabilities = ["pull", "resolve"]
+  skip_verify = true
+EOF
+```
+
+**Key Points:**
+
+1. The _resolve_ capability tells containerd that a HEAD request to the server with a manifest will return a manifest digest. The _pull_ capability indicates to containerd that the image can be pulled.
+2. Assuming you installed the caching pull-through OCI registry with the default `NodePort` service option on port `31080`, every host on the cluster will route `31080` to the Pod running the registry.
+
+Then `systemctl restart containerd` and then you can confirm visually that is is mirroring by running the following command on a cluster host:
+
+## 3) Verify
+
+While still shelled into the host:
+
+```
+crictl pull docker.io/hello-world:latest
+```
+
+External to the cluster, tail the logs on the pull-through registry server and you will see the traffic from containerd. Example:
+
+```
+echo server HEAD:/v2/hello-world/manifests/latest?ns=docker.io status=200 latency=2.664780196s host=n.n.n.n:8080 ip=n.n.n.n
+```
+
+Notice the `?ns=docker.io` query parameter appended to the API call. The pull-through server uses this to determine which upstream registry to get images from.
+
+## More information
+
+More information, including how to configure access to upstream registries for authentication and TLS, as well as additional registry features and capabilities can be found at: https://github.com/aceeric/ociregistry.
+
+## Chart Details
+
+{{ template "chart.versionBadge" . }}{{ template "chart.typeBadge" . }}{{ template "chart.appVersionBadge" . }}
+
+## Chart Values
+
+{{ template "chart.valuesSection" . }}
+
+{{ template "helm-docs.versionFooter" . }}

@@ -1,0 +1,24 @@
+{{- if and .Values.persistence.persistentVolumeClaim.enabled (not .Values.persistence.persistentVolumeClaim.existingClaimName) -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ociregistry.fullname" . }}
+  labels:
+    {{- include "ociregistry.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.persistence.persistentVolumeClaim.newClaimSpec }}
+  accessModes:
+  {{- toYaml .accessModes | nindent 2 }}
+  resources:
+    requests:
+      storage: {{ .resources.requests.storage }}
+  {{- if .selector }}
+  selector:
+    {{- toYaml .selector | nindent 4 }}
+  {{- end }}
+  {{- if .storageClassName }}
+  storageClassName: {{ .storageClassName }}
+  {{- end }}
+  volumeMode: {{ .volumeMode }}
+{{- end }}
+{{- end }}

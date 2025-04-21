@@ -16,6 +16,7 @@ The goals of the project are:
 
 **Table of Contents**
 
+- [MAIN BRANCH CHANGES APRIL 2025](#main-branch-changes)
 - [Quick Start - Desktop](#quick-start---desktop)
 - [Quick Start - Kubernetes](#quick-start---kubernetes)
 - [Configuring `containerd`](#configuring-containerd)
@@ -30,6 +31,32 @@ The goals of the project are:
 - [Code Structure](#code-structure)
 - [REST API Implementation](#rest-api-implementation)
 - [Kubernetes Considerations](#kubernetes-considerations)
+- [Administrative REST API](#administrative-rest-api)
+
+## Main Branch Changes
+
+The main branch implements substantial changes from prior releases. I am still testing and will soon tag with a new release. The changes are:
+
+1. Implemented a CLI using [urfave/cli](https://github.com/urfave/cli) and so the command line structure is completely new.
+2. The server supports background cache pruning (while the server is running) and improves command line pruning of the file system (when the server isn't running).
+3. Replaced the Google Crane library with my own [Image Puller](https://github.com/aceeric/imgpull) library for pulling images from the upstream registries.
+4. Added the ability to supply full configuration from a config file (`--config-file`), the command line, or both.
+5. Added the `--air-gapped` flag so that in the air gap the server does not reach out to the upstream if an image is requested but not cached.
+6. Added a minimalist administrative REST API to get information about the in-mem cache, and perform ad-hoc pruning against the running server. Only accessible via `curl` for now.
+
+**Important about pruning:**
+
+In order to support prune by create date and accessed date, the structure of the manifests on the file system had to change. Two new fields were added: `created` and `pulled`. The new server can directly read prior versions' manifests as-is. On every pull the server updates the `pulled` field to support prune by recency of access. But the server _won't_ update the `created` field. (The `created` field is only set on initial pull.) Before running the new server you must hand-patch the old manifests if you want to use pruning.
+
+Example:
+```shell
+CREATED="2025-04-01T22:07:01"
+PULLED="2025-04-01T22:07:01"
+sed  -i -e 's/}}$/},"created":"$CREATED","pulled":"$PULLED"}/'\
+  /var/lib/ociregistry/images/img/* /var/lib/ociregistry/images/fat/*
+```
+
+This works because the old manifests ended with two closing curly braces at the very end of the file.
 
 ## Quick Start - Desktop
 
@@ -40,22 +67,36 @@ After git cloning the project:
 make desktop
 ```
 
-This command compiles the server and creates a binary called `server` in the `bin` directory relative to the project root.
+This command compiles the server and creates a binary called `ociregistry` in the `bin` directory relative to the project root.
 
 ### Run the Server
 
 You provide an image storage location with the `--image-path` arg. If the directory doesn't exist the server will create it. The default is `/var/lib/ociregistry` but to kick the tires it makes more sense to use the system temp directory. By default the server listens on `8080`. If you have something running that is already bound to that port, specify `--port`. We'll specify it explicitly here with the default value:
 ```shell
-bin/ociregistry --image-path /tmp/images --port 8080
+bin/ociregistry --image-path /tmp/images serve --port 8080
 ```
 
 ### Result
 ```shell
 ----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
-Started: 2024-02-17 20:49:56.516302625 -0500 EST (port 8080)
+Version: 1.8.0-prerelease, build date: 2025-04-21T00:05:54.37Z
+Started: 2025-04-20 20:06:04.6693839 -0400 EDT (port 8080)
+Running as (uid:gid) 1000:1000
+Process id: 27010
+Command line: bin/ociregistry --image-path /tmp/images serve --port 8080
 ----------------------------------------------------------------------
 ```
+
+
+
+
+<---------------------------------- HERE HERE HERE HERE HERE HERE HERE
+
+
+
+
+
 
 ### In Another Terminal
 
@@ -127,7 +168,7 @@ DEBU[0010] serving manifest from cache: registry.k8s.io/kube-scheduler:v1.29.1
 DEBU[0148] serving manifest from cache: registry.k8s.io/kube-scheduler@sha256:019d7877...
 ```
 
-## Quick Start - Kubernetes
+## Quick Start - Kubernetes UPDATE CHART
 
 Install from ArtifactHub: https://artifacthub.io/packages/helm/ociregistry/ociregistry.
 
@@ -170,7 +211,7 @@ echo server HEAD:/v2/appzygy/ociregistry/manifests/1.3.0?ns=quay.io status=200 l
 
 Notice the `?ns=quay.io` query parameter appended to the API call. This query parameter is added by containerd. The pull-through server uses this to determine which upstream registry to get images from.
 
-## Configuring the Server
+## Configuring the Server TODO TODO
 
 The OCI Distribution server may need configuration information to connect to upstream registries. If run with no upstream registry config, it will attempt anonymous plain HTTP access. Many OCI Distribution servers will reject HTTP and fail over to HTTPS. Then you're in the realm of TLS and PKI. Some servers require auth as well. To address all of these concerns the OCI Distribution server accepts an optional command line parameter `--config-path` which identifies a configuration file in the following format:
 
@@ -259,88 +300,43 @@ The `tls` section can implement multiple scenarios:
 
 ## Command Line Options
 
-The following options are supported:
-
-### Server Options
-
-| Option | Default | Meaning |
-|-|-|-|
-| `--preload-images` | n/a | Loads images enumerated in the specified file into cache at startup and then continues to serve. (See _Pre-Loading the Server_ below) |
-| `--port`| 8080 | Server port. E.g. `crane pull localhost:8080/foo:v1.2.3 foo.tar` |
-| `--always-pull-latest` | false | Causes the server to **always** pull from the upstream whenever the `latest` tag is specified for an image. |
-
-### CLI Options
-
-| Option | Default | Meaning |
-|-|-|-|
-| `--dry-run` | n/a | See _Pruning the cache_ below. |
-| `--load-images` | n/a | Loads images enumerated in the specified file into cache and then exits. (See _Pre-Loading the Server_ below.) |
-| `--list-cache` | n/a | Lists the cached images and exits. See _Listing the image cache_ below. |
-| `--prune` | n/a | See _Pruning the cache_ below. |
-| `--prune-before` | n/a | See _Pruning the cache_ below. |
-| `--version` | n/a | Displays the version and exits |
-
-### Common Options
-
-| Option | Default | Meaning |
-|-|-|-|
-| `--image-path`  | /var/lib/ociregistry | The root directory of the image and metadata store |
-| `--concurrent`  | 1 | The number of concurrent goroutines for `--load-images` and `--preload-images` |
-| `--log-level`   | error | Valid values: trace, debug, info, warn, error |
-| `--config-path` | Empty | Path and file providing remote registry auth and TLS config formatted as described above. If empty then every upstream will be tried with anonymous HTTP access failing over to 1-way HTTPS using the OS Trust store to validate the remote registry certs. (I.e. works fine for `docker.io`) |
-| `--pull-timeout`| 60000 (one minute)   | Time in milliseconds to wait for a pull to complete from an upstream distribution server |
-| `--arch`        | n/a | Architecture - used with `--load-images` and `--preload-images` |
-| `--os`          | n/a | OS - used with `--load-images` and `--preload-images` |
-
-## Listing the image cache
-
-The `--list-cache` option lists all the image manifests in the cache.
-
-The output has three columns:
-
-1. The manifest URL, like `docker.io/hello-world:latest`
-2. A literal value `list` or `image` indicating the manifest type
-3. The create date of the corresponding image manifest from the file system. E.g.:
-
-E.g.:
-```shell
-docker.io/library/hello-world:latest              list   2024-03-01T22:17:30
-docker.io/library/hello-world@sha256:e2fc4e50...  image  2024-03-01T22:17:30
-```
-
-In the example, the tagged item is the manifest _list_ (of a multi-platform image), and the item with the digest is the image manifest. To filter, sort and format, use the Linux `grep`, `sort` and `column` utils. Examples are given below:
-
-### Sort by create date, most recent on top
+Running the server with no args shows the following sub-commands:
 
 ```shell
-bin/ociregistry --image-path /var/lib/ociregistry/images --list-cache\
-  | column -t | sort -k3 -r | head
+NAME:
+   ociregistry - a pull-only, pull-through, caching OCI distribution server
+
+USAGE:
+   ociregistry [global options] [command [command options]]
+
+COMMANDS:
+   serve    Runs the server
+   load     Loads the image cache
+   list     Lists the cache as it is on the file system
+   prune    Prunes the cache on the filesystem (server should not be running)
+   version  Displays the version
+   help, h  Shows a list of commands or help for one command
+
+GLOBAL OPTIONS:
+   --log-level string    Sets the minimum value for logging: debug, warn, info, or error (default: "error")
+   --config-file string  A file to load configuration values from (cmdline overrides file settings)
+   --image-path string   The path for the image cache (default: "/var/lib/ociregistry")
+   --log-file string     log to the specified file rather than the console
+   --help, -h            show help
 ```
 
-### Sort by URL
-
-```shell
-bin/ociregistry --image-path /var/lib/ociregistry/images --list-cache\
-  | column -t | sort
-```
-
-### Find all the `kube-scheduler` images
-
-```shell
-bin/ociregistry --image-path /var/lib/ociregistry/images --list-cache\
-  | grep kube-scheduler | column -t
-```
-
-### List everything cached on a given date
-
-```shell
-bin/ociregistry --image-path /var/lib/ociregistry/images --list-cache\
-  | grep 2024-03-01 | sort | column -t
-```
+I will supply better documentation when `1.8.0` is released.
 
 ## Pre-Loading the Server
 
-Pre-loading supports the air-gapped use case of populating the registry in a connected environment, and then moving it into an air-gapped environment. The registry normally runs as a service. But  you can also run it as a CLI to pre-load itself and you can start it with the `--preload-images` arg to pre-load images as part of starting up when running as a service or a k8s workload. To do this, you create a file with a list of image references. Example:
+Pre-loading supports the air-gapped use case of populating the registry in a connected environment, and then moving it into an air-gapped environment.
+
+You can pre-load the cache two ways:
+
+1. As a startup task before running the service: `bin/ociregistry serve --preload-images <file>`. The server will load the image cache and then serve.
+2. By using the binary as a CLI: `bin/ociregistry load --image-file <file>`. The executable will load the cache and then return to the console.
+
+In both cases, you create a file with a list of image references. Example:
 
 ```shell
 cat <<EOF >| imagelist
@@ -356,32 +352,6 @@ docker.io/kubernetesui/dashboard-web:v1.0.0
 EOF
 ```
 
-Once you've configured your image list file, then:
-```shell
-bin/ociregistry --image-path=/var/ociregistry/images --log-level=info --load-images=$PWD/imagelist --arch=amd64 --os=linux
-```
-
-The registry executable will populate the cache and then exit.
-
-Or, do the same thing as a startup task and leave the server running to serve the loaded images:
-```shell
-bin/ociregistry --image-path=/var/ociregistry/images --log-level=info --preload-images=$PWD/imagelist --arch=amd64 --os=linux
-```
-
-In the second example, the server populates the cache as a startup task and then continues to run and serve images.
-
-## Load and Pre-Load Concurrency
-
-The server supports concurrency on loading and pre-loading. By default, only a single image at a time is loaded. In other words omitting the `--concurrent` arg is the same as specifying `--concurrent=1`. One thing to be aware of is the balance between concurrency and network utilization. Using a large number of goroutines also requires increasing the pull timeout since the concurrency increases network utilization. For example in desktop testing, the following command has been tested without experiencing image pull timeouts:
-```shell
-bin/ociregistry --log-level=debug --image-path=/tmp/frobozz\
-  --load-images=./hack/image-list\
-  --pull-timeout=200000\
-  --concurrent=50
-```
-
-The example above runs 50 concurrent goroutines but needs to increase the timeout to 200000 milliseconds to consistently avoid timeouts. Pull timeouts are logged as an error.
-
 ## Image Store
 
 The image store is persisted to the file system. This includes blobs and manifests. Let's say you run the server with `--image-path=/var/ociregistry/images`, which is the default. Then:
@@ -390,14 +360,12 @@ The image store is persisted to the file system. This includes blobs and manifes
 /var/ociregistry/images
 ├── blobs
 ├── fat
-├── img
-└── pulls
+└── img
 ```
 
 1. `blobs` are where the blobs are stored
-2. `fat` is where the fat manifests are stored: the manifests with lists of image manifests
+2. `fat` is where the image list manifests are stored
 3. `img` stores the image manifests
-3. `pulls` is temp storage for image downloads that should be empty unless a pull is in progress. (If a pull times out - the corrupted tar remains in this directory.)
 
 Manifests are all stored by digest. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
 
@@ -405,9 +373,9 @@ The program uses a data structure called a `ManifestHolder` to hold all the imag
 
 ## Pruning the cache
 
-The compiled binary can be used as a CLI to prune the cache.
+The compiled binary can be used as a CLI to prune the cache on the file system.
 
-> The server must be stopped while pruning because the CLI only manipulates the file system, not the in-memory representation of the cache.
+> The server must be stopped while pruning because the CLI only manipulates the file system, not the in-memory representation of the cache. There is a REST API to prune the running server cache documented below.
 
 Pruning removes manifest lists, manifests, and possibly blobs (more on blobs below.) Three options support pruning:
 
@@ -417,27 +385,23 @@ It is strongly recommended to use the `--dry-run` arg to develop your pruning ex
 
 ### By Pattern
 
-The `--prune` option accepts a single parameter consisting of one or more patterns separated by commas. The patterns are Golang regular expressions as documented in the [regexp/syntax](https://pkg.go.dev/regexp/syntax) package documentation. The expressions on the command line are passed _directly_ to the Golang `regex` parser _as received from the shell_, and are matched to manifest URLs. As such, shell expansion and escaping must be taken into consideration. Simplicity wins the day here. Examples:
+Specify `--pattern` with single parameter consisting of one or more patterns separated by commas. The patterns are Golang regular expressions as documented in the [regexp/syntax](https://pkg.go.dev/regexp/syntax) package documentation. The expressions on the command line are passed _directly_ to the Golang `regex` parser _as received from the shell_, and are matched to manifest URLs. As such, shell expansion and escaping must be taken into consideration. Simplicity wins the day here. Examples:
 
 ```shell
-bin/ociregistry --image-path /var/lib/ociregistry/images --dry-run\
-  --prune kubernetesui/dashboard:v2.7.0
-bin/ociregistry --image-path /var/lib/ociregistry/images --dry-run\
-  --prune docker.io
-bin/ociregistry --image-path /var/lib/ociregistry/images --dry-run\
-  --prune curl,cilium
+bin/ociregistry prune --pattern kubernetesui/dashboard:v2.7.0 --dry-run
+bin/ociregistry prune --pattern docker.io --dry-run
+bin/ociregistry prune --pattern curl,cilium --dry-run
 ```
 
-### By Date/time
+### By Create Date/time
 
 The `--prune-before` option accepts a single parameter consisting of a local date/time in the form `YYYY-MM-DDTHH:MM:SS`. All manifests created **before** that time stamp will be selected. Example:
 
 ```shell
-bin/ociregistry --image-path /var/lib/ociregistry/images --dry-run\
-  --prune-before 2024-03-01T22:17:31
+bin/ociregistry prune --date 2024-03-01T22:17:31 --dry-run
 ```
 
-The intended workflow is to use the CLI with `--list-cache` and sorting as described above to determine desired a cutoff date and then to use that date as an input to the `--prune-before` arg. For example, suppose a number of images were created on and earlier than `2024-03-01T22:17:30`. Then you would specify that time plus one second. E.g.: `--prune-before 2024-03-01T22:17:31`.
+The intended workflow is to use the CLI with `list` sub-command to determine desired a cutoff date and then to use that date as an input to the `prune` sub-command.
 
 ### Important to know about pruning
 
@@ -469,8 +433,8 @@ Narrative:
 1. A client (in this case - containerd) initiates an image pull. The image pull consists of a series of REST API calls. The API calls are handled by the server REST API, which implements a portion of the [OCI Distribution Spec](https://github.com/opencontainers/distribution-spec).
 2. The API is just a veneer that delegates to the server implementation.
 3. The server checks the local cache and if the image is in cache it is immediately returned from cache.
-4. If the image is not in cache, the server calls the embedded [Google Crane](https://github.com/google/go-containerregistry/blob/main/cmd/crane/doc/crane.md) code to pull the image from the upstream registry. The server knows which upstream to pull from because containerd appends a query parameter (e.g. `?ns=registry.k8s.io`) to each API call.
-5. The Google Crane code pulls the image from the upstream registry and returns it to the server.
+4. If the image is not in cache, the server calls the embedded [ImgPull](https://github.com/aceeric/imgpull) library to pull the image from the upstream registry. The server knows which upstream to pull from because containerd appends a query parameter (e.g. `?ns=registry.k8s.io`) to each API call.
+5. The image puller pulls the image from the upstream registry and returns it to the server.
 6. The server adds the image to cache and returns the image to the caller from the newly updated cache.
 
 ## Image Pull Sequence Diagram
@@ -491,6 +455,7 @@ The pre-loader logic is similar to the client pull logic:
 
 ## Code Structure
 
+TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
 The source code is organized as shown:
 ```shell
 project root
@@ -532,6 +497,8 @@ project root
 | `mock` | Runs a mock OCI Distribution server used by the unit tests. |
 
 ## REST API Implementation
+
+IMPROVE THIS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1111
 
 go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 
@@ -575,3 +542,6 @@ You can also run the distribution server as a systemd service on one of the clus
 
 The risk is that the image cache only exists on one cluster instance. If this instance is lost, then the cluster is down until comms are re-established. This can be mitigated by replicating the cache across multiple cluster nodes. There are multiple tools available to support this. For example [Syncthing](https://syncthing.net/) could be run on each node to ensure that each node has a full copy of the image cache. If the node running the distribution server is lost then the nodes can have their containerd configuration modified to point to any one of the other nodes, and the distribution server systemd service can be started on that node.
 
+## Administrative REST API
+
+TODO

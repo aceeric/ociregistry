@@ -135,24 +135,9 @@ func ParseCriteria(cfg config.PruneConfig) (ManifestComparer, error) {
 	if !slices.Contains([]string{createdType, accessedType, patternType}, strings.ToLower(cfg.Type)) {
 		return nil, fmt.Errorf("unknown criteria type %q, expect %q or %q", cfg.Type, createdType, accessedType)
 	}
-	var cutoffDate time.Time
-	if slices.Contains([]string{createdType, accessedType}, strings.ToLower(cfg.Type)) {
-		if len(cfg.Duration) < 2 || cfg.Type == "" {
-			return nil, errors.New("missing/invalid duration/type in prune criteria")
-		}
-		durStr := cfg.Duration
-		if !strings.HasPrefix(cfg.Duration, "-") {
-			durStr = "-" + cfg.Duration
-		}
-		durStr, err := days2hrs(durStr)
-		if err != nil {
-			return nil, err
-		}
-		dur, err := time.ParseDuration(durStr)
-		if err != nil {
-			return nil, err
-		}
-		cutoffDate = time.Now().Add(dur)
+	cutoffDate, err := calcCutoff(cfg)
+	if err != nil {
+		return nil, err
 	}
 	switch strings.ToLower(cfg.Type) {
 	case createdType:
@@ -202,6 +187,30 @@ func ParseCriteria(cfg config.PruneConfig) (ManifestComparer, error) {
 		}, nil
 	}
 	return nil, fmt.Errorf("unsupported prune type %q", cfg.Type)
+}
+
+// calcCutoff returns a prune cutoff date by parsing the passed config. If no cutoff time
+// is needed then an empty time.Time struct is returned.
+func calcCutoff(cfg config.PruneConfig) (time.Time, error) {
+	if !slices.Contains([]string{createdType, accessedType}, strings.ToLower(cfg.Type)) {
+		return time.Time{}, nil
+	}
+	if len(cfg.Duration) < 2 || cfg.Type == "" {
+		return time.Time{}, errors.New("missing/invalid duration/type in prune criteria")
+	}
+	durStr := cfg.Duration
+	if !strings.HasPrefix(cfg.Duration, "-") {
+		durStr = "-" + cfg.Duration
+	}
+	durStr, err := days2hrs(durStr)
+	if err != nil {
+		return time.Time{}, err
+	}
+	dur, err := time.ParseDuration(durStr)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Now().Add(dur), nil
 }
 
 // doPrune makes one pass through the cache and evaluates each manifest according to the passed

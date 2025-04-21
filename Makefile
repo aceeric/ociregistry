@@ -1,4 +1,4 @@
-SERVER_VERSION := 1.7.2
+SERVER_VERSION := 1.8.0-prerelease
 DATETIME       := $(shell date -u +%Y-%m-%dT%T.%2NZ)
 REGISTRY       := quay.io
 ORG            := appzygy
@@ -23,7 +23,7 @@ vet:
 
 .PHONY: gocyclo
 gocyclo:
-	gocyclo -over 15 -ignore "Merge|_test" $(ROOT)/cmd $(ROOT)/impl/
+	gocyclo -over 15 -ignore "merge.go|_test" $(ROOT)/cmd $(ROOT)/impl/
 
 .PHONY: coverprof
 coverprof: test

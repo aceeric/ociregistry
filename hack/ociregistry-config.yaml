@@ -1,4 +1,0 @@
-# /home/eace/projects/ociregistry/hack/ociregistry-config.yaml
-- name: localhost:8080
-  description: The ociregistry server running on my desktop
-  scheme: http

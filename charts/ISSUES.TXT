@@ -1,2 +1,0 @@
-1. Ingress doesn't work (dtk.io)
-2. init container can't copy file because distroless has no shell

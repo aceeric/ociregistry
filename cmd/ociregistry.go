@@ -26,6 +26,9 @@ const (
 	listCmd    string = "list"
 	pruneCmd   string = "prune"
 	versionCmd string = "version"
+	// emptyCmd means no command was invoked so the CLI parser will display
+	// help and so there's nothing to do.
+	emptyCmd string = ""
 )
 
 // main is the entry point
@@ -33,18 +36,19 @@ func main() {
 	os.Exit(realMain())
 }
 
-// this allows deferred functions to run
+// realMain allows deferred functions to run and also to return an exit code
+// to the OS.
 func realMain() int {
 	command, err := getCfg()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error getting configuration: %s\n", err)
 		return 1
-	}
-	if command == versionCmd {
+	} else if command == emptyCmd {
+		return 0
+	} else if command == versionCmd {
 		fmt.Fprintf(os.Stderr, "ociregistry version: %s build date: %s\n", buildVer, buildDtm)
 		return 0
-	}
-	if config.GetHelloWorld() {
+	} else if config.GetHelloWorld() {
 		if tmpDir, err := helloWorldMode(); err != nil {
 			fmt.Fprintf(os.Stderr, "error configuring hello-world mode: %s\n", err)
 			return 1

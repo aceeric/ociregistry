@@ -25,4 +25,4 @@ COPY --from=build /app/server .
 COPY --from=build --chown=nonroot:nonroot /var/lib/emptydir /var/lib/ociregistry
 USER nonroot:nonroot
 
-ENTRYPOINT ["/ociregistry/server"]
+CMD ["/ociregistry/server", "serve"]

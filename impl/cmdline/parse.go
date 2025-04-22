@@ -23,10 +23,8 @@ var cfg = config.Configuration{}
 var cmds = &cli.Command{
 	Name:  "ociregistry",
 	Usage: "a pull-only, pull-through, caching OCI distribution server",
-
-	ExitErrHandler: func(_ context.Context, _ *cli.Command, _ error) {
-		// NOP handle this or the parser terminates the program
-	},
+	// define this or the parser terminates the program
+	ExitErrHandler: func(_ context.Context, _ *cli.Command, _ error) {},
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:        "log-level",
@@ -321,11 +319,13 @@ var cmds = &cli.Command{
 
 // Parse parses the command line. It returns the following:
 //
-//  1. A FromCmdLine struct which has the command to run ("serve", "list", etc.). This struct
-//     also has flags telling you which configuration values were provided by the user on the
-//     command line.
-//  2. The parsed configuration values. For any configuration flag in the FromCmdLine struct with
-//     a false value, the corresponding configuration value in *this* struct will be the default.
+//  1. A FromCmdLine struct which has the command to run ("serve", "list", etc.). If the command
+//     is the empty string then no sub-command was specified in which case the parser auto-displays
+//     help. This struct also has flags telling you which configuration values were provided by the
+//     user on the command line.
+//  2. A Configuration struct containing the parsed configuration values. For any configuration flag
+//     in the FromCmdLine struct with a false value, the corresponding configuration value in *this*
+//     struct will be the default.
 //  3. An error, if the parser returned one, else nil.
 func Parse() (config.FromCmdLine, config.Configuration, error) {
 	if err := cmds.Run(context.Background(), os.Args); err != nil {

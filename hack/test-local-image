@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-
+#
+# Usage: run with no args to test the image on the desktop
+#
 set -e
 
 if [[ -z "$1" ]]; then
@@ -14,7 +16,8 @@ docker run\
   --publish 8888:8080\
   --user    $(id -u):$(id -g)\
   --volume  $image_dir:/var/lib/ociregistry\
-  quay.io/appzygy/ociregistry:$1 --log-level=debug
+  --entrypoint=/ociregistry/server\
+  quay.io/appzygy/ociregistry:$1 --log-level debug serve
 
 echo "tail the logs: docker logs ociregistry -f"
 echo "when done: docker stop ociregistry && docker container rm ociregistry && rm -rf $image_dir"

@@ -1,9 +1,9 @@
-{{- if .Values.registryConfig -}}
+{{- if .Values.serverConfig.config -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "ociregistry.fullname" . }}-config
 data:
-  registry-config.yaml:
-  {{- toYaml .Values.registryConfig.config | nindent 4 }}
+  registry-config.yaml: |
+  {{- toYaml .Values.serverConfig.config | nindent 4 }}
 {{- end }}

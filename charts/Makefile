@@ -1,3 +1,5 @@
+CHART_VERSION := 1.8.0
+
 .PHONY : all
 all: docs package index
 
@@ -7,8 +9,11 @@ docs:
 
 .PHONY: package
 package:
-	helm package ociregistry
+	helm package ociregistry --app-version $(CHART_VERSION)
 
-.PHONY: index
-index:
-	helm repo index --url https://aceeric.github.io/ociregistry-helm .
+.PHONY: push
+push:
+	helm push ociregistry-$(CHART_VERSION).tgz oci://quay.io/appzygy/helm-charts
+
+#index:
+#	helm repo index --url https://aceeric.github.io/ociregistry-helm .

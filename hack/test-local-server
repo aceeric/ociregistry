@@ -2,21 +2,24 @@
 #
 # Run this from project root. Usage:
 #
-# hack/test-local-server <path to image list>
+# hack/test-local-server <optional path to image list>
 #
 # E.g.:
 #
 # hack/test-local-server hack/image-list
 #
 
-if [[ "$#" -ne 1 ]]; then
-  echo "need image list file in arg 1"
+preload=""
+if [[ "$#" -eq 1 ]]; then
+  preload="--preload-images=$1"
+elif [[ "$#" -ne 0 ]]; then
+  echo "only one arg allowed - path to preload file"
   exit 1
 fi
 
 image_cache_dir=$(mktemp -d)
 
-./bin/ociregistry --image-path=$image_cache_dir --port=8888 --preload-images=$1 --log-level=debug
-
 echo "image cache is $image_cache_dir"
 echo "to shut the server down: curl localhost:8888/cmd/stop"
+
+./bin/ociregistry --log-level=debug --image-path=$image_cache_dir serve --port=8888 "$preload"

@@ -30,9 +30,13 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
       - name: {{ .Chart.Name }}
-        {{- if .Values.upstreamConfig }}
+        {{- if .Values.serverConfig.config }}
+        command:
+        - /ociregistry/server
         args:
-        - --config-path {{ .Values.upstreamConfig.mountPath }}
+        - --config-file
+        - {{ .Values.serverConfig.mountPath }}/registry-config.yaml
+        - serve
         {{- end }}
         securityContext:
           {{- toYaml .Values.securityContext | nindent 10 }}
@@ -56,9 +60,9 @@ spec:
         volumeMounts:
         {{- toYaml . | nindent 8 }}
         {{- end }}
-        {{- if .Values.registryConfig }}
+        {{- if .Values.serverConfig.config }}
         - name: config
-          mountPath: {{ .Values.registryConfig.mountPath }}
+          mountPath: {{ .Values.serverConfig.mountPath | default "/var/ociregistry/config"}}
           readOnly: true
         {{- end }}
       volumes:
@@ -87,7 +91,7 @@ spec:
           claimName: {{ include "ociregistry.fullname" . }}
           {{- end }}
       {{- end }}
-      {{- if .Values.registryConfig }}
+      {{- if .Values.serverConfig.config }}
       - name: config
         configMap:
           name: {{ include "ociregistry.fullname" . }}-config

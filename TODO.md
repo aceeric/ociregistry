@@ -1,13 +1,11 @@
 # TODO
 
-1. README
-3. Help should not validate the cache directory
-4. Readthedocs
+1. Readthedocs
    - concurrency design
    - volumetrics
-5. Instrumentation
-6. Enable swagger UI (https://github.com/go-swagger/go-swagger)?
-7. bin/imgpull is inserting "library", on "docker.io" pulls should it? (Would it work otherwise?)
+2. Instrumentation
+3. Enable swagger UI (https://github.com/go-swagger/go-swagger)?
+4. bin/imgpull is inserting "library", on "docker.io" pulls should it? (Would it work otherwise?)
 
 ## Patch older manifest
 

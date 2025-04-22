@@ -6,7 +6,7 @@ import (
 )
 
 // getCfg calls the command line parser to parse the command line. If one of the command line
-// args was '--config-file' then the the function calls the config loader to load that config file
+// args was '--config-file' then the function calls the config loader to load that config file
 // into the global configuration. Then any overrides from the command line are overwritten into
 // the global configuration. If '--config-file' was NOT provided on the command line, then
 // the config from the parsed cmdline is used in its entirety to set the global configuration
@@ -17,7 +17,7 @@ import (
 // be provided via the config file, e.g.: full prune configuration, and upstream registry config.
 //
 // The sub-command specified on the command line (serve, load, etc.) is returned in the first
-// return value.
+// return value. An empty sub-command means no sub-command was provided.
 func getCfg() (string, error) {
 	fromCmdline, cfg, err := cmdline.Parse()
 	if err != nil {

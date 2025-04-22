@@ -1,4 +1,8 @@
-# helm upgrade --install ociregistry ociregistry  --values /tmp/deleteme.yml  --namespace ociregistry  --create-namespace
+# helm upgrade --install ociregistry ociregistry\
+#  --namespace ociregistry\
+#  --create-namespace\
+#  --values ./test-values.yml\
+#  --dry-run=server
 ingress:
   enabled: true
   hosts:
@@ -7,6 +11,9 @@ ingress:
     - path: /
       pathType: ImplementationSpecific
 
-image:
-  ociregistry:
-    tag: 1.7.1-experimental
+serverConfig:
+  config:
+
+service:
+  type: ClusterIP
+  nodePort:

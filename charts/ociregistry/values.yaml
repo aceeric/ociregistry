@@ -7,19 +7,19 @@ image:
     # -- The image repository
     repository: appzygy/ociregistry
     # -- The image tag
-    tag: 1.5.0
+    tag: 1.8.0-prerelease
     # -- Specify a digest to use instead of the tag
     digest:
     # -- The image pull policy
     pullPolicy: IfNotPresent
 
-# -- Supports pullng the image from a registry that requires authentication
+# -- Supports pulling the image from a registry that requires authentication
 imagePullSecrets: []
 
-# -- Overrides the default naming logic that concats the release and chart name.
+# -- Overrides the default naming logic.
 nameOverride: ""
 
-# -- Overrides the default naming logic that concats the release and chart name.
+# -- Overrides the default naming logic.
 fullnameOverride: ""
 
 # -- Defines the service account configuration
@@ -46,12 +46,9 @@ podSecurityContext: {}
 # -- Provide any additional deployment security context
 securityContext: {}
 
-# -- service defines the Service resource. Since the intended use case
-# is for you to configure containerd to mirror to the registry server,
-# the server has to be reachable by containerd running on the host. Therefore
-# the default configuration is to create a NodePort service, which
-# makes the registry available to containerd on each host. If you change the
-# port, you must also specify the `configs.port` above.
+# -- service defines the Service resource. To serve inside the cluster for
+# other cluster workloads, specify `NodePort`. To serve behind an ingress
+# for workloads outside the cluster, specify `ClusterIP`
 # @default -- See sub-fields
 service:
   type: NodePort
@@ -60,7 +57,7 @@ service:
 
 # -- Configures an ingress for access to the registry outside the cluster. (Could
 # be used to run the registry in one cluster to cache for multiple other clusters.)
-# @default -- See sub-fields
+# @default -- `enabled: false`
 ingress:
   enabled: false
   className: ""
@@ -77,7 +74,8 @@ ingress:
 
 # -- Specify requests and limits. Manifests are cached in memory to speed response
 # time. Manifests vary greatly in size but - if an average manifest is 3K and your
-# cluster has 100 images this would result in the server using 300K of RAM.
+# cluster has 100 images this would result in the server using 300K of RAM. Blob
+# digests are also cached (only the digests) which consumes about 80 bytes per blob.
 resources: {}
 
 # -- Use this to mount other volumes.
@@ -87,11 +85,10 @@ volumes: []
 # registry it needs a place to store image data.
 # @default -- See sub-fields
 volumeMounts:
-# -- When you select a `persistence` type, a volume will be templated named `images`.
-# By default the server will look in the `mountPath`. If you mount the storage at some
-# other path you must change the `configs.imagePath` to match.
+
+# -- Specifies  where to mount the storage for the image cache.
 - name: images
-  # -- Shows the default value hard-coded into the server
+  # -- Shows the default value hard-coded into the server unless overridden
   mountPath: /var/lib/ociregistry
   readOnly: false
 
@@ -105,9 +102,9 @@ tolerations: []
 affinity: {}
 
 # -- Persistence establishes the persistence strategy. For ephemeral storage (i.e. for
-# testing or experimentation) enable the `emptyDir` option. If you have a storage
-# provisioner, enable the persistentVolumeClaim option. The `hostPath` option uses
-# host storage. `emptyDir` is enabled by default.
+# testing or experimentation) the `emptyDir` option is enabled by default. If you have a storage
+# provisioner, enable the `persistentVolumeClaim` option. The `hostPath` option uses
+# host storage.
 # @default -- See sub-fields
 persistence:
   # -- Creates a PVC for persistent storage
@@ -145,8 +142,8 @@ persistence:
     enabled: false
     type: DirectoryOrCreate
     # -- By default the server will use this path for image storage. If you mount the
-    # storage at some other path you must match it in the `imagePath` value in `upstreamConfig.config`
-    # below.
+    # storage at some other path you must match it in the `imagePath` value in
+    # `serverConfig.config` below.
     path: /var/lib/ociregistry
   # -- Implements Empty Dir storage for the server. Suitable for testing and a quick
   # capability evaluation.
@@ -157,28 +154,33 @@ persistence:
     # -- Provides a size limit to the storage
     sizeLimit: 2Gi
 
-# -- Supports overriding default configuration
-upstreamConfig: {}
-#  mountPath: /var/ociregistry/config
-#  config: |
-#    ---
-#    imagePath: /var/lib/ociregistry
-#    logLevel: error
-#    logFile:
-#    preloadImages:
-#    imageFile:
-#    port: 8080
-#    #os: linux
-#    #arch: amd64
-#    pullTimeout: 60000
-#    alwaysPullLatest: false
-#    airGapped: false
-#    helloWorld: false
-#    registries: []
-#    pruneConfig:
-#      enabled: false
-#      duration: 30d
-#      type: accessed
-#      frequency: 1d
-#      count: -1
-#      dryRun: false
+# -- Supports overriding default (built-in) configuration. If you change
+# `serverConfig.config.imagePath` then change `volumeMounts['image'].mountPath`
+# to match. The values shown are the defaults hard-coded in the binary, except
+# for `logLevel` which defaults to `error` and is overridden below as `info`.
+# The explicit values are provided mainly for documentation purposes. OS and
+# arch by default are determined by the system hosting the server.
+# @default -- See sub-fields
+serverConfig:
+  mountPath: /var/ociregistry/config
+  config:
+    imagePath: /var/lib/ociregistry
+    logLevel: info
+    logFile:
+    preloadImages:
+    imageFile:
+    port: 8080
+    #os: linux
+    #arch: amd64
+    pullTimeout: 60000
+    alwaysPullLatest: false
+    airGapped: false
+    helloWorld: false
+    registries: []
+    pruneConfig:
+      enabled: false
+      duration: 30d
+      type: accessed
+      frequency: 1d
+      count: -1
+      dryRun: false

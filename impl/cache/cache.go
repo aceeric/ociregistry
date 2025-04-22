@@ -343,6 +343,7 @@ func getManifestFromCache(url string, imagePath string) (imgpull.ManifestHolder,
 	defer mc.Unlock()
 	if mh, exists := mc.manifests[url]; exists {
 		mh.Pulled = curTime()
+		mc.manifests[url] = mh
 		if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
 			log.Errorf("error serializing manifest %q, the error was: %s", url, err)
 			return emptyManifestHolder, false

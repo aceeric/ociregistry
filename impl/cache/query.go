@@ -80,14 +80,14 @@ func (mhr *MHReader) Read(b []byte) (n int, err error) {
 
 	hdr := ""
 	if mhr.idx == 0 {
-		hdr = "URL DIGEST\n"
+		hdr = "URL DIGEST CREATED PULLED\n"
 	}
 	url := mh.ImageUrl
 	dgst := re.FindStringSubmatch(url)
 	if len(dgst) == 2 {
 		url = strings.Replace(url, dgst[1], dgst[1][:10], 1)
 	}
-	line := fmt.Sprintf("%s%s %s\n", hdr, url, mh.Digest)
+	line := fmt.Sprintf("%s%s %s  %s %s\n", hdr, url, mh.Digest, mh.Created, mh.Pulled)
 	if len(digests) > 0 {
 		for _, digest := range digests {
 			line += fmt.Sprintf("- %s\n", digest)

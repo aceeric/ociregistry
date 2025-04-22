@@ -5,7 +5,7 @@ After=network.target
 
 [Service]
 ExecStart=/bin/ociregistry-server\
-  --image-path=/var/lib/ociregistry
+  --image-path=/var/lib/ociregistry\
   --log-level=info\
   serve
 Type=simple

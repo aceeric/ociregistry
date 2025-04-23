@@ -14,6 +14,3 @@ package:
 .PHONY: push
 push:
 	helm push ociregistry-$(CHART_VERSION).tgz oci://quay.io/appzygy/helm-charts
-
-#index:
-#	helm repo index --url https://aceeric.github.io/ociregistry-helm .

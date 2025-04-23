@@ -16,14 +16,13 @@ The goals of the project are:
 
 **Table of Contents**
 
-- [1.8.0 CHANGES APRIL 2025](#1-8-0-changes-april-2025)
+- [1.8.0 CHANGES APRIL 2025](#180-changes-april-2025)
 - [Quick Start - Desktop](#quick-start---desktop)
 - [Quick Start - Kubernetes](#quick-start---kubernetes)
 - [Configuring containerd](#configuring-containerd)
 - [Configuring the Server](#configuring-the-server)
 - [Command Line Options](#command-line-options)
 - [Pre-Loading the Server](#pre-loading-the-server)
-- [Load and Pre-Load Concurrency](#load-and-pre-load-concurrency)
 - [Image Store](#image-store)
 - [Pruning the cache](#pruning-the-cache)
 - [Design](#design)

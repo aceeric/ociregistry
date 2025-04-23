@@ -2,3 +2,5 @@
 bin/*
 cmd/__debug_bin*
 prof.out
+*.tar
+*.tgz

@@ -159,7 +159,16 @@ DEBU[0148] serving manifest from cache: registry.k8s.io/kube-scheduler@sha256:01
 
 ## Quick Start - Kubernetes
 
-The chart is hosted on [Artifacthub](https://artifacthub.io/packages/helm/ociregistry/ociregistry).
+The chart is hosted on [Artifacthub](https://artifacthub.io/packages/helm/ociregistry/ociregistry). Create a values file `./my-values.yml` with any overrides and then:
+
+```shell
+CHARTVER=1.8.0
+helm upgrade --install ociregistry oci://quay.io/appzygy/helm-charts/ociregistry\
+  --version $CHARTVER\
+  --namespace ociregistry\
+  --create-namespace\
+  --values ./my-values.yml
+```
 
 > See [Kubernetes considerations](#kubernetes-considerations) below in this document for important things to be aware of to support your edge Kubernetes cluster.
 
@@ -458,7 +467,7 @@ docker.io/calico/typha@sha256:eca01eab...
 
 The first is a multi-arch image list manifest, and the second is the image manifest matching the OS and Architecture that was selected for download. In all cases, only image manifests reference blobs. If your search finds only an image list manifest, the CLI logic will **also** look for cached image manifests (and associated blobs) for the specified image list manifest since that's probably the desired behavior. (The blobs consume the storage.)
 
-### Blob removal
+### Blob removal when pruning
 
 Internally, the CLI begins by building a blob list with ref counts. As each image manifest is removed its referenced blobs have their count decremented. After all manifests are removed, any blob with zero refs is also removed. Removing an image manifest therefore won't remove blobs that are still referenced by un-pruned manifests.
 
@@ -518,7 +527,7 @@ project root
 | `charts`  | The Helm chart. |
 | `cmd`  | Entry point and sub-commands. |
 | `impl` | Has the implementation of the server. |
-| `impl/cache` | Implements the in-mem cache. |
+| `impl/cache` | Implements the in-memory cache. |
 | `impl/cmdline` | Parses the command line. |
 | `impl/config` | Has system configuration. |
 | `impl/globals` | Globals. |
@@ -580,19 +589,19 @@ The risk is that the image cache only exists on one cluster instance. If this in
 
 ## Administrative REST API
 
-The following REST endpoints are supported for administration of the image cache.
+The following REST endpoints are supported for administration of the image cache. Note - the output of the commands in some cases is columnar. Pipe through `column -t` to columnize.
 
 ### `/cmd/prune`
 
-Prunes the in-mem cache and the file system while the server is running.
+Prunes the in-memory cache and the file system while the server is running.
 
 | Query param | Description |
 |-|-|
-| type | Valid values: `accessed`, `created`, `pattern`. |
-| dur | A duration like `30d`. If `type` is `accessed`, then images that have not been accessed within the duration are pruned. If `type` is `created`, then images created earlier than the duration ago are pruned. (E.g.: created more than 30 days agoe.) If `type` is `pattern`, then ignored. |
-| expr | If `type` is `pattern`, then a manifest URL pattern like `calico`, else ignored. |
-| count | Max manifests to prune. Defaults to `5`. |
-| dryRun | If `true` then logs messages but does not prune. **Defaults to false, meaning: will prune by default.** |
+| `type` | Valid values: `accessed`, `created`, `pattern`. |
+| `dur` | A duration string. E.g.: `30d`. Valid time units are `d`=days, `m`=minutes, and `h`=hours.  If `type` is `accessed`, then images that have not been accessed within the duration are pruned. If `type` is `created`, then images created earlier than the duration ago are pruned. (I.e.: created more than 30 days ago.) If `type` is `pattern`, then `dur` is ignored. |
+| `expr` | If `type` is `pattern`, then a manifest URL pattern like `calico`, else ignored. Multiple patterns can be separated by commas: `foo,bar`|
+| `count` | Max manifests to prune. Defaults to `5`. |
+| `dryRun` | If `true` then logs messages but does not prune. **Defaults to false, meaning: will prune by default.** |
 
 Example: `curl "http://hostname:8080/cmd/prune?type=created&dur=10d&count=50&dryRun=true"`
 
@@ -604,9 +613,9 @@ Lists image manifests, and the blobs that are referenced by the selected manifes
 
 | Query param | Description |
 |-|-|
-| pattern | Comma-separated go regex expressions. |
-| digest | Digest (or substring) |
-| count | Max number of manifests to return |
+| `pattern` | Comma-separated go regex expressions. |
+| `digest` | Digest (or substring) |
+| `count` | Max number of manifests to return |
 
 Example: `curl "http://hostname:8080/cmd/image/list?pattern=docker.io&count=10"`
 
@@ -618,8 +627,8 @@ Lists blobs and ref counts.
 
 | Query param | Description |
 |-|-|
-| substr | Digest (or substring) |
-| count | Max number of manifests to return |
+| `substr` | Digest (or substring) |
+| `count` | Max number of manifests to return |
 
 Example: `curl "http://hostname:8080/cmd/blob/list?substr=56aebe9b&count=10"`
 
@@ -629,8 +638,8 @@ List manifests.
 
 | Query param | Description |
 |-|-|
-| pattern | Comma-separated go regex expressions. |
-| count | Max number of manifests to return |
+| `pattern` | Comma-separated go regex expressions. |
+| `count` | Max number of manifests to return |
 
 Example: `curl "http://hostname:8080/cmd/manifest/list?pattern=calico,cilium&count=10"`
 

@@ -12,9 +12,15 @@ This OCI distribution server is intended to satisfy one use case: the need for a
 ## 1) Install the chart
 
 ```
-helm repo add ociregistry https://aceeric.github.io/ociregistry-helm/
-helm -n ociregistry install ociregistry ociregistry --create-namespace
+CHARTVER=1.8.0
+helm upgrade --install ociregistry oci://quay.io/appzygy/helm-charts/ociregistry\
+  --version $CHARTVER\
+  --namespace ociregistry\
+  --create-namespace\
+  --dry-run=server
 ```
+
+> Remove the `--dry-run=server` arg to actually perform the install.
 
 ## 2) Configure `containerd`
 

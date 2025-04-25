@@ -12,7 +12,7 @@ This OCI distribution server is intended to satisfy one use case: the need for a
 ## 1) Install the chart
 
 ```shell
-CHARTVER=1.8.0
+CHARTVER=1.8.1
 helm upgrade --install ociregistry oci://quay.io/appzygy/helm-charts/ociregistry\
   --version $CHARTVER\
   --namespace ociregistry\
@@ -69,7 +69,7 @@ kubectl -n ociregistry logs -f -l app.kubernetes.io/name=ociregistry
 time="2025-04-24T21:11:41Z" level=info msg="loaded 0 manifest(s) from the file system in 102.136µs"
 ----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
-Version: v1.8.0, build date: 2025-04-23T00:35:28.79Z
+Version: v1.8.1, build date: 2025-04-23T00:35:28.79Z
 Started: 2025-04-24 21:11:41.727569108 +0000 UTC (port 8080)
 Running as (uid:gid) 65532:65532
 Process id: 1

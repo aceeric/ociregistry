@@ -1,6 +1,7 @@
 // implements the "pull-only" registry server. Provides implementations for methods
 // required to pull an image. This file is lean to simplify handling any changes to
-// the API - each function simply calls a handler in 'handlers.go'.
+// the API - each function simply calls a handler in 'handlers.go' if one is defined
+// otherwise returns 405 not allowed.
 package impl
 
 import (
@@ -15,6 +16,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// OciRegistry implements the OCI Distribution REST API.
 type OciRegistry struct {
 	// base location of the image and metadata cache
 	imagePath string
@@ -28,10 +30,11 @@ type OciRegistry struct {
 	shutdownCh chan bool
 }
 
-// NewOciRegistry creates and returns an OciRegistry struct from the passed args. The
-// OciRegistry struct implements the api.ServerInterface interface, which is generated from
-// the api/ociregistry.yaml openapi spec for the distribution server.
-func NewOciRegistry(ch chan bool) *OciRegistry { //api.ServerInterface {
+// NewOciRegistry creates and returns an OciRegistry struct from global configuration. The
+// passed channel allows the /cmd/stop endpoint to signal the REST server to shut down.
+// The OciRegistry struct returned by the function implements the api.ServerInterface interface,
+// which is generated from the api/ociregistry.yaml openapi spec for the distribution server.
+func NewOciRegistry(ch chan bool) *OciRegistry {
 	return &OciRegistry{
 		imagePath:        config.GetImagePath(),
 		pullTimeout:      int(config.GetPullTimeout()),

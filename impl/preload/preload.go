@@ -16,12 +16,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Load loads the manifest and blob cache for the images listed in the passed file.
-// If an image is already present in cache, it is skipped. Otherwise the image is
-// pulled from the upstream using the upstream registry encoded into the file entry.
-// Here is a example of what one entry in the image list file should look like. It's
-// a standard repository URL. If you can 'docker pull' it, then it should be valid in
-// the file:
+// Load loads the manifest and blob file system cache for the images listed in the
+// passed file. If an image is already present in cache, it is skipped. Otherwise the
+// image is pulled from the upstream using the upstream registry encoded into the file
+// entry.  Here is a example of what one entry in the image list file should look like.
+// It's a standard repository URL. If you can 'docker pull' it, then it should be valid
+// in the file:
 //
 //	registry.k8s.io/metrics-server/metrics-server:v0.6.2
 //
@@ -63,10 +63,10 @@ func Load(imageListFile string) error {
 	return nil
 }
 
-// doPull pulls the passed url from the pstream registry. If a manifest list comes back from the
-// upstream then an image is also pulled. A return value of 1 means the passed url got an image.
-// A return value of 2 means the passed url got an image list, and so an image for the passed OS and
-// architecture was also pulled.
+// doPull pulls the passed url from the upstream registry ref'd by the url. If a manifest list
+// comes back from the upstream then an image is also pulled. A return value of 1 means the passed
+// url got an image. A return value of 2 means the passed url got an image list, and so an image
+// for the passed OS and architecture was also pulled.
 func doPull(imageUrl string, imagePath string, platformArch string, platformOs string) (int, error) {
 	itemcnt := 0
 	pr, err := pullrequest.NewPullRequestFromUrl(imageUrl)
@@ -106,9 +106,10 @@ func doPull(imageUrl string, imagePath string, platformArch string, platformOs s
 	return itemcnt, nil
 }
 
-// getFromCacheOrRemote first checks the file system for the image manifest. If already present in
-// cache, then does nothing. Otherwise actually does the pull and saves the manifest (and blobs if
-// an image url) to the file system.
+// getFromCacheOrRemote first checks the file system for a manifest whose digest matches the
+// passed 'digest' arg. If already present on the file system, then does nothing. Otherwise pulls
+// from the upstream using the url in the passed puller and saves the manifest (and blobs if an
+// image url) to the file system.
 func getFromCacheOrRemote(puller imgpull.Puller, digest string, isImageManifest bool, imagePath string) (imgpull.ManifestHolder, int, error) {
 	mtype := "list"
 	if isImageManifest {

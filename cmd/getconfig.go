@@ -6,9 +6,9 @@ import (
 )
 
 // getCfg calls the command line parser to parse the command line. If one of the command line
-// args was '--config-file' then the function calls the config loader to load that config file
-// into the global configuration. Then any overrides from the command line are overwritten into
-// the global configuration. If '--config-file' was NOT provided on the command line, then
+// args was '--config-file' then the function next calls the config loader to load that config
+// file into the global configuration. Then any overrides from the command line are overlayed
+// onto the global configuration. If '--config-file' was NOT provided on the command line, then
 // the config from the parsed cmdline is used in its entirety to set the global configuration
 // The parsed command line has all the defaults, like port, etc.
 //

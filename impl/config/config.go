@@ -76,7 +76,8 @@ type Configuration struct {
 
 // FromCmdLine has a flag for every command-line option. The parsing code
 // sets the flag to true if the option was explicitly provided on the command
-// line by the user.
+// line by the user. This supports merging command line config into
+// file-based config.
 type FromCmdLine struct {
 	Command          string
 	LogLevel         bool
@@ -217,10 +218,10 @@ func SetConfigFromStr(configBytes []byte) error {
 	return nil
 }
 
-// ConfigFor looks for a configuration entry keyed by the passed 'registry' arg (e.g.
-// 'index.docker.io') and returns configuration options for that registry from the config.
-// If no matching config is found, then a default configuration is returned specifying insecure
-// https, and the runtime OS and architecture.
+// ConfigFor looks for an upstream registry configuration entry keyed by the passed 'registry'
+// arg (e.g. 'index.docker.io') and returns configuration options for that registry from the
+// config. If no matching config is found, then a default configuration is returned specifying
+// insecure https, and the runtime OS and architecture.
 //
 // Since the config might involve loading and calculating a tls.Config with certs, once the
 // parsing is complete, the final config struct saved for reuse so it doesn't need to be

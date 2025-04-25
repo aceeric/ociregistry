@@ -22,6 +22,7 @@ type match struct {
 	mh imgpull.ManifestHolder
 }
 
+// matches has the map of manifests that matched the prune criteria
 var matches = make(map[string]match)
 
 // Prune prunes the cache on the file system. It is intended for use when the server is not
@@ -62,8 +63,8 @@ func Prune() error {
 	return doPrune(config.GetImagePath(), pruneCfg.DryRun, matches)
 }
 
-// dateHandler finds manifests whose file system create date is earlier than the
-// passed date/time in the format '2025-02-28T12:59:59'.
+// dateHandler finds manifests whose create date is earlier than the passed date/time
+// in the format 'YYYY-MM-DDTHH:MM:SS'.
 func dateHandler(date string) (serialize.CacheEntryHandler, error) {
 	cutoffDate, err := time.ParseInLocation(dateFormat, date, time.Local)
 	if err != nil {
@@ -150,7 +151,7 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 }
 
 // tallyBlobCount computes the ref counts for all blobs based on cached
-// image manifests.
+// image manifests. The counts are tallied into the passed 'blobs' map.
 func tallyBlobCount(blobs map[string]int, imagePath string) {
 	serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
 		if mh.IsImageManifest() {
@@ -167,9 +168,10 @@ func tallyBlobCount(blobs map[string]int, imagePath string) {
 	})
 }
 
-// addImageManifests finds all image *list* manifests in the match list, and for each, finds
-// cached *image* manifests. This handles the case where a narrow search like 'nginx:1.14-4'
-// would find only a manifest *list*, but the intent is to prune all cached *images*.
+// addImageManifests finds all image *list* manifests in the passed 'matches' map, and for
+// each, finds cached *image* manifests. This handles the case where a narrow search like
+// 'nginx:1.14-4' would find only a manifest *list*, but the intent is to prune all cached
+// *images*. The image manifests found by the function are added to the passed matches map.
 func addImageManifests(matches map[string]match, imagePath string) error {
 	for _, match := range matches {
 		if !match.mh.IsImageManifest() {
@@ -192,7 +194,7 @@ func addImageManifests(matches map[string]match, imagePath string) error {
 	return nil
 }
 
-// decBlobCounts iterates matching image manifests (that are about to be deleted), and decrements
+// decBlobCounts iterates image manifests in the passed map (that are about to be deleted), and decrements
 // the blob count in the 'blobs' map for those manifests. Those blobs that dec to zero refs can
 // be removed.
 func decBlobCounts(matches map[string]match, blobs map[string]int) error {

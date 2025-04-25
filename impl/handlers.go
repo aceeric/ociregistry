@@ -73,7 +73,8 @@ func (r *OciRegistry) handleV2HeadDefault(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, "true")
 }
 
-// GET /v2/auth
+// GET /v2/auth. The server doesn't do anything with tokens but if the client wants a token
+// it gets one.
 func (r *OciRegistry) handleV2Auth(ctx echo.Context, params V2AuthParams) error {
 	log.Infof("get auth scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization)
 	body := struct {

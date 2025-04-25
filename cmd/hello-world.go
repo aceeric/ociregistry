@@ -19,10 +19,9 @@ var imageManifest []byte
 //go:embed hello_world/manifestList.json
 var manifestList []byte
 
-// helloWorldMode builds an image cache in the system temp directory from embedded files. The
-// resulting files look exactly as if you pulled and cached docker.io/library/hello-world:latest
-// then copied the image cache into the hello_world directory. It sets the server into air-gapped
-// mode and serves only that one image. Its for testing.
+// helloWorldMode builds an image cache in the system temp directory from embedded files that
+// serve docker.io/library/hello-world:latest (as of a point in time.) It sets the server into
+// air-gapped mode and serves only that one image. For testing.
 func helloWorldMode() (string, error) {
 	tmpdir, err := os.MkdirTemp("", "")
 	if err != nil {

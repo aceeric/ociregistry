@@ -19,7 +19,7 @@ var fromCmdline config.FromCmdLine
 // cfg has the parsed configuration - including defaults (e.g. port) if the user does not override
 var cfg = config.Configuration{}
 
-// cmds is for the command line parsed
+// cmds is for the command line parser urfave/cli
 var cmds = &cli.Command{
 	Name:  "ociregistry",
 	Usage: "a pull-only, pull-through, caching OCI distribution server",

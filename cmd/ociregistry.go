@@ -1,7 +1,6 @@
 package main
 
 import (
-	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -88,10 +87,9 @@ func realMain() int {
 	return 0
 }
 
-// ensureImagePaths ensures that the configured image cache directories exist or
-// returns an error.
+// ensureImagePaths ensures that the configured image cache directories exist and
+// are writeable or returns an error.
 func ensureImagePaths() error {
-	// all these MkdirAll are nop if dirs exist
 	for _, subDir := range []string{"fat", "img", "blobs"} {
 		if absPath, err := filepath.Abs(filepath.Join(config.GetImagePath(), subDir)); err == nil {
 			if err := os.MkdirAll(absPath, 0755); err != nil {

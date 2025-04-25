@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Usage: run with no args to test the image on the desktop
+# Runs the registry from quay as a Docker container.
 #
 set -e
 

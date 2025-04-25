@@ -53,7 +53,7 @@ type blobCache struct {
 }
 
 var (
-	// cp has concurrent pulls in progress. 99.999% of the time this will be empty.
+	// cp has concurrent pulls in progress. 99.999+% of the time this will be empty.
 	cp concurrentPulls = concurrentPulls{
 		pulls: make(map[string][]chan bool),
 	}
@@ -191,7 +191,7 @@ func Load(imagePath string) error {
 }
 
 // WaitPulls waits 60 seconds for any in-progress pulls to complete and then
-// returns. If a pull in progress is part-way complete (some of the blobs are written
+// returns. If a pull in progress is partially complete (some of the blobs are written
 // and some aren't) then the cache will be in an inconsistent state. When the server
 // is restarted - it will detect this and exclude any such manifests from being
 // loaded into the in-mem cache.

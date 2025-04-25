@@ -1,4 +1,4 @@
-CHART_VERSION := 1.8.0-1
+CHART_VERSION := 1.8.0
 
 .PHONY : all
 all: docs package push

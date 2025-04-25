@@ -15,7 +15,7 @@ keywords:
 - ddil
 sources:
 - https://github.com/aceeric/ociregistry
-version: 1.8.0-1
+version: 1.8.0
 maintainers:
 - name: Eric Ace
   url: https://github.com/aceeric

@@ -12,9 +12,10 @@ keywords:
 - mirror
 - pull-through
 - docker
+- ddil
 sources:
 - https://github.com/aceeric/ociregistry
-version: 1.8.0
+version: 1.8.0-1
 maintainers:
 - name: Eric Ace
   url: https://github.com/aceeric

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand/v2"
+	"ociregistry/impl/pullrequest"
 	"ociregistry/impl/serialize"
 	"os"
 	"path/filepath"
@@ -112,12 +113,20 @@ func TestLoad(t *testing.T) {
 	for _, mt := range mts {
 		emptyMH := imgpull.ManifestHolder{}
 		urlTag := fmt.Sprintf("foo.io/foo/%d:v1.2.3", mt)
-		mh, _ := getManifestFromCache(urlTag, td)
+		pr, err := pullrequest.NewPullRequestFromUrl(urlTag)
+		if err != nil {
+			t.Fail()
+		}
+		mh, _ := getManifestFromCache(pr, td)
 		if reflect.DeepEqual(mh, emptyMH) {
 			t.Fail()
 		}
 		urlSha := fmt.Sprintf("foo.io/foo/%d@sha256:%d", mt, mt)
-		mh, _ = getManifestFromCache(urlSha, td)
+		pr, err = pullrequest.NewPullRequestFromUrl(urlSha)
+		if err != nil {
+			t.Fail()
+		}
+		mh, _ = getManifestFromCache(pr, td)
 		if reflect.DeepEqual(mh, emptyMH) {
 			t.Fail()
 		}

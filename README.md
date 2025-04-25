@@ -603,7 +603,7 @@ Prunes the in-memory cache and the file system while the server is running.
 | `count` | Max manifests to prune. Defaults to `5`. |
 | `dryRun` | If `true` then logs messages but does not prune. **Defaults to false, meaning: will prune by default.** |
 
-Example: `curl "http://hostname:8080/cmd/prune?type=created&dur=10d&count=50&dryRun=true"`
+Example: `curl -X DELETE "http://hostname:8080/cmd/prune?type=created&dur=10d&count=50&dryRun=true"`
 
 Explanation: Prunes manifests created (initially downloaded) more than 10 days ago. Only prune a max of 50. Since _dry run_ is true, doesn't actually prune - only show what prune would do.
 

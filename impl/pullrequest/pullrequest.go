@@ -90,6 +90,23 @@ func (pr *PullRequest) Url() string {
 	return fmt.Sprintf("%s/%s/%s%s%s", pr.Remote, pr.Org, pr.Image, separator, pr.Reference)
 }
 
+// If the receiver has "docker.io/library/..." then returns "docker.io/...". If receiver has
+// "docker.io/..." then returns "docker.io/library/...". If neither of those cases are true,
+// returns the empty string.
+func (pr *PullRequest) AltDockerUrl() string {
+	if pr.Remote != "docker.io" {
+		return ""
+	}
+	separator := ":"
+	if strings.HasPrefix(pr.Reference, "sha256:") {
+		separator = "@"
+	}
+	if pr.Org == "library" {
+		return fmt.Sprintf("%s/%s%s%s", pr.Remote, pr.Image, separator, pr.Reference)
+	}
+	return fmt.Sprintf("%s/%s/%s%s%s", pr.Remote, "library", pr.Image, separator, pr.Reference)
+}
+
 // UrlWithDigest is like Url except it overrides the ref in the receiver with the passed digest
 func (pr *PullRequest) UrlWithDigest(digest string) string {
 	separator := "@"

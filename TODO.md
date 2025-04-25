@@ -1,7 +1,5 @@
 # TODO
 
-0. Img puller inserting "library" confuses the cache because the url in the manifest isn't the
-   same as the url that was pulled.
 1. Readthedocs
    - concurrency design
    - volumetrics

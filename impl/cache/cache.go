@@ -84,7 +84,7 @@ var (
 // from the cache entry created by the first goroutine.
 func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, forcePull bool) (imgpull.ManifestHolder, error) {
 	url := pr.Url()
-	if mh, ch, exists := getManifestOrEnqueue(url, imagePath, forcePull); exists {
+	if mh, ch, exists := getManifestOrEnqueue(pr, imagePath, forcePull); exists {
 		log.Infof("serving manifest from cache: %q", url)
 		return mh, nil
 	} else if ch == nil {
@@ -105,7 +105,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 		select {
 		case <-ch:
 			log.Infof("serving manifest from cache (after wait): %q", url)
-			mh, exists := getManifestFromCache(url, imagePath)
+			mh, exists := getManifestFromCache(pr, imagePath)
 			if !exists {
 				return emptyManifestHolder, fmt.Errorf("manifest not found (after wait) %q", url)
 			}
@@ -316,13 +316,13 @@ func addBlobsToCache(mh imgpull.ManifestHolder, imagePath string) {
 // As a final bit of complexity, if forcePull is true then the manifest is always enqueued.
 // In this case the server acts like a simple proxy meaning it will always pull from the
 // upstream.
-func getManifestOrEnqueue(url string, imagePath string, forcePull bool) (imgpull.ManifestHolder, chan bool, bool) {
+func getManifestOrEnqueue(pr pullrequest.PullRequest, imagePath string, forcePull bool) (imgpull.ManifestHolder, chan bool, bool) {
 	if !forcePull {
-		if mh, exists := getManifestFromCache(url, imagePath); exists {
+		if mh, exists := getManifestFromCache(pr, imagePath); exists {
 			return mh, nil, true
 		}
 	}
-	return emptyManifestHolder, enqueuePull(url), false
+	return emptyManifestHolder, enqueuePull(pr), false
 }
 
 // IsCached checks if the manifest is cached to support efficiently handle air-gapped
@@ -338,10 +338,19 @@ func IsCached(pr pullrequest.PullRequest) bool {
 // an empty manifest holder if the manifest for the passed URL is not cached. If the
 // manifest exists, the 'Pulled' field is update to reflect the current time and the
 // manifest is written back to the file system.
-func getManifestFromCache(url string, imagePath string) (imgpull.ManifestHolder, bool) {
+func getManifestFromCache(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, bool) {
 	mc.Lock()
 	defer mc.Unlock()
-	if mh, exists := mc.manifests[url]; exists {
+	url := pr.Url()
+	var mh imgpull.ManifestHolder
+	var exists bool
+	if mh, exists = mc.manifests[url]; !exists {
+		url = pr.AltDockerUrl()
+		if url != "" {
+			mh, exists = mc.manifests[url]
+		}
+	}
+	if exists {
 		mh.Pulled = curTime()
 		mc.manifests[url] = mh
 		if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
@@ -357,9 +366,10 @@ func getManifestFromCache(url string, imagePath string) (imgpull.ManifestHolder,
 // the pull request has not already been enqueued by another goroutine. Non-nil means another
 // goroutine HAS already enqueued the pull and the caller must wait on the returned
 // channel to be signalled when the pull completes by the pulling goroutine.
-func enqueuePull(url string) chan bool {
+func enqueuePull(pr pullrequest.PullRequest) chan bool {
 	cp.Lock()
 	defer cp.Unlock()
+	url := pr.Url()
 	if chans, exists := cp.pulls[url]; exists {
 		ch := make(chan bool)
 		cp.pulls[url] = append(chans, ch)

@@ -8,6 +8,8 @@
 4. CI
    - govulncheck
    - SBOM
+   - bench
+   - labstack init
 5. Consider https://github.com/OpenAPITools/openapi-generator
 6. Instrumentation
 7. Enable swagger UI (https://github.com/go-swagger/go-swagger)?

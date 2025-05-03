@@ -1,10 +1,11 @@
 package helpers
 
 import (
-	"ociregistry/impl/globals"
 	"os"
 	"path/filepath"
 	"regexp"
+
+	"github.com/aceeric/ociregistry/impl/globals"
 )
 
 var srch = `.*([a-f0-9]{64}).*`

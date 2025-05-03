@@ -1,4 +1,4 @@
-module ociregistry
+module github.com/aceeric/ociregistry
 
 go 1.23.3
 

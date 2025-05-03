@@ -3,14 +3,15 @@ package preload
 import (
 	"bufio"
 	"fmt"
-	"ociregistry/impl/config"
-	"ociregistry/impl/globals"
-	"ociregistry/impl/pullrequest"
-	"ociregistry/impl/serialize"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/globals"
+	"github.com/aceeric/ociregistry/impl/pullrequest"
+	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"

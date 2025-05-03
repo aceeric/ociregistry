@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"ociregistry/impl/config"
-	"ociregistry/impl/pullrequest"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/pullrequest"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"

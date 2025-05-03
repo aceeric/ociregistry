@@ -1,8 +1,8 @@
 package main
 
 import (
-	"ociregistry/impl/cmdline"
-	"ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/cmdline"
+	"github.com/aceeric/ociregistry/impl/config"
 )
 
 // getCfg calls the command line parser to parse the command line. If one of the command line

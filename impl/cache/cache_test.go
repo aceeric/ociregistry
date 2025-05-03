@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"io"
 	"math/rand/v2"
-	"ociregistry/impl/pullrequest"
-	"ociregistry/impl/serialize"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
+
+	"github.com/aceeric/ociregistry/impl/pullrequest"
+	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/opencontainers/go-digest"

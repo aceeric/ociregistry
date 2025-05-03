@@ -3,11 +3,12 @@ package cmdline
 import (
 	"context"
 	"fmt"
-	"ociregistry/impl/config"
 	"os"
 	"runtime"
 	"slices"
 	"strings"
+
+	"github.com/aceeric/ociregistry/impl/config"
 
 	"github.com/urfave/cli/v3"
 )

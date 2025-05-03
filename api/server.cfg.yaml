@@ -1,7 +1,7 @@
 package: api
 output: api/ociregistry.gen.go
 additional-imports:
-- package: ociregistry/api/models
+- package: github.com/aceeric/ociregistry/api/models
   alias: .
 generate:
   echo-server: true

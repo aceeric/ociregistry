@@ -2,9 +2,10 @@ package main
 
 import (
 	_ "embed"
-	"ociregistry/impl/config"
 	"os"
 	"path/filepath"
+
+	"github.com/aceeric/ociregistry/impl/config"
 )
 
 //go:embed hello_world/config.json

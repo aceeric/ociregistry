@@ -1,11 +1,12 @@
 package cmdline
 
 import (
-	"ociregistry/impl/config"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/aceeric/ociregistry/impl/config"
 )
 
 func clearParse() {

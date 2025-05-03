@@ -6,9 +6,10 @@ package impl
 
 import (
 	"net/http"
-	"ociregistry/api/models"
-	"ociregistry/impl/config"
 	"strings"
+
+	"github.com/aceeric/ociregistry/api/models"
+	"github.com/aceeric/ociregistry/impl/config"
 
 	_ "crypto/sha256"
 	_ "crypto/sha512"

@@ -2,12 +2,13 @@ package impl
 
 import (
 	"net/http"
-	. "ociregistry/api/models"
-	"ociregistry/impl/cache"
-	"ociregistry/impl/helpers"
-	"ociregistry/impl/pullrequest"
 	"os"
 	"strconv"
+
+	. "github.com/aceeric/ociregistry/api/models"
+	"github.com/aceeric/ociregistry/impl/cache"
+	"github.com/aceeric/ociregistry/impl/helpers"
+	"github.com/aceeric/ociregistry/impl/pullrequest"
 
 	log "github.com/sirupsen/logrus"
 

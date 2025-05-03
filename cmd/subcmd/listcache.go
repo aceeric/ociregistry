@@ -2,11 +2,12 @@ package subcmd
 
 import (
 	"fmt"
-	"ociregistry/impl/config"
-	"ociregistry/impl/serialize"
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )

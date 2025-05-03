@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"ociregistry/impl/helpers"
 	"testing"
+
+	"github.com/aceeric/ociregistry/impl/helpers"
 )
 
 // Sanity check the mock OCI distribution server

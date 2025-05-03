@@ -5,10 +5,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"ociregistry/impl/config"
-	"ociregistry/mock"
 	"os"
 	"testing"
+
+	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/mock"
 
 	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"

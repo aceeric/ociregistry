@@ -5,12 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
-	"ociregistry/impl/config"
 	"os"
 	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/aceeric/ociregistry/impl/config"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/opencontainers/go-digest"

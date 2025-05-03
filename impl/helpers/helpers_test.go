@@ -1,10 +1,11 @@
 package helpers
 
 import (
-	"ociregistry/impl/globals"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/aceeric/ociregistry/impl/globals"
 )
 
 func TestGetBlobPath(t *testing.T) {

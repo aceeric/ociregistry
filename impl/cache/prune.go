@@ -3,16 +3,17 @@ package cache
 import (
 	"errors"
 	"fmt"
-	"ociregistry/impl/config"
-	"ociregistry/impl/helpers"
-	"ociregistry/impl/pullrequest"
-	"ociregistry/impl/serialize"
 	"os"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/helpers"
+	"github.com/aceeric/ociregistry/impl/pullrequest"
+	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"

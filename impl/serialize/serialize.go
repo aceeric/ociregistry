@@ -2,10 +2,11 @@ package serialize
 
 import (
 	"encoding/json"
-	"ociregistry/impl/globals"
-	"ociregistry/impl/helpers"
 	"os"
 	"path/filepath"
+
+	"github.com/aceeric/ociregistry/impl/globals"
+	"github.com/aceeric/ociregistry/impl/helpers"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"

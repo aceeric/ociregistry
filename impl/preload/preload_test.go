@@ -3,11 +3,12 @@ package preload
 import (
 	"fmt"
 	"io"
-	"ociregistry/impl/config"
-	"ociregistry/mock"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/mock"
 
 	log "github.com/sirupsen/logrus"
 )

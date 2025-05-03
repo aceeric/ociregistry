@@ -3,10 +3,11 @@ package impl
 import (
 	"fmt"
 	"net/http"
-	"ociregistry/api/models"
-	"ociregistry/impl/cache"
 	"regexp"
 	"strings"
+
+	"github.com/aceeric/ociregistry/api/models"
+	"github.com/aceeric/ociregistry/impl/cache"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/labstack/echo/v4"

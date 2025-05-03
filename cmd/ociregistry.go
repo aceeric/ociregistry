@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"ociregistry/cmd/subcmd"
-	"ociregistry/impl/config"
-	"ociregistry/impl/globals"
-	"ociregistry/impl/preload"
+	"github.com/aceeric/ociregistry/cmd/subcmd"
+	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/globals"
+	"github.com/aceeric/ociregistry/impl/preload"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )

@@ -17,4 +17,5 @@ jobs:
       - name: Build
         shell: bash
         run: |
+          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
           make oapi-codegen

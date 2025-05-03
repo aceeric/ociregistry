@@ -15,7 +15,7 @@ oapi-codegen:
 
 .PHONY: test
 test:
-	go test $(ROOT)/cmd $(ROOT)/impl/... $(ROOT)/mock -v -cover -coverprofile=$(ROOT)/prof.out
+	go test $(ROOT)/cmd/... $(ROOT)/impl/... $(ROOT)/mock/... -v -cover -coverprofile=$(ROOT)/prof.out
 
 .PHONY: vet
 vet:

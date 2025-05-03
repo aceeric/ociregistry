@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/opencontainers/go-digest"
@@ -98,22 +99,30 @@ func TestPrunebyDate(t *testing.T) {
 		t.Fail()
 	}
 	var cutoff time.Time
+	// all files will be named by digest - the digests are irrelevant we just use
+	// them to get some files to change the dates on
 	if entries, err := os.ReadDir(filepath.Join(td, "img")); err != nil {
 		t.Fail()
 	} else {
 		for i := 0; i < manifestCnt; i++ {
 			// change create date - one per month
-			datestr := fmt.Sprintf("2025-%02d-01T23:24:25", i+1)
+			year, month, day := time.Now().AddDate(0, -1, 0).Date()
+			datestr := fmt.Sprintf("%04d-%02d-%02dT23:24:25", year, month, day+i)
 			tstamp, err := time.Parse(dateFormat, datestr)
 			if err != nil {
 				t.Fail()
 			}
 			if i == expectPrune-1 {
+				// set the cutoff halfway through
 				cutoff = tstamp.Add(time.Second)
 			}
-			fname := filepath.Join(td, "img", entries[i].Name())
-			if err := os.Chtimes(fname, tstamp, tstamp); err != nil {
-				fmt.Println(err)
+			mh, exists := serialize.MhFromFilesystem(entries[i].Name(), true, td)
+			if !exists {
+				t.Fail()
+			}
+			mh.Created = datestr
+			if serialize.MhToFilesystem(mh, td, true) != nil {
+				t.Fail()
 			}
 		}
 	}
@@ -200,6 +209,7 @@ func makeTestFiles(cnt int) (string, string, error) {
 				return "", "", err
 			}
 		}
+		mh.Created = time.Now().Format(dateFormat)
 		mb, _ := json.Marshal(mh)
 		err = os.WriteFile(filepath.Join(dir, "img", manifestDigests[i]), mb, 0777)
 		if err != nil {

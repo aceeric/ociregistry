@@ -24,7 +24,7 @@ type match struct {
 }
 
 // matches has the map of manifests that matched the prune criteria
-var matches = make(map[string]match)
+var matches map[string]match
 
 // Prune prunes the cache on the file system. It is intended for use when the server is not
 // running. It supports prune by date, or by go regex. Prune by date selects manifests for
@@ -44,6 +44,7 @@ func Prune() error {
 	var handler serialize.CacheEntryHandler
 	var err error
 
+	matches = make(map[string]match)
 	pruneCfg := config.GetPruneConfig()
 	switch pruneCfg.Type {
 	case "pattern":

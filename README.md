@@ -174,7 +174,7 @@ helm upgrade --install ociregistry oci://quay.io/appzygy/helm-charts/ociregistry
 
 ## Configuring containerd
 
-This section shows how to configure containerd in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry. This has been tested with containerd >= `v1.7`:
+This section shows how to configure containerd in your Kubernetes cluster to mirror **all** image pulls to the pull-through registry. This has been tested with containerd >= `v1.7.6`:
 
 Add a `config_path` entry to `/etc/containerd/config.toml` to tell containerd to load all registry mirror configurations from that directory:
 

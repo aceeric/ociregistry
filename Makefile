@@ -33,8 +33,8 @@ gocyclo:
 coverprof: test
 	go tool cover -html=$(ROOT)/prof.out
 
-.PHONY: desktop
-desktop:
+.PHONY: server
+server:
 	CGO_ENABLED=0 go build -ldflags "-X 'main.buildVer=$(SERVER_VERSION)' -X 'main.buildDtm=$(DATETIME)'"\
 	 -a -o $(ROOT)/bin/ociregistry $(ROOT)/cmd/*.go
 
@@ -72,7 +72,7 @@ coverprof     Runs the unit tests, then runs 'go tool cover' to show coverage in
 oapi-codegen  Generates go code in the 'api' directory from the 'ociregistry.yaml'
               open API schema and configuration files in that directory.
 
-desktop       Builds the server binary on your desktop. After building then:
+server        Builds the server binary on your desktop. After building then:
               'bin/ociregistry --help' to simply run the server on your desktop for
               testing purposes. You can also use the server binary as a systemd
               service. See the 'systemd-service' directory for more details.

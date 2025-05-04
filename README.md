@@ -1,5 +1,7 @@
 # Pull-only, Pull-through Caching OCI Distribution Server
 
+[![Unit tests](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml)
+
 This project is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 
 1. It exclusively provides _pull_ capability. You can't push images to it, it doesn't support the `/v2/_catalog` endpoint, etc. (Though you can pre-load it. More on that below.)

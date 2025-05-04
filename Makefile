@@ -23,7 +23,16 @@ oapi-codegen:
 
 .PHONY: test
 test:
-	go test $(ROOT)/cmd/... $(ROOT)/impl/... $(ROOT)/mock/... -v -cover -coverprofile=$(ROOT)/prof.out
+	go test $(ROOT)/cmd/... $(ROOT)/impl/... $(ROOT)/mock/...\
+	  -coverpkg=./... -v -cover -coverprofile=$(ROOT)/cover.out
+
+.PHONY: coverage
+coverage:
+	go tool cover -html=$(ROOT)/cover.out
+
+.PHONY: coverage-rpt
+coverage-rpt:
+	go-test-coverage --config=$(ROOT)/.testcoverage.yml
 
 .PHONY: vet
 vet:
@@ -32,10 +41,6 @@ vet:
 .PHONY: gocyclo
 gocyclo:
 	gocyclo -over 15 -ignore "merge.go|_test" $(ROOT)/cmd $(ROOT)/impl/
-
-.PHONY: coverprof
-coverprof: test
-	go tool cover -html=$(ROOT)/prof.out
 
 .PHONY: server
 server:
@@ -87,8 +92,12 @@ vet               Runs go vet.
 
 gocyclo           Runs gocyclo.
 
-coverprof         Runs the unit tests, then runs 'go tool cover' to show coverage in
-                  a browser window.
+coverage          Runs 'go tool cover' to show coverage of the most recent test run in
+                  a browser window. (Does not run the unit tests.)
+
+coverage-rpt      Uses https://github.com/marketplace/actions/go-test-coverage to
+                  create a coverage report  of the most recent test run. (Does not
+                  run the unit tests.)
 
 oapi-codegen      Generates go code in the 'api' directory from the 'ociregistry.yaml'
                   open API schema and configuration files in that directory.

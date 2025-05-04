@@ -73,7 +73,7 @@ func TestLoadConfigFile(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	defer os.Remove(td)
+	defer os.RemoveAll(td)
 	cfgFile := filepath.Join(td, "testcfg.yaml")
 	os.WriteFile(cfgFile, []byte(testCfg), 0700)
 	if Load(cfgFile) != nil {

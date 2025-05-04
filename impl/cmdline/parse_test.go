@@ -9,19 +9,14 @@ import (
 	"github.com/aceeric/ociregistry/impl/config"
 )
 
-func clearParse() {
-	fromCmdline = config.FromCmdLine{}
-	cfg = config.Configuration{}
-}
-
 // Test that the parser detects when defaults are overridden on the command line for the serve command
 func TestParseServe(t *testing.T) {
-	clearParse()
+	ClearParse()
 	td, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fail()
 	}
-	defer os.Remove(td)
+	defer os.RemoveAll(td)
 	afile := filepath.Join(td, "foo")
 	os.WriteFile(afile, []byte("foo"), 0755)
 
@@ -61,12 +56,12 @@ func TestParseServe(t *testing.T) {
 
 // Test that the parser detects when defaults are overridden on the command line for the prune command
 func TestParsePrune(t *testing.T) {
-	clearParse()
+	ClearParse()
 	td, err := os.MkdirTemp("", "")
 	if err != nil {
 		t.Fail()
 	}
-	defer os.Remove(td)
+	defer os.RemoveAll(td)
 	afile := filepath.Join(td, "foo")
 	os.WriteFile(afile, []byte("foo"), 0755)
 
@@ -119,7 +114,7 @@ var expectConfig = config.Configuration{
 // Test that a command line with nothing specified does not overwrite any part of
 // existing config.
 func TestMergeConfig(t *testing.T) {
-	clearParse()
+	ClearParse()
 	if err := config.SetConfigFromStr([]byte(testCfg)); err != nil {
 		t.Fail()
 	}

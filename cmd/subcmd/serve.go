@@ -2,6 +2,7 @@ package subcmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -31,6 +32,10 @@ Process id: %d
 Command line: %v
 ----------------------------------------------------------------------
 `
+
+// listener will be initialized with the Echo listener once the Echo server
+// is started.
+var listener net.Listener
 
 // Serve runs the OCI distribution server, blocking until stopped with CTRL-C
 // or via the command REST API.
@@ -83,7 +88,13 @@ func Serve(buildVer string, buildDtm string) error {
 			e.Logger.Fatal("shutting down the server. error:", err)
 		}
 	}()
+	err = waitForEchoListener(e)
+	if err != nil {
+		return errors.New("timed out waiting for Echo listener")
+	}
+	listener = e.Listener
 	log.Info("server is running")
+
 	<-shutdownCh
 	log.Infof("received stop command - stopping")
 	e.Server.Shutdown(context.Background())
@@ -96,4 +107,33 @@ func Serve(buildVer string, buildDtm string) error {
 	cache.WaitPulls()
 	log.Infof("stopped")
 	return nil
+}
+
+// waitForEchoListener waits for the Listener in the Echo server to be initialized. This
+// is only used in unit testing so that the unit tests can start the server on ":0" and let
+// the http package assign a random port number. Supports unit testing.
+func waitForEchoListener(e *echo.Echo) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			if e.Listener != nil {
+				return nil
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
+
+// GetListener supports unit testing.
+func GetListener() net.Listener {
+	return listener
+}
+
+// InitListener supports unit testing.
+func InitListener() {
+	listener = nil
 }

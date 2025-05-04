@@ -1,0 +1,18 @@
+profile: cover.out
+
+threshold:
+  file: 70
+  package: 80
+  total: 95
+
+override: []
+
+exclude:
+  paths:
+    - ^impl/ociregistry\.go
+    - ^api/
+
+breakdown-file-name: ''
+
+diff:
+  base-breakdown-file-name: ''

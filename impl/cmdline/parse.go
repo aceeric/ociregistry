@@ -334,3 +334,9 @@ func Parse() (config.FromCmdLine, config.Configuration, error) {
 	}
 	return fromCmdline, cfg, nil
 }
+
+// ClearParse supports unit testing
+func ClearParse() {
+	fromCmdline = config.FromCmdLine{}
+	cfg = config.Configuration{}
+}

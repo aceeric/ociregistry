@@ -9,10 +9,14 @@ import (
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"testing"
 
+	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
 	"github.com/aceeric/ociregistry/impl/serialize"
+	"github.com/aceeric/ociregistry/mock"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/opencontainers/go-digest"
@@ -181,4 +185,60 @@ func setupTestLoad(mts []imgpull.ManifestType) (string, error) {
 		}
 	}
 	return td, nil
+}
+
+var regConfig = `
+---
+registries:
+  - name: %s
+    scheme: http
+`
+
+// Tests concurrent pulls of the same manifest URL. Set a delay on the mock OCI distr.
+// server to allow enough time to enqueue two "concurrent" pull to exercise the code path
+// where the first pull actually goes to the upstream and the second pulls waits to be
+// signalled by the first pull.
+func TestConcurrentGet(t *testing.T) {
+	resetCache()
+	params := mock.NewMockParams(mock.NONE, mock.HTTP)
+	params.DelayMs = 500
+	var upstreamPulls atomic.Int32
+	callback := func(url string) {
+		// if pulls are concurrent, only one should be going to the upstream
+		if url == "/v2/hello-world/manifests/latest" {
+			upstreamPulls.Add(1)
+		}
+	}
+	server, url := mock.ServerWithCallback(params, &callback)
+	cfg := fmt.Sprintf(regConfig, url)
+	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
+		t.Fail()
+	}
+	defer server.Close()
+	td, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.RemoveAll(td)
+	pr, err := pullrequest.NewPullRequestFromUrl(fmt.Sprintf("%s/hello-world:latest", url))
+	if err != nil {
+		t.Fail()
+	}
+	var wg sync.WaitGroup
+	var errs atomic.Int32
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			const twoSeconds = 2000
+			if _, err := GetManifest(pr, td, twoSeconds, false); err != nil {
+				errs.Add(1)
+			}
+			//fmt.Print("DONE")
+		}()
+	}
+	wg.Wait()
+	if upstreamPulls.Load() != 1 || errs.Load() != 0 {
+		t.Fail()
+	}
 }

@@ -12,12 +12,10 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
-      - name: Install Helm
+      - name: Install Helm Docs
         shell: bash
         run: |
-          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-          chmod 700 get_helm.sh
-          sudo ./get_helm.sh
+          go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
 
       - name: Build the Helm chart
         shell: bash

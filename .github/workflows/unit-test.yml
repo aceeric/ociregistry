@@ -21,3 +21,5 @@ jobs:
         shell: bash
         run: |
           make test
+
+      - uses: creekorful/goreportcard-action@v1.0

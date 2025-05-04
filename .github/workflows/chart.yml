@@ -1,0 +1,38 @@
+name: Chart
+
+on:
+  push:
+    tags:        
+      - '**'
+
+jobs:
+  publish_chart:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        shell: bash
+        run: |
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          chmod 700 get_helm.sh
+          sudo ./get_helm.sh
+
+      - name: Build the Helm chart
+        shell: bash
+        run: |
+          make helm-docs helm-package
+
+      - name: Login to Quay
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ vars.QUAY_CI_ACCOUNT }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+
+      - name: Push the Helm chart
+        shell: bash
+        run: |
+          make helm-push

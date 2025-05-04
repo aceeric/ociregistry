@@ -1,2 +1,2 @@
-// Package helpers contains miscellanous helper functions.
+// Package helpers contains miscellaneous helper functions.
 package helpers

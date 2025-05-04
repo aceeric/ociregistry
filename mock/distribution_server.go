@@ -162,7 +162,7 @@ func ServerWithCallback(params MockParams, callback *func(string)) (*httptest.Se
 	return server, re.ReplaceAllString(server.URL, "")
 }
 
-// getTestFilesDir finds the directory that this file is in becuase the
+// getTestFilesDir finds the directory that this file is in because the
 // mock registry server could be used from other test directories but it
 // needs files in this directory.
 func getTestFilesDir() string {

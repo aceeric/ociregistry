@@ -1,0 +1,48 @@
+name: Publish
+
+on:
+  push:
+    tags:        
+      - '**'
+
+# env vars are used by the make file
+env:
+  SERVER_VERSION: ${{ github.ref_name }}
+  GO_VERSION: 1.24.2
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Test
+        shell: bash
+        run: |
+          make test
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Login to Quay
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.QUAY_CI_ACCOUNT }}
+          password: ${{ secrets.QUAY_ROBOT_TOKEN }}
+
+      - name: Build and push the Server image
+        shell: bash
+        run: |
+          make image push
+
+      - name: Build and push the Helm chart
+        shell: bash
+        run: |
+          make helm-docs helm-package helm-push

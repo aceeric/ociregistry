@@ -79,7 +79,7 @@ bin/ociregistry --image-path /tmp/images serve --port 8080
 ```shell
 ----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
-Version: 1.8.1, build date: 2025-04-21T00:05:54.37Z
+Version: Z.Z.Z, build date: 2025-04-21T00:05:54.37Z
 Started: 2025-04-20 20:06:04.6693839 -0400 EDT (port 8080)
 Running as (uid:gid) 1000:1000
 Process id: 27010
@@ -162,7 +162,7 @@ DEBU[0148] serving manifest from cache: registry.k8s.io/kube-scheduler@sha256:01
 The chart is hosted on [Artifacthub](https://artifacthub.io/packages/helm/ociregistry/ociregistry). Create a values file `./my-values.yml` with any overrides and then:
 
 ```shell
-CHARTVER=1.8.1
+CHARTVER=Z.Z.Z
 helm upgrade --install ociregistry oci://quay.io/appzygy/helm-charts/ociregistry\
   --version $CHARTVER\
   --namespace ociregistry\

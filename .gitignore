@@ -4,3 +4,4 @@ cmd/__debug_bin*
 prof.out
 *.tar
 *.tgz
+charts/ociregistry/README.md

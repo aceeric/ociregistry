@@ -1,10 +1,9 @@
-name: Build
+name: Run unit tests
 
-on:
-  workflow_dispatch:
+on: push
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Check out
@@ -19,9 +18,3 @@ jobs:
         shell: bash
         run: |
           make test
-
-      - name: Build
-        shell: bash
-        run: |
-          go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
-          make oapi-codegen server

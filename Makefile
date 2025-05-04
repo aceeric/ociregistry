@@ -1,8 +1,10 @@
-SERVER_VERSION ?= 1.8.1
+SERVER_VERSION ?= 1.8.2
+GO_VERSION     ?= 1.24.2
 DATETIME       := $(shell date -u +%Y-%m-%dT%T.%2NZ)
 REGISTRY       := quay.io
 ORG            := appzygy
 ROOT           := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+CHART_VERSION  := $(shell grep '^version:' ${ROOT}/charts/ociregistry/Chart.yaml | awk '{print $$2}')
 
 .PHONY : all
 all:
@@ -11,6 +13,8 @@ all:
 .PHONY : vartest
 vartest:
 	@echo SERVER_VERSION=$(SERVER_VERSION)
+	@echo GO_VERSION=$(GO_VERSION)
+	@echo CHART_VERSION=$(CHART_VERSION)
 
 .PHONY: oapi-codegen
 oapi-codegen:
@@ -43,14 +47,31 @@ image:
 	docker buildx build --tag $(REGISTRY)/$(ORG)/ociregistry:$(SERVER_VERSION)\
 	 --build-arg SERVER_VERSION=$(SERVER_VERSION)\
 	 --build-arg DATETIME=$(DATETIME)\
+	 --build-arg GO_VERSION=$(GO_VERSION)\
 	 $(ROOT)
 
 .PHONY: push
 push:
 	docker push $(REGISTRY)/$(ORG)/ociregistry:$(SERVER_VERSION)
 
-.PHONY: publish
-publish: oapi-codegen image push
+.PHONY: helm-docs
+helm-docs:
+	helm-docs --chart-search-root $(ROOT)/charts
+
+.PHONY: helm-package
+helm-package:
+	helm package $(ROOT)/charts/ociregistry
+
+.PHONY: helm-push
+helm-push:
+	helm push $(ROOT)/ociregistry-$(CHART_VERSION).tgz oci://quay.io/appzygy/helm-charts
+
+.PHONY: helm-artifacthub
+helm-artifacthub:
+	oras push\
+	 quay.io/appzygy/helm-charts/ociregistry:artifacthub.io\
+	 --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml\
+	 $(ROOT)/charts/artifacthub-repo.yml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml
 
 .PHONY : help
 help:
@@ -60,31 +81,36 @@ export HELPTEXT
 define HELPTEXT
 This make file provides the following targets:
 
-test          Runs the unit tests.
+test              Runs the unit tests.
 
-vet           Runs go vet.
+vet               Runs go vet.
 
-gocyclo       Runs gocyclo.
+gocyclo           Runs gocyclo.
 
-coverprof     Runs the unit tests, then runs 'go tool cover' to show coverage in
-              a browser window.
+coverprof         Runs the unit tests, then runs 'go tool cover' to show coverage in
+                  a browser window.
 
-oapi-codegen  Generates go code in the 'api' directory from the 'ociregistry.yaml'
-              open API schema and configuration files in that directory.
+oapi-codegen      Generates go code in the 'api' directory from the 'ociregistry.yaml'
+                  open API schema and configuration files in that directory.
 
-server        Builds the server binary on your desktop. After building then:
-              'bin/ociregistry --help' to simply run the server on your desktop for
-              testing purposes. You can also use the server binary as a systemd
-              service. See the 'systemd-service' directory for more details.
+server            Builds the server binary on your desktop. After building then:
+                  'bin/ociregistry --help' to simply run the server on your desktop for
+                  testing purposes. You can also use the server binary as a systemd
+                  service. See the 'systemd-service' directory for more details.
 
-image         Builds the server OCI image and stores it in the local Docker image
-              cache.
+image             Builds the server OCI image and stores it in the local Docker image
+                  cache.
 
-push          Pushes the image built in the 'image' step to the '$(REGISTRY)' OCI
-              distribution server, in the '$(ORG)' user/org. Requires the
-              appropriate push permissions, of course.
+push              Pushes the image built in the 'image' step to the '$(REGISTRY)' OCI
+                  distribution server, in the '$(ORG)' user/org. Requires the
+                  appropriate push permissions, of course.
 
-publish       Invokes, in order, the 1) oapi-codegen, 2) image, and 3) push
-              targets.
+helm-docs         Builds the Helm chart README from values and the README template.
+
+helm-package      Builds the Helm chart tarball.
+
+helm-push         Publishes the Helm chart to Quay.
+
+helm-artifacthub  Pushes Artifact hub verified publisher file to Quay.
 
 endef

@@ -38,6 +38,9 @@ jobs:
           username: ${{ vars.QUAY_CI_ACCOUNT }}
           password: ${{ secrets.QUAY_ROBOT_TOKEN }}
 
+      - name: Check out
+        uses: actions/checkout@v4
+
       - name: Build and push the Server image
         shell: bash
         run: |

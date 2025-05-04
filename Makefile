@@ -59,7 +59,7 @@ image:
 push:
 	docker push $(REGISTRY)/$(ORG)/ociregistry:$(SERVER_VERSION)
 
-.PHONY: helm-docs
+.PHONY: helm-docs # requires https://github.com/norwoodj/helm-docs
 helm-docs:
 	helm-docs --chart-search-root $(ROOT)/charts
 
@@ -71,7 +71,7 @@ helm-package:
 helm-push:
 	helm push $(ROOT)/ociregistry-$(CHART_VERSION).tgz oci://quay.io/appzygy/helm-charts
 
-.PHONY: helm-artifacthub
+.PHONY: helm-artifacthub # requires https://oras.land/docs/installation/#linux
 helm-artifacthub:
 	oras push\
 	 quay.io/appzygy/helm-charts/ociregistry:artifacthub.io\

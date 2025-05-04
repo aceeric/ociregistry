@@ -38,6 +38,10 @@ coverage-rpt:
 vet:
 	go vet $(ROOT)/cmd $(ROOT)/impl/... $(ROOT)/mock
 
+.PHONY: vulncheck # requires go install golang.org/x/vuln/cmd/govulncheck@latest
+vulncheck:
+	govulncheck -show verbose $(ROOT)/cmd/... $(ROOT)/impl/...
+
 .PHONY: gocyclo
 gocyclo:
 	gocyclo -over 15 -ignore "merge.go|_test" $(ROOT)/cmd $(ROOT)/impl/
@@ -89,6 +93,8 @@ This make file provides the following targets:
 test              Runs the unit tests.
 
 vet               Runs go vet.
+
+vulncheck         Runs govulncheck
 
 gocyclo           Runs gocyclo.
 

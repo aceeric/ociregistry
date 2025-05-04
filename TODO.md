@@ -3,14 +3,10 @@
 1. Readthedocs
    - concurrency design
    - volumetrics
-2. Code comments - spelling/grammar   
-3. CI
-   - govulncheck
-   - gocyclo
+2. CI
    - coverage report
    - SBOM
    - bench
-   - labstack init
-4. Consider https://github.com/OpenAPITools/openapi-generator
-5. Instrumentation
-6. Enable swagger UI (https://github.com/go-swagger/go-swagger)?
+3. Consider https://github.com/OpenAPITools/openapi-generator
+4. Instrumentation
+5. Enable swagger UI (https://github.com/go-swagger/go-swagger)?

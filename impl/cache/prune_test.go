@@ -22,6 +22,50 @@ func init() {
 	log.SetOutput(io.Discard)
 }
 
+// Create three manifests and configure the background pruner to prune two. Let
+// the pruner run as a goroutine. Then terminate the pruner and verify that in fact
+// if pruned two manifests.
+func TestRunPruner(t *testing.T) {
+	td, err := setupPrune()
+	if err != nil {
+		t.FailNow()
+	}
+	defer os.RemoveAll(td)
+	stopPruneCh := make(chan bool)
+	pruneStoppedCh := make(chan bool)
+	if err := RunPruner(stopPruneCh, pruneStoppedCh); err != nil {
+		t.FailNow()
+	}
+	time.Sleep(time.Second)
+	stopPruneCh <- true
+	<-pruneStoppedCh
+	if len(mc.manifests) != 1 {
+		t.Fail()
+	}
+}
+
+// Create three manifests and call the pruner used by the REST API.
+func TestPrunerFromApi(t *testing.T) {
+	td, err := setupPrune()
+	if err != nil {
+		t.FailNow()
+	}
+	defer os.RemoveAll(td)
+
+	duration := "1d"
+	count := -1
+	expr := ""
+	dryRun := "false"
+
+	_, err = Prune("created", &duration, &expr, &dryRun, &count)
+	if err != nil {
+		t.FailNow()
+	}
+	if len(mc.manifests) != 1 {
+		t.Fail()
+	}
+}
+
 // Test the mechanics of pruning
 func TestPrune(t *testing.T) {
 	resetCache()
@@ -162,4 +206,43 @@ func TestComparer(t *testing.T) {
 			t.FailNow()
 		}
 	}
+}
+
+// Creates three manifests in cache with create dates: today, 2 days ago,
+// and 6 days ago. Returns the name of the test directory and an error.
+func setupPrune() (string, error) {
+	resetCache()
+	td, _ := os.MkdirTemp("", "")
+	for _, dir := range []string{"fat", "img", "blobs"} {
+		os.Mkdir(filepath.Join(td, dir), 0777)
+	}
+	curDt := time.Now()
+	for i := 0; i < 3; i++ {
+		mhDate := curDt.AddDate(0, 0, -(i * 2))
+		mh := imgpull.ManifestHolder{
+			Type:     imgpull.V1ociManifest,
+			Digest:   strconv.Itoa(int(imgpull.V1ociManifest)),
+			ImageUrl: fmt.Sprintf("docker.io/test/manifest:v1.2.%d", i),
+			Created:  mhDate.Format(dateFormat),
+		}
+		pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
+		if err != nil {
+			return "", err
+		}
+		addToCache(pr, mh, td)
+	}
+	cfg := config.Configuration{
+		// prune everything created older than a day ago, run every 100 milliseconds
+		PruneConfig: config.PruneConfig{
+			Enabled:  true,
+			Duration: "1d",
+			Type:     "created",
+			Freq:     "100ms",
+			Count:    -1,
+			Expr:     "",
+			DryRun:   false,
+		},
+	}
+	config.Set(cfg)
+	return td, nil
 }

@@ -18,12 +18,21 @@ type authCfg struct {
 	Password string `yaml:"password"`
 }
 
-// tlsCfg holds TLS configuration for registry access
+// tlsCfg holds TLS configuration for upstream registry access
 type tlsCfg struct {
 	Cert               string `yaml:"cert"`
 	Key                string `yaml:"key"`
 	CA                 string `yaml:"ca"`
 	InsecureSkipVerify bool   `yaml:"insecureSkipVerify"`
+}
+
+// ServerTlsCfg holds TLS configuration for TLS with (downstream) clients,
+// i.e. containerd. Valid values for ClientAuth: "none", and "verify"
+type ServerTlsCfg struct {
+	Cert       string `yaml:"cert"`
+	Key        string `yaml:"key"`
+	CA         string `yaml:"ca"`
+	ClientAuth string `yaml:"clientAuth"`
 }
 
 // RegistryConfig combines authCfg and tlsCfg and configures the pull client
@@ -72,6 +81,7 @@ type Configuration struct {
 	Registries       []RegistryConfig `yaml:"registries"`
 	PruneConfig      PruneConfig      `yaml:"pruneConfig"`
 	ListConfig       ListConfig       `yaml:"listConfig"`
+	ServerTlsCfg     ServerTlsCfg     `yaml:"serverTlsConfig"`
 }
 
 // FromCmdLine has a flag for every command-line option. The parsing code
@@ -182,6 +192,10 @@ func GetPruneConfig() PruneConfig {
 
 func GetListConfig() ListConfig {
 	return config.ListConfig
+}
+
+func GetServerTlsCfg() ServerTlsCfg {
+	return config.ServerTlsCfg
 }
 
 // Load loads the passed configuration file into the global configuration struct

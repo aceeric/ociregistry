@@ -62,6 +62,7 @@ func (r *OciRegistry) CmdBloblist(ctx echo.Context, params models.CmdBloblistPar
 }
 
 // GET cmd/image/list?digest=... or cmd/image/list?pattern=...
+// If digest, then manifests with layers matching the digest substr are returned
 func (r *OciRegistry) CmdImagelist(ctx echo.Context, params models.CmdImagelistParams) error {
 	defer func() {
 		if err := recover(); err != nil {

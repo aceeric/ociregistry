@@ -68,7 +68,7 @@ func TestPrunerFromApi(t *testing.T) {
 
 // Test the mechanics of pruning
 func TestPrune(t *testing.T) {
-	resetCache()
+	ResetCache()
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	for _, dir := range []string{"fat", "img", "blobs"} {
@@ -117,7 +117,7 @@ func TestPrune(t *testing.T) {
 // Test a simple comparer to test the functionality that traverses the manifest cache
 // and calls the comparer.
 func TestGetManifestsToPrune(t *testing.T) {
-	resetCache()
+	ResetCache()
 	for i := 0; i < 100; i++ {
 		pr, err := pullrequest.NewPullRequestFromUrl(fmt.Sprintf("foo.io/my-image:%d", i))
 		if err != nil {
@@ -211,7 +211,7 @@ func TestComparer(t *testing.T) {
 // Creates three manifests in cache with create dates: today, 2 days ago,
 // and 6 days ago. Returns the name of the test directory and an error.
 func setupPrune() (string, error) {
-	resetCache()
+	ResetCache()
 	td, _ := os.MkdirTemp("", "")
 	for _, dir := range []string{"fat", "img", "blobs"} {
 		os.Mkdir(filepath.Join(td, dir), 0777)

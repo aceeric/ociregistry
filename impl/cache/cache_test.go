@@ -79,23 +79,11 @@ func init() {
 	log.SetOutput(io.Discard)
 }
 
-func resetCache() {
-	cp = concurrentPulls{
-		pulls: make(map[string][]chan bool),
-	}
-	mc = manifestCache{
-		manifests: map[string]imgpull.ManifestHolder{},
-	}
-	bc = blobCache{
-		blobs: map[string]int{},
-	}
-}
-
 // Setup: creates one each of the four supported manifest types, writes them to the file system,
 // along with blobs. Tests that the cache.Load function loads them correctly.
 func TestLoad(t *testing.T) {
 	mts := []imgpull.ManifestType{imgpull.V2dockerManifestList, imgpull.V2dockerManifest, imgpull.V1ociIndex, imgpull.V1ociManifest}
-	resetCache()
+	ResetCache()
 	td, err := setupTestLoad(mts)
 	if td != "" {
 		defer os.RemoveAll(td)
@@ -199,7 +187,7 @@ registries:
 // where the first pull actually goes to the upstream and the second pulls waits to be
 // signalled by the first pull.
 func TestConcurrentGet(t *testing.T) {
-	resetCache()
+	ResetCache()
 	params := mock.NewMockParams(mock.NONE, mock.HTTP)
 	params.DelayMs = 500
 	var upstreamPulls atomic.Int32

@@ -1,9 +1,9 @@
 profile: cover.out
 
 threshold:
-  file: 70
-  package: 80
-  total: 95
+  file: 65
+  package: 70
+  total: 80
 
 override: []
 

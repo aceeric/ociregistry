@@ -403,3 +403,16 @@ func signalWaiters(url string) {
 func curTime() string {
 	return time.Now().Format(dateFormat)
 }
+
+// ResetCache supports unit tests
+func ResetCache() {
+	cp = concurrentPulls{
+		pulls: make(map[string][]chan bool),
+	}
+	mc = manifestCache{
+		manifests: map[string]imgpull.ManifestHolder{},
+	}
+	bc = blobCache{
+		blobs: map[string]int{},
+	}
+}

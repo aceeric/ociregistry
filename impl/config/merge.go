@@ -39,6 +39,9 @@ func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 	if fromCmdline.PullTimeout || config.PullTimeout == 0 {
 		config.PullTimeout = cfg.PullTimeout
 	}
+	if fromCmdline.Health || config.Health == 0 {
+		config.Health = cfg.Health
+	}
 	if fromCmdline.AlwaysPullLatest || !config.AlwaysPullLatest {
 		config.AlwaysPullLatest = cfg.AlwaysPullLatest
 	}

@@ -1,0 +1,25 @@
+# Test TLS
+#
+# per: https://letsencrypt.org/docs/certificates-for-localhost/#making-and-trusting-your-own-certificates
+#
+# openssl req -x509 -out /tmp/localhost.crt -keyout /tmp/localhost.key \
+#  -newkey rsa:2048 -nodes -sha256 \
+#  -subj '/CN=localhost' -extensions EXT -config <( \
+#   printf "[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=IP:192.168.122.147\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth,clientAuth")
+#
+# helm upgrade --install ociregistry ../../charts/ociregistry\
+#  --namespace ociregistry\
+#  --create-namespace\
+#  --set image.ociregistry.tag=1.8.3-test\
+#  --values values-tls.yaml\
+#  --set-file serverTls.cert=/tmp/localhost.crt\
+#  --set-file serverTls.key=/tmp/localhost.key\
+#  --set-file serverTls.ca=/tmp/localhost.crt\
+#  --dry-run=server
+#
+# curl --cert /tmp/localhost.crt --key /tmp/localhost.key\
+#      --cacert /tmp/localhost.crt https://192.168.122.147:31080/v2/registry.k8s.io/kube-scheduler/manifests/v1.29.1
+
+serverTls:
+  enabled: true
+  clientAuth: verify

@@ -1,7 +1,7 @@
-# helm upgrade --install ociregistry ociregistry\
+# helm upgrade --install ociregistry ../../charts/ociregistry\
 #  --namespace ociregistry\
 #  --create-namespace\
-#  --values ./test-values.yml\
+#  --values ./values-ingress.yml\
 #  --dry-run=server
 ingress:
   enabled: true

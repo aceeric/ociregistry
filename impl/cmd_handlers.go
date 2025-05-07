@@ -20,11 +20,6 @@ func (r *OciRegistry) CmdStop(ctx echo.Context) error {
 	return nil
 }
 
-// GET /health
-func (r *OciRegistry) CmdHealth(ctx echo.Context) error {
-	return ctx.NoContent(http.StatusOK)
-}
-
 // GET /cmd/manifest/list?pattern=...
 func (r *OciRegistry) CmdManifestlist(ctx echo.Context, params models.CmdManifestlistParams) error {
 	defer func() {

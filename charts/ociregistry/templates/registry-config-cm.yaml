@@ -1,9 +1,22 @@
-{{- if .Values.serverConfig.config -}}
+{{- if .Values.serverConfig.configuration -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "ociregistry.fullname" . }}-config
 data:
   registry-config.yaml: |
-  {{- toYaml .Values.serverConfig.config | nindent 4 }}
+  {{- toYaml .Values.serverConfig.configuration | nindent 4 }}
+  {{- if .Values.serverTls.enabled }}
+    serverTlsConfig:
+      {{- if or .Values.serverTls.cert .Values.serverTls.secretName }}
+      cert: /etc/pki/ociregistry/tls.crt
+      {{- end }}
+      {{- if or .Values.serverTls.key .Values.serverTls.secretName }}
+      key: /etc/pki/ociregistry/tls.key
+      {{- end }}
+      {{- if or .Values.serverTls.ca .Values.serverTls.secretName }}
+      ca: /etc/pki/ociregistry/ca.crt
+      {{- end }}
+      clientAuth: {{ .Values.serverTls.clientAuth }}
+  {{- end }}
 {{- end }}

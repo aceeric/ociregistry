@@ -1,8 +1,11 @@
 # Pull-only, Pull-through Caching OCI Distribution Server
 
+
+![Version: 1.8.3](https://img.shields.io/badge/Version-1.8.3-informational?style=rounded-square)
 [![Unit tests](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/aceeric/ociregistry)](https://goreportcard.com/report/github.com/aceeric/ociregistry)
 [![Go Vuln Check](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml)
+[![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/ociregistry)](https://artifacthub.io/packages/search?repo=ociregistry)
 
 This project is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 
@@ -75,6 +78,7 @@ This command compiles the server and creates a binary called `ociregistry` in th
 ### Run the Server
 
 You provide an image storage location with the `--image-path` arg. If the directory doesn't exist the server will create it. The default is `/var/lib/ociregistry` but to kick the tires it makes more sense to use the system temp directory. By default the server listens on `8080`. If you have something running that is already bound to that port, specify `--port`. We'll specify it explicitly here with the default value:
+
 ```shell
 bin/ociregistry --image-path /tmp/images serve --port 8080
 ```
@@ -131,6 +135,7 @@ find /tmp/images
 ```
 
 ### Result
+
 ```shell
 /tmp/images
 /tmp/images/blobs
@@ -237,9 +242,20 @@ port: 8080
 #os: linux
 #arch: amd64
 pullTimeout: 60000
+# if true, then whenever a latest tag is pulled, the server will always pull
+# from the upstream - in other words it acts like a basic proxy. Useful when
+# supporting dev environments where latest is frequently changing.
 alwaysPullLatest: false
+# If true, will not pull from an upstream when an image is requested that
+# is not cached.
 airGapped: false
+# For testing. Only serves 'docker.io/hello-world:latest' from embedded blobs
+# and manifests
 helloWorld: false
+# A port number to run a /health endpoint on for Kubernetes liveness and
+# readiness. By default, the server doesn't listen on a health port. The
+# Helm chart does enable that by default.
+health:
 # see further down for registry configuration
 registries: []
 pruneConfig:
@@ -256,7 +272,16 @@ pruneConfig:
   count: -1
   # if true, just log messages, don't actually prune
   dryRun: false
+# configure TLS with downstream (client) pullers, e.g. containerd.
+# see server tls configuration further down in this README.
+serverTlsConfig:
+  cert:
+  key:
+  ca:
+  clientAuth:
 ```
+
+### Registry Configuration
 
 The OCI Distribution server may need configuration information to connect to upstream registries. If run with no upstream registry config, it will attempt anonymous insecure `HTTPS` access. You specify registry configuration using the `registries` list:
 
@@ -346,6 +371,26 @@ The `tls` section can implement multiple scenarios:
        ca: /remote/ca.crt
        insecureSkipVerify: false
    ```
+
+### Server TLS configuration
+
+This section configures whether/how the server communicates with downstream clients such as containerd over TLS. Example:
+
+```yaml
+serverTlsConfig:
+  cert: /path/to/server.crt
+  key: /path/to/server.private.key
+  ca: /path/to/ca.pem
+  clientAuth: none # or verify
+```
+
+By default, the server runs over HTTP. The following permutations are supported for HTTPS:
+
+| Config | Description |
+|-|-|
+| `cert` and `key` populated | The server will provide the cert to the client to establish 1-way TLS. |
+| `clientAuth: none` | Client cert is not requested and will be ignored if provided. |
+| `clientAuth: verify` | mTLS: Client cert is required and verified. If `ca` is not provided then the client cert is verified against the OS trust store. If `ca` **is** provided then the client cert is verified against the CA. |
 
 ## Command Line Options
 
@@ -650,8 +695,3 @@ Example: `curl "http://hostname:8080/cmd/manifest/list?pattern=calico,cilium&cou
 ### `/cmd/stop`
 
 Stops the server.
-
-### `/health`
-
-Returns 200 if the server is running.
-

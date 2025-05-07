@@ -30,13 +30,21 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
       - name: {{ .Chart.Name }}
-        {{- if .Values.serverConfig.config }}
         command:
         - /ociregistry/server
         args:
+        {{- if .Values.serverConfig.configuration }}
         - --config-file
-        - {{ .Values.serverConfig.mountPath }}/registry-config.yaml
+        - {{ .Values.serverConfig.mountPath | default "/var/ociregistry/config" }}/registry-config.yaml
+        {{- end }}
         - serve
+        {{- if .Values.health.port }}
+        - --health
+        - {{ .Values.health.port | quote }}
+        {{- end }}
+        {{- if .Values.serverConfig.configuration.health }}
+        - --health
+        - {{ .Values.serverConfig.configuration.health | quote }}
         {{- end }}
         securityContext:
           {{- toYaml .Values.securityContext | nindent 10 }}
@@ -46,23 +54,38 @@ spec:
         - name: http
           containerPort: {{ .Values.service.port }}
           protocol: TCP
+        {{- if or .Values.health.port .Values.serverConfig.configuration.health }}
+        - name: health
+          {{- if .Values.health.port }}
+          containerPort: {{ .Values.health.port }}
+          {{- end }}
+          {{- if .Values.serverConfig.configuration.health }}
+          containerPort: {{ .Values.serverConfig.configuration.health }}
+          {{- end }}
+          protocol: TCP
         livenessProbe:
           httpGet:
             path: /health
-            port: http
+            port: health
         readinessProbe:
           httpGet:
             path: /health
-            port: http
+            port: health
+        {{- end }}
         resources:
         {{- toYaml .Values.resources | nindent 10 }}
         {{- with .Values.volumeMounts }}
         volumeMounts:
         {{- toYaml . | nindent 8 }}
         {{- end }}
-        {{- if .Values.serverConfig.config }}
+        {{- if .Values.serverConfig.configuration }}
         - name: config
-          mountPath: {{ .Values.serverConfig.mountPath | default "/var/ociregistry/config"}}
+          mountPath: {{ .Values.serverConfig.mountPath | default "/var/ociregistry/config" }}
+          readOnly: true
+        {{- end }}
+        {{- if or .Values.serverTls.enabled .Values.serverTls.secretName }}
+        - name: server-tls
+          mountPath: /etc/pki/ociregistry
           readOnly: true
         {{- end }}
       volumes:
@@ -70,6 +93,16 @@ spec:
       {{- with .Values.volumes }}
         {{- toYaml . | nindent 6 }}
       {{- end }}
+      {{- end }}
+      {{- if and .Values.serverTls.enabled (not .Values.serverTls.secretName) }}
+      - name: server-tls
+        secret:
+          secretName: {{ include "ociregistry.fullname" . }}-tls
+      {{- end }}
+      {{- if and .Values.serverTls.enabled .Values.serverTls.secretName }}
+      - name: server-tls
+        secret:
+          secretName: {{ .Values.serverTls.secretName }}
       {{- end }}
       {{- if .Values.persistence.hostPath.enabled }}
       - name: images
@@ -91,7 +124,7 @@ spec:
           claimName: {{ include "ociregistry.fullname" . }}
           {{- end }}
       {{- end }}
-      {{- if .Values.serverConfig.config }}
+      {{- if .Values.serverConfig.configuration }}
       - name: config
         configMap:
           name: {{ include "ociregistry.fullname" . }}-config

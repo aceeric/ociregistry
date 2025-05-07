@@ -7,7 +7,7 @@ image:
     # -- The image repository
     repository: appzygy/ociregistry
     # -- The image tag
-    tag: 1.8.2
+    tag: 1.8.3
     # -- Specify a digest to use instead of the tag
     digest:
     # -- The image pull policy
@@ -47,13 +47,40 @@ podSecurityContext: {}
 securityContext: {}
 
 # -- service defines the Service resource. To serve inside the cluster for
-# other cluster workloads, specify `NodePort`. To serve behind an ingress
-# for workloads outside the cluster, specify `ClusterIP`
+# other cluster workloads or containerd, specify `NodePort`. To serve behind an
+# ingress for workloads outside the cluster, specify `ClusterIP`.
 # @default -- See sub-fields
 service:
   type: NodePort
   nodePort: 31080
   port: 8080
+
+# -- Specify a port here and the server will add readiness and liveness probes to
+# the server deployment. You can achieve the same effect with
+# `serverConfig.configuration.health=8081`
+# (or some other value.)
+# @default -- `port: 8081`
+health:
+  port: 8081
+
+# -- Configures the server to serve over TLS. Works two ways: if `secretName` is empty,
+# then the chart creates a secret in the cluster called "releasename"-tls. If `secretName`
+# is provided then uses the provided secret to configure TLS. (The secret is expected to
+# already exist in the cluster namespace.) In both cases, the secret keys are expected as
+# `tls.crt`, `tls.key`, and `ca.crt`. The secret is mounted into the server deployment. The
+# composition of the secret affects how the server configures the TLS handshake. Valid
+# permutations are: 1) `tls.crt` and `tls.key` for 1-way TLS. 2) `tls.crt`, `tls.key` and
+# `clientAuth=verify` for mTLS using the OS (container) trust store. 3) `tls.crt`, `tls.key`,
+# `ca.crt` and `clientAuth=verify` for mTLS using the CA from the secret.
+# @default -- `enabled: false`
+serverTls:
+  enabled: false
+  secretName:
+  cert:
+  key:
+  ca:
+  # -- valid values are `none` and `verify`.
+  clientAuth: none
 
 # -- Configures an ingress for access to the registry outside the cluster. (Could
 # be used to run the registry in one cluster to cache for multiple other clusters.)
@@ -62,20 +89,29 @@ ingress:
   enabled: false
   className: ""
   annotations: {}
-  hosts:
-  - host: chart-example.local
-    paths:
-    - path: /
-      pathType: ImplementationSpecific
+  # To serve on other than "/":
+  #  nginx.ingress.kubernetes.io/use-regex: "true"
+  #  nginx.ingress.kubernetes.io/rewrite-target: /$2
+  # TLS pass-through if TLS enabled on the server
+  #  nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+  #  nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+  #  nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts: []
+  # Example
+  # - host: somehost.my.org
+  #   paths:
+  #   - path: /
+  #   - path: /ociregistry(/|$)(.*)
+  #     pathType: ImplementationSpecific
   tls: []
   #- secretName: chart-example-tls
   #  hosts:
-  #  - chart-example.local
+  #  - somehost.my.org
 
 # -- Specify requests and limits. Manifests are cached in memory to speed response
-# time. Manifests vary greatly in size but - if an average manifest is 3K and your
-# cluster has 100 images this would result in the server using 300K of RAM. Blob
-# digests are also cached (only the digests) which consumes about 80 bytes per blob.
+# time. Volumetrics are forthcoming in a future release. If I run the server as a systemd
+# service and inspect it with the "glances" utility, glances reports 11 meg of resident
+# RAM with no images cached, and 14 meg of resident RAM with 60 images cached...
 resources: {}
 
 # -- Use this to mount other volumes.
@@ -143,7 +179,7 @@ persistence:
     type: DirectoryOrCreate
     # -- By default the server will use this path for image storage. If you mount the
     # storage at some other path you must match it in the `imagePath` value in
-    # `serverConfig.config` below.
+    # `serverConfig.configuration` below.
     path: /var/lib/ociregistry
   # -- Implements Empty Dir storage for the server. Suitable for testing and a quick
   # capability evaluation.
@@ -154,16 +190,26 @@ persistence:
     # -- Provides a size limit to the storage
     sizeLimit: 2Gi
 
+# -- Deploys the listed resources into the cluster.
+extraManifests: []
+#  - apiVersion: v1
+#    kind: ConfigMap
+#    metadata:
+#      name: my-cm
+#    data:
+#      foo: bar
+
 # -- Supports overriding default (built-in) configuration. If you change
-# `serverConfig.config.imagePath` then change `volumeMounts['image'].mountPath`
+# `serverConfig.configuration.imagePath` then change `volumeMounts['image'].mountPath`
 # to match. The values shown are the defaults hard-coded in the binary, except
 # for `logLevel` which defaults to `error` and is overridden below as `info`.
-# The explicit values are provided mainly for documentation purposes. OS and
-# arch by default are determined by the system hosting the server.
+# The explicit values are provided mainly for documentation purposes. The `os`
+# and `arch` by default are determined by the system hosting the server so
+# typically you will not specify those.
 # @default -- See sub-fields
 serverConfig:
   mountPath: /var/ociregistry/config
-  config:
+  configuration:
     imagePath: /var/lib/ociregistry
     logLevel: info
     logFile:
@@ -176,7 +222,10 @@ serverConfig:
     alwaysPullLatest: false
     airGapped: false
     helloWorld: false
+    # -- easier to use `health` above
+    health:
     registries: []
+    # -- Pruning is disabled by default
     pruneConfig:
       enabled: false
       duration: 30d
@@ -184,3 +233,10 @@ serverConfig:
       frequency: 1d
       count: -1
       dryRun: false
+    # serverTlsConfig is configured using the `serverTls`value above. Hence
+    # commented out here. (Shown here only for documentation purposes.)
+    #serverTlsConfig:
+    #  cert:
+    #  key:
+    #  ca:
+    #  clientAuth:

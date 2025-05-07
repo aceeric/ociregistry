@@ -20,7 +20,7 @@ func TestParseServe(t *testing.T) {
 	afile := filepath.Join(td, "foo")
 	os.WriteFile(afile, []byte("foo"), 0755)
 
-	os.Args = []string{"bin/ociregistry", "--image-path", td, "--log-level", "info", "--config-file", afile, "serve", "--port", "22", "--os", "linux", "--arch", "amd64", "--preload-images", afile, "--pull-timeout", "123", "--air-gapped", "--hello-world", "--always-pull-latest"}
+	os.Args = []string{"bin/ociregistry", "--image-path", td, "--log-level", "info", "--config-file", afile, "serve", "--port", "22", "--os", "linux", "--arch", "amd64", "--preload-images", afile, "--pull-timeout", "123", "--air-gapped", "--hello-world", "--always-pull-latest", "--health", "9876"}
 	fromCmdline, _, err := Parse()
 	if err != nil {
 		t.Fail()
@@ -44,6 +44,8 @@ func TestParseServe(t *testing.T) {
 	case !fromCmdline.Arch:
 		t.Fail()
 	case !fromCmdline.PullTimeout:
+		t.Fail()
+	case !fromCmdline.Health:
 		t.Fail()
 	case !fromCmdline.AlwaysPullLatest:
 		t.Fail()
@@ -93,6 +95,7 @@ arch: yellow
 pullTimeout: 123
 alwaysPullLatest: true
 airGapped: true
+health: 9876
 helloWorld: true
 `
 
@@ -108,6 +111,7 @@ var expectConfig = config.Configuration{
 	PullTimeout:      123,
 	AlwaysPullLatest: true,
 	AirGapped:        true,
+	Health:           9876,
 	HelloWorld:       true,
 }
 

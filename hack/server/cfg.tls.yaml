@@ -1,0 +1,5 @@
+serverTlsConfig:
+  cert: /tmp/localhost.crt
+  key: /tmp/localhost.key
+  ca: /tmp/localhost.crt
+  clientAuth: verify

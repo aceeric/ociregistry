@@ -76,6 +76,7 @@ This command compiles the server and creates a binary called `ociregistry` in th
 ### Run the Server
 
 You provide an image storage location with the `--image-path` arg. If the directory doesn't exist the server will create it. The default is `/var/lib/ociregistry` but to kick the tires it makes more sense to use the system temp directory. By default the server listens on `8080`. If you have something running that is already bound to that port, specify `--port`. We'll specify it explicitly here with the default value:
+
 ```shell
 bin/ociregistry --image-path /tmp/images serve --port 8080
 ```
@@ -132,6 +133,7 @@ find /tmp/images
 ```
 
 ### Result
+
 ```shell
 /tmp/images
 /tmp/images/blobs
@@ -257,7 +259,16 @@ pruneConfig:
   count: -1
   # if true, just log messages, don't actually prune
   dryRun: false
+# configure TLS with downstream (client) pullers, e.g. containerd.
+# see server tls configuration further down in this README.
+serverTlsConfig:
+  cert:
+  key:
+  ca:
+  clientAuth:
 ```
+
+### Registry Configuration
 
 The OCI Distribution server may need configuration information to connect to upstream registries. If run with no upstream registry config, it will attempt anonymous insecure `HTTPS` access. You specify registry configuration using the `registries` list:
 
@@ -347,6 +358,26 @@ The `tls` section can implement multiple scenarios:
        ca: /remote/ca.crt
        insecureSkipVerify: false
    ```
+
+### Server TLS configuration
+
+This section configures whether/how the server communicates with downstream clients such as containerd over TLS. Example:
+
+```yaml
+serverTlsConfig:
+  cert: /path/to/server.crt
+  key: /path/to/server.private.key
+  ca: /path/to/ca.pem
+  clientAuth: none # or verify
+```
+
+By default, the server runs over HTTP. The following permutations are supported for HTTP/S:
+
+| Config | Description |
+|-|-|
+| `cert` and `key` populated | The server will provide the cert to the client to establish 1-way TLS. |
+| `clientAuth: none` | Client cert is not requested and will be ignored if provided. |
+| `clientAuth: verify` | mTLS: Client cert is required and verified. If `ca` is not provided then the client cert is verified against the OS trust store. If `ca` **is** provided then the client cert is verified against the CA. |
 
 ## Command Line Options
 

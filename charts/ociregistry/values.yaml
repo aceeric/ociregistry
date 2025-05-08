@@ -47,8 +47,8 @@ podSecurityContext: {}
 securityContext: {}
 
 # -- service defines the Service resource. To serve inside the cluster for
-# other cluster workloads, specify `NodePort`. To serve behind an ingress
-# for workloads outside the cluster, specify `ClusterIP`
+# other cluster workloads or containerd, specify `NodePort`. To serve behind an
+# ingress for workloads outside the cluster, specify `ClusterIP`.
 # @default -- See sub-fields
 service:
   type: NodePort
@@ -177,6 +177,7 @@ serverConfig:
     airGapped: false
     helloWorld: false
     registries: []
+    # -- Pruning is disabled by default
     pruneConfig:
       enabled: false
       duration: 30d
@@ -184,3 +185,9 @@ serverConfig:
       frequency: 1d
       count: -1
       dryRun: false
+    # -- TLS is disabled by default
+    serverTlsConfig:
+      cert:
+      key:
+      ca:
+      clientAuth:

@@ -1,0 +1,14 @@
+# Test TLS and mTLS
+#
+# per: https://letsencrypt.org/docs/certificates-for-localhost/#making-and-trusting-your-own-certificates
+#
+# openssl req -x509 -out /tmp/localhost.crt -keyout /tmp/localhost.key \
+#  -newkey rsa:2048 -nodes -sha256 \
+#  -subj '/CN=localhost' -extensions EXT -config <( \
+#   printf "[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:localhost\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth,clientAuth")
+---
+serverTlsConfig:
+  cert: /tmp/localhost.crt
+  key: /tmp/localhost.key
+  ca: /tmp/localhost.crt
+  clientAuth: verify

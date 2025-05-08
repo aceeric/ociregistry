@@ -1,5 +1,6 @@
 # TODO
 
+0. TLS
 1. CI
    - coverage report
 2. Readthedocs
@@ -9,3 +10,4 @@
 4. Instrumentation
 5. Enable swagger UI (https://github.com/go-swagger/go-swagger)?
 6. Logo
+7. Other (badges) https://github.com/prometheus/prometheus

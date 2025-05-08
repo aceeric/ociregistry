@@ -11,7 +11,7 @@ import (
 	"github.com/aceeric/ociregistry/mock"
 )
 
-// client auth types: none, requireAndVerify
+// valid client auth types: none, verify, this will test "verify"
 var serverTlsConfig = `
 serverTlsConfig:
   cert: %[1]s/cert.pem
@@ -20,7 +20,7 @@ serverTlsConfig:
   clientAuth: verify
 `
 
-// Tests empty server TLS config
+// Tests empty server TLS config should return nil tls config
 func TestNoTls(t *testing.T) {
 	config.Set(config.Configuration{})
 	cfg, err := ParseTls()
@@ -58,7 +58,7 @@ func TestTls(t *testing.T) {
 	}
 }
 
-// createCertFiles create cert, key, and ca for the TLS parse test
+// createCertFiles creates cert, key, and ca for the TLS parse test
 func createCertFiles(td string) error {
 	certSetup, err := mock.NewCertSetup()
 	if err != nil {

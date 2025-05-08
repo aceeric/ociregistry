@@ -3,6 +3,7 @@
 [![Unit tests](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/aceeric/ociregistry)](https://goreportcard.com/report/github.com/aceeric/ociregistry)
 [![Go Vuln Check](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml)
+[![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/ociregistry)](https://artifacthub.io/packages/search?repo=ociregistry)
 
 This project is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 

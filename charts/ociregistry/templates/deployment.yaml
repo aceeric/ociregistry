@@ -30,13 +30,17 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
       - name: {{ .Chart.Name }}
-        {{- if .Values.serverConfig.config }}
         command:
         - /ociregistry/server
         args:
+        {{- if .Values.serverConfig.config }}
         - --config-file
         - {{ .Values.serverConfig.mountPath }}/registry-config.yaml
+        {{- end }}
         - serve
+        {{- if or .Values.health.port .Values.serverConfig.config.health }}
+        - --health
+        - {{ .Values.health.port | default .Values.serverConfig.config.health | quote }}
         {{- end }}
         securityContext:
           {{- toYaml .Values.securityContext | nindent 10 }}
@@ -46,16 +50,18 @@ spec:
         - name: http
           containerPort: {{ .Values.service.port }}
           protocol: TCP
-        # TODO NEED TO RUN THE PROBES ON HTTP. FOR NOW JUST DISABLE
-        {{- if not .Values.serverTls.enabled }}
+        {{- if or .Values.health.port .Values.serverConfig.config.health }}
+        - name: health
+          containerPort: {{ .Values.health.port | default .Values.serverConfig.config.health }}
+          protocol: TCP
         livenessProbe:
           httpGet:
             path: /health
-            port: http
+            port: health
         readinessProbe:
           httpGet:
             path: /health
-            port: http
+            port: health
         {{- end }}
         resources:
         {{- toYaml .Values.resources | nindent 10 }}

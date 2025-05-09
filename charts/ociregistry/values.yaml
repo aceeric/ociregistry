@@ -55,6 +55,13 @@ service:
   nodePort: 31080
   port: 8080
 
+# -- Specify a port here and the server will have readiness and liveness probes
+# templated. You can achieve the same effect with serverConfig.config.health=80801
+# (or some other value.)
+# @default -- `port: 8081`
+health:
+  port: 8081
+
 # -- Creates a secret in the cluster called "releasename"-tls to configure the server
 # to serve over TLS. If cert+key or cert+key+ca are filled in then the server will serve
 # over TLS. Valid permutations: 1) cert and key for 1-way TLS. 2) Cert, key and
@@ -197,6 +204,7 @@ serverConfig:
     alwaysPullLatest: false
     airGapped: false
     helloWorld: false
+    health:
     registries: []
     # -- Pruning is disabled by default
     pruneConfig:

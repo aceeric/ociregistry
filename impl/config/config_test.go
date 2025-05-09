@@ -20,6 +20,7 @@ port: 8080
 os: linux
 arch: amd64
 pullTimeout: 60000
+health: 6543
 alwaysPullLatest: false
 airGapped: false
 helloWorld: false
@@ -46,6 +47,7 @@ var expectConfig = Configuration{
 	Os:               "linux",
 	Arch:             "amd64",
 	PullTimeout:      60000,
+	Health:           6543,
 	AlwaysPullLatest: false,
 	AirGapped:        false,
 	HelloWorld:       false,

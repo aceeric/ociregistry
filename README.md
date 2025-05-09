@@ -242,9 +242,20 @@ port: 8080
 #os: linux
 #arch: amd64
 pullTimeout: 60000
+# if true, then whenever a latest tag is pulled, the server will always pull
+# from the upstream - in other words it acts like a basic proxy. Useful when
+# supporting dev environments where latest is frequently changing.
 alwaysPullLatest: false
+# If true, will not pull from an upstream when an image is requested that
+# is not cached.
 airGapped: false
+# For testing. Only serves 'docker.io/hello-world:latest' from embedded blobs
+# and manifests
 helloWorld: false
+# A port number to run a /health endpoint on for Kubernetes liveness and
+# readiness. By default, the server doesn't listen on a health port. The
+# Helm chart does enable that by default.
+health:
 # see further down for registry configuration
 registries: []
 pruneConfig:
@@ -373,7 +384,7 @@ serverTlsConfig:
   clientAuth: none # or verify
 ```
 
-By default, the server runs over HTTP. The following permutations are supported for HTTP/S:
+By default, the server runs over HTTP. The following permutations are supported for HTTPS:
 
 | Config | Description |
 |-|-|
@@ -684,8 +695,3 @@ Example: `curl "http://hostname:8080/cmd/manifest/list?pattern=calico,cilium&cou
 ### `/cmd/stop`
 
 Stops the server.
-
-### `/health`
-
-Returns 200 if the server is running.
-

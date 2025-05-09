@@ -965,17 +965,6 @@ paths:
         '200':
           description:
           content: {}
-  /health:
-    get:
-      tags: []
-      summary:
-      description:
-      operationId: cmd-health
-      parameters: []
-      responses:
-        '200':
-          description:
-          content: {}
   /cmd/manifest/list:
     get:
       tags: []

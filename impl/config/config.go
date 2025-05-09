@@ -75,6 +75,7 @@ type Configuration struct {
 	Os               string           `yaml:"os"`
 	Arch             string           `yaml:"arch"`
 	PullTimeout      int64            `yaml:"pullTimeout"`
+	Health           int64            `yaml:"health"`
 	AlwaysPullLatest bool             `yaml:"alwaysPullLatest"`
 	AirGapped        bool             `yaml:"airGapped"`
 	HelloWorld       bool             `yaml:"helloWorld"`
@@ -100,6 +101,7 @@ type FromCmdLine struct {
 	Os               bool
 	Arch             bool
 	PullTimeout      bool
+	Health           bool
 	AlwaysPullLatest bool
 	AirGapped        bool
 	HelloWorld       bool
@@ -164,6 +166,10 @@ func GetArch() string {
 
 func GetPullTimeout() int64 {
 	return config.PullTimeout
+}
+
+func GetHealth() int64 {
+	return config.Health
 }
 
 func GetAlwaysPullLatest() bool {

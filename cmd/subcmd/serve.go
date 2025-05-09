@@ -86,6 +86,8 @@ func Serve(buildVer string, buildDtm string) error {
 	fmt.Fprintf(os.Stderr, startupBanner, buildVer, buildDtm, time.Unix(0, time.Now().UnixNano()), config.GetPort(),
 		os.Getuid(), os.Getgid(), os.Getpid(), strings.Join(os.Args, " "))
 
+	go health()
+
 	// start the API server
 	go func() {
 		addr := net.JoinHostPort("0.0.0.0", strconv.Itoa(int(config.GetPort())))
@@ -123,6 +125,17 @@ func Serve(buildVer string, buildDtm string) error {
 	cache.WaitPulls()
 	log.Infof("stopped")
 	return nil
+}
+
+// health handles the /health endpoint always on plain HTTP and is not part of the
+// server itself, hence a separate goroutine running an http server.
+func health() {
+	if config.GetHealth() != 0 {
+		http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		http.ListenAndServe(fmt.Sprintf(":%d", config.GetHealth()), nil)
+	}
 }
 
 // getEchoListener gets the Echo listener. Supports unit testing.

@@ -46,6 +46,8 @@ spec:
         - name: http
           containerPort: {{ .Values.service.port }}
           protocol: TCP
+        # TODO NEED TO RUN THE PROBES ON HTTP. FOR NOW JUST DISABLE
+        {{- if not .Values.serverTls.enabled }}
         livenessProbe:
           httpGet:
             path: /health
@@ -54,6 +56,7 @@ spec:
           httpGet:
             path: /health
             port: http
+        {{- end }}
         resources:
         {{- toYaml .Values.resources | nindent 10 }}
         {{- with .Values.volumeMounts }}
@@ -65,11 +68,21 @@ spec:
           mountPath: {{ .Values.serverConfig.mountPath | default "/var/ociregistry/config"}}
           readOnly: true
         {{- end }}
+        {{- if .Values.serverTls.enabled }}
+        - name: server-tls
+          mountPath: /etc/pki/ociregistry
+          readOnly: true
+        {{- end }}
       volumes:
       {{- if .Values.volumes }}
       {{- with .Values.volumes }}
         {{- toYaml . | nindent 6 }}
       {{- end }}
+      {{- end }}
+      {{- if .Values.serverTls.enabled }}
+      - name: server-tls
+        secret:
+          secretName: {{ include "ociregistry.fullname" . }}-tls
       {{- end }}
       {{- if .Values.persistence.hostPath.enabled }}
       - name: images

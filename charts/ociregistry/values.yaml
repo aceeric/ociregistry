@@ -7,7 +7,7 @@ image:
     # -- The image repository
     repository: appzygy/ociregistry
     # -- The image tag
-    tag: 1.8.2
+    tag: 1.8.3
     # -- Specify a digest to use instead of the tag
     digest:
     # -- The image pull policy
@@ -55,6 +55,19 @@ service:
   nodePort: 31080
   port: 8080
 
+# -- Creates a secret in the cluster called "releasename"-tls to configure the server
+# to serve over TLS. If cert+key or cert+key+ca are filled in then the server will serve
+# over TLS. Valid permutations: 1) cert and key for 1-way TLS. 2) Cert, key and
+# clientAuth=verify for mTLS using the OS (i.e. container) trust store. 3) Cert, key, ca
+# and clientAuth=verify for mTLS using the provided CA.
+# @default -- `enabled: false`
+serverTls:
+  enabled: false
+  cert:
+  key:
+  ca:
+  clientAuth: none
+
 # -- Configures an ingress for access to the registry outside the cluster. (Could
 # be used to run the registry in one cluster to cache for multiple other clusters.)
 # @default -- `enabled: false`
@@ -62,11 +75,19 @@ ingress:
   enabled: false
   className: ""
   annotations: {}
-  hosts:
-  - host: chart-example.local
-    paths:
-    - path: /
-      pathType: ImplementationSpecific
+  # to serve on other than "/":
+  #  nginx.ingress.kubernetes.io/use-regex: "true"
+  #  nginx.ingress.kubernetes.io/rewrite-target: /$2
+  # TLS pass-through if TLS enabled on the server
+  #  nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+  #  nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+  #  nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts: []
+  #- host: chart-example.local
+  #  paths:
+  #  - path: /
+  #  - path: /ociregistry(/|$)(.*)
+  #    pathType: ImplementationSpecific
   tls: []
   #- secretName: chart-example-tls
   #  hosts:
@@ -185,9 +206,10 @@ serverConfig:
       frequency: 1d
       count: -1
       dryRun: false
-    # -- TLS is disabled by default
-    serverTlsConfig:
-      cert:
-      key:
-      ca:
-      clientAuth:
+    # These values are configuring using the `serverTls` hash above. Hence
+    # commented out here. (Present only for documentation purposes.)
+    #serverTlsConfig:
+    #  cert:
+    #  key:
+    #  ca:
+    #  clientAuth:

@@ -6,4 +6,17 @@ metadata:
 data:
   registry-config.yaml: |
   {{- toYaml .Values.serverConfig.config | nindent 4 }}
+  {{- if .Values.serverTls.enabled }}
+    serverTlsConfig:
+      {{- if .Values.serverTls.cert }}
+      cert: /etc/pki/ociregistry/tls.crt
+      {{- end }}
+      {{- if .Values.serverTls.key }}
+      key: /etc/pki/ociregistry/tls.key
+      {{- end }}
+      {{- if .Values.serverTls.ca }}
+      ca: /etc/pki/ociregistry/ca.crt
+      {{- end }}
+      clientAuth: {{ .Values.serverTls.clientAuth }}
+  {{- end }}
 {{- end }}

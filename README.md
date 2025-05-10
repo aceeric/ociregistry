@@ -41,6 +41,8 @@ The goals of the project are:
 
 ## 1.8.0 Changes April 2025
 
+> **If you are not upgrading from a version prior to 1.8.0, skip this section.**
+
 Version 1.8.0 implements substantial changes from the prior release. The changes are:
 
 1. Implemented a CLI using [urfave/cli](https://github.com/urfave/cli), so the command line structure is completely new.
@@ -70,7 +72,7 @@ After git cloning the project:
 
 ### Build the Server
 ```shell
-make desktop
+make server
 ```
 
 This command compiles the server and creates a binary called `ociregistry` in the `bin` directory relative to the project root.
@@ -91,6 +93,7 @@ Version: Z.Z.Z, build date: 2025-04-21T00:05:54.37Z
 Started: 2025-04-20 20:06:04.6693839 -0400 EDT (port 8080)
 Running as (uid:gid) 1000:1000
 Process id: 27010
+Tls: none
 Command line: bin/ociregistry --image-path /tmp/images serve --port 8080
 ----------------------------------------------------------------------
 ```
@@ -254,10 +257,12 @@ airGapped: false
 helloWorld: false
 # A port number to run a /health endpoint on for Kubernetes liveness and
 # readiness. By default, the server doesn't listen on a health port. The
-# Helm chart does enable that by default.
+# Helm chart enables this by default when running the server as a cluster
+# workload.
 health:
 # see further down for registry configuration
 registries: []
+# see further down for prune configuration
 pruneConfig:
   # disabled by default
   enabled: false
@@ -374,17 +379,17 @@ The `tls` section can implement multiple scenarios:
 
 ### Server TLS configuration
 
-This section configures whether/how the server communicates with downstream clients such as containerd over TLS. Example:
+This section configures whether/how the server communicates with downstream clients such as containerd over TLS. Cert, key, and CA are expected to be PEM encoded. Example:
 
 ```yaml
 serverTlsConfig:
-  cert: /path/to/server.crt
-  key: /path/to/server.private.key
-  ca: /path/to/ca.pem
+  cert: /path/to/pem/encoded/server.crt
+  key: /path/to/pem/encoded/server.private.key
+  ca: /path/to/pem/encoded/ca.crt
   clientAuth: none # or verify
 ```
 
-By default, the server runs over HTTP. The following permutations are supported for HTTPS:
+By default, the server serves over HTTP. The following permutations are supported for HTTPS:
 
 | Config | Description |
 |-|-|
@@ -421,7 +426,7 @@ GLOBAL OPTIONS:
 
 The simplest way to run the  server with all defaults is:
 
-```
+```shell
 ociregistry serve
 ```
 
@@ -483,7 +488,7 @@ It is strongly recommended to use the `--dry-run` arg to develop your pruning ex
 
 ### By Pattern
 
-Specify `--pattern` with single parameter consisting of one or more patterns separated by commas. The patterns are Golang regular expressions as documented in the [regexp/syntax](https://pkg.go.dev/regexp/syntax) package documentation. The expressions on the command line are passed _directly_ to the Golang `regex` parser _as received from the shell_, and are matched to manifest URLs. As such, shell expansion and escaping must be taken into consideration. Simplicity wins the day here. Examples:
+Specify `--pattern` with single parameter consisting of one or more manifest URL patterns separated by commas. The patterns are Golang regular expressions as documented in the [regexp/syntax](https://pkg.go.dev/regexp/syntax) package documentation. The expressions on the command line are passed _directly_ to the Golang `regex` parser _as received from the shell_, and are matched to manifest URLs. As such, shell expansion and escaping must be taken into consideration. Simplicity wins the day here. Examples:
 
 ```shell
 bin/ociregistry prune --pattern kubernetesui/dashboard:v2.7.0 --dry-run
@@ -504,11 +509,13 @@ The intended workflow is to use the CLI with `list` sub-command to determine des
 ### Important to know about pruning
 
 Generally, but not always, image list manifests have tags, and image manifests have digests. This is because in most cases, upstream images are multi-architecture. For example, this command specifies a tag:
+
 ```shell
 bin/ociregistry prune --pattern calico/typha:v3.27.0 --dry-run
 ```
 
 In this case, on a Linux/amd64 machine running the server the CLI will find **two** manifests:
+
 ```shell
 docker.io/calico/typha:v3.27.0
 docker.io/calico/typha@sha256:eca01eab...
@@ -593,8 +600,9 @@ project root
 
 The OCI Distribution API is built by first creating an Open API spec. See `ociregistry.yaml` in the `api` directory. Then the [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen) tool is used to generate the API code and the Model code using configuration in the `api` directory. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/oapi-codegen/oapi-codegen/tree/main/examples/petstore-expanded) example.
 
-Oapi-codegen is installed by the following command:
-```
+*Oapi-codegen* is installed by the following command:
+
+```shell
 go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 ```
 
@@ -662,8 +670,8 @@ Lists image manifests, and the blobs that are referenced by the selected manifes
 
 | Query param | Description |
 |-|-|
-| `pattern` | Comma-separated go regex expressions. |
-| `digest` | Digest (or substring) |
+| `pattern` | Comma-separated go regex expressions of manifest URL(s). |
+| `digest` | Digest (or substring) of any blob referenced by the image. (Not the manifest digest!) |
 | `count` | Max number of manifests to return |
 
 Example: `curl "http://hostname:8080/cmd/image/list?pattern=docker.io&count=10"`
@@ -676,7 +684,7 @@ Lists blobs and ref counts.
 
 | Query param | Description |
 |-|-|
-| `substr` | Digest (or substring) |
+| `substr` | Digest (or substring) of a blob |
 | `count` | Max number of manifests to return |
 
 Example: `curl "http://hostname:8080/cmd/blob/list?substr=56aebe9b&count=10"`
@@ -687,7 +695,7 @@ List manifests.
 
 | Query param | Description |
 |-|-|
-| `pattern` | Comma-separated go regex expressions. |
+| `pattern` | Comma-separated go regex expressions of manifest URLs. |
 | `count` | Max number of manifests to return |
 
 Example: `curl "http://hostname:8080/cmd/manifest/list?pattern=calico,cilium&count=10"`

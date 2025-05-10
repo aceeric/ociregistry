@@ -16,34 +16,6 @@ import (
 	"time"
 )
 
-// TlsType specifies the supported TLS types. This is used by the puller to
-// configure its TLS and by the mock server to configure its TLS. So these values are
-// interpreted differently depending on perspective (mock server vs. puller). None
-// of the tests involve the server verifying client certs at this time. Also at this
-// time, testing the puller validating the server certs using the OS trust store is
-// not tested.
-type TlsType int
-
-const (
-	// HTTP, so, no TLS considerations
-	NOTLS TlsType = iota
-	// Mock server will present certs to puller. Puller will not present certs. Mock
-	// server will not request certs. Server certs will not be validated by puller.
-	ONEWAY_INSECURE
-	// Mock server will present certs to puller. Puller will not present certs. Mock
-	// server will not request certs. Server certs will be validated by puller. Therefore
-	// puller will need the test CA Cert.
-	ONEWAY_SECURE
-	// Mock server will present certs to puller. Puller will present certs to server. Mock
-	// server will request (any) cert. Server certs will not be validated by puller. Therefore
-	// puller will not need the test CA Cert. Server will not validate client certs.
-	MTLS_INSECURE
-	// Mock server will present certs to puller. Puller will present certs to server. Mock
-	// server will request (any) cert. Server certs will be validated by puller. Therefore
-	// puller will need the test CA Cert. Server will not validate client certs.
-	MTLS_SECURE
-)
-
 // CertSetup stores the output of the certSetup function
 type CertSetup struct {
 	// CaPEM is the CA certificate in PEM form

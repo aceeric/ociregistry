@@ -16,7 +16,7 @@ vartest:
 	@echo GO_VERSION=$(GO_VERSION)
 	@echo CHART_VERSION=$(CHART_VERSION)
 
-.PHONY: oapi-codegen
+.PHONY: oapi-codegen # requires go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 oapi-codegen:
 	oapi-codegen -config $(ROOT)/api/server.cfg.yaml $(ROOT)/api/ociregistry.yaml
 	oapi-codegen -config $(ROOT)/api/models.cfg.yaml $(ROOT)/api/ociregistry.yaml
@@ -94,7 +94,7 @@ test              Runs the unit tests.
 
 vet               Runs go vet.
 
-vulncheck         Runs govulncheck
+vulncheck         Runs govulncheck.
 
 gocyclo           Runs gocyclo.
 

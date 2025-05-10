@@ -73,6 +73,7 @@ Version: vZ.Z.Z, build date: 2025-04-23T00:35:28.79Z
 Started: 2025-04-24 21:11:41.727569108 +0000 UTC (port 8080)
 Running as (uid:gid) 65532:65532
 Process id: 1
+Tls: none
 Command line: /ociregistry/server --config-file /var/ociregistry/config/registry-config.yaml serve
 ----------------------------------------------------------------------
 time="2025-04-24T21:11:41Z" level=info msg="server is running"
@@ -135,6 +136,55 @@ time="2025-04-24T21:34:51Z" level=info msg="serving manifest from cache: \"docke
 time="2025-04-24T21:34:51Z" level=info msg="echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=313.859µs host=localhost:31080 ip=10.200.0.232"
 time="2025-04-24T21:35:09Z" level=info msg="serving manifest from cache: \"docker.io/library/hello-world:latest\""
 time="2025-04-24T21:35:09Z" level=info msg="echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=836.294µs host=localhost:31080 ip=10.200.0.232"
+```
+
+## TLS
+
+By default the server serves over HTTP in the cluster. To serve over HTTPS, the chart has the `serverTls` hash. To enable TLS:
+
+1. Have server cert and key PEM files, and optionally a CA PEM file, on the file system.
+2. Configure values like this:
+   ```
+   serverTls:
+     enabled: true
+     clientAuth: none # or 'verify'
+   ```
+3. Deploy the chart:
+   ```
+   helm upgrade --install ociregistry oci://...\
+    --namespace ociregistry\
+    --create-namespace\
+    --values <file with contents above>.yaml\
+    --set-file serverTls.cert=/tmp/localhost.crt\
+    --set-file serverTls.key=/tmp/localhost.key\
+    --set-file serverTls.ca=/tmp/localhost.crt
+   ```
+
+If you already have a secret in the cluster with cert, key, and (optionally) ca then configure the `serverTls` as shown below. Then omit supplying values/files for the `tls.crt`, `tls.key`, and `ca.crt` sub-keys of the `serverTls` hash. For example, suppose:
+
+```
+kubectl -n ociregistry create secret generic my-tls-secret\
+  --from-file=tls.crt=/tmp/localhost.crt\
+  --from-file=tls.key=/tmp/localhost.key\
+  --from-file=ca.crt=/tmp/localhost.crt
+```
+
+Then you would install the ociregistry with this a values override containing this:
+
+```
+serverTls:
+  secretName: my-tls-secret
+  enabled: true
+  clientAuth: verify # or 'none'
+```
+
+And you helm install command would look like this (omit the `--set-file` args):
+
+```
+helm upgrade --install ociregistry oci://...\
+  --namespace ociregistry\
+  --create-namespace\
+  --values <file with contents above>.yaml
 ```
 
 ## More information

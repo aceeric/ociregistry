@@ -1,5 +1,4 @@
-# Pull-only, Pull-through Caching OCI Distribution Server
-
+![logo](resources/ociregistry.logo.png)
 
 ![Version: 1.8.3](https://img.shields.io/badge/Version-1.8.3-informational?style=rounded-square)
 [![Unit tests](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml)
@@ -7,7 +6,7 @@
 [![Go Vuln Check](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml)
 [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/ociregistry)](https://artifacthub.io/packages/search?repo=ociregistry)
 
-This project is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
+_Ociregistry_ is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 
 1. It exclusively provides _pull_ capability. You can't push images to it, it doesn't support the `/v2/_catalog` endpoint, etc. (Though you can pre-load it. More on that below.)
 2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public; supporting the following types of access: anonymous, basic auth, HTTP, HTTPS, one-way TLS, and mTLS.

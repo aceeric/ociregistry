@@ -1,7 +1,5 @@
 # TODO
 
-1. TLS
-   - Document TLS in Helm
 2. CI
    - coverage report
 3. Server base url (for ingress)

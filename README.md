@@ -539,6 +539,7 @@ Narrative:
 2. The API is just a veneer that delegates to the server implementation.
 3. The server checks the local cache and if the image is in cache it is immediately returned from cache.
 4. If the image is not in cache, the server calls the embedded [ImgPull](https://github.com/aceeric/imgpull) library to pull the image from the upstream registry. The server knows which upstream to pull from because containerd appends a query parameter (e.g. `?ns=registry.k8s.io`) to each API call.
+   - The server also supports in-path upstreams, e.g.: `docker pull ociregistry.host/registry.k8s.io/pause:3.8`
 5. The image puller pulls the image from the upstream registry and returns it to the server.
 6. The server adds the image to cache and returns the image to the caller from the newly updated cache.
 

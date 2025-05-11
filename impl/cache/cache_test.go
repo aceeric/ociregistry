@@ -276,12 +276,16 @@ func TestReplace(t *testing.T) {
 	for _, dir := range []string{"fat", "img", "blobs"} {
 		os.Mkdir(filepath.Join(td, dir), 0777)
 	}
-	// these are blobs - write them all now for simplicity even though E and F
-	// in reality would arrive when pulling the second "latest" manifest
-	digests := make([]string, 6)
-	for idx, letter := range []string{"a", "b", "c", "d", "e", "f"} {
+
+	uniq := []string{"a", "b", "c", "d", "e", "f"}
+	digests := make([]string, len(uniq))
+	for idx, letter := range uniq {
 		digests[idx] = fmt.Sprintf("000000000000000000000000000000000000000000000000000000000000000%s", letter)
-		os.WriteFile(filepath.Join(td, "blobs", digests[idx]), []byte(digests[idx]), 0777)
+	}
+
+	// first test - should create a manifest since the cache is empty
+	for i := 0; i < 4; i++ {
+		os.WriteFile(filepath.Join(td, "blobs", digests[i]), []byte(digests[i]), 0777)
 	}
 	firstDigest := "1111111111111111111111111111111111111111111111111111111111111123"
 	mhFirst := imgpull.ManifestHolder{
@@ -305,10 +309,16 @@ func TestReplace(t *testing.T) {
 		t.FailNow()
 	}
 	// add first manifest to in-mem cache
-	addToCache(pr, mhFirst, td)
+	replaceInCache(pr, mhFirst, td)
+	if !validateReplace(digests[0:4], td, pr, mhFirst) {
+		t.FailNow()
+	}
 
-	// second manifest has the same digest so is interpreted as
-	// the same manifest so - NOP
+	// second test - second manifest has the same digest so is interpreted as
+	// the same manifest so: NOP. Here we change the manifest content which
+	// wouldn't happen in real life because if the digest is the same the content
+	// must be the same but this will ensure that this different manifest is not
+	// replacing the other
 	mhNewSameDigest := imgpull.ManifestHolder{
 		Type:     imgpull.V1ociManifest,
 		ImageUrl: imageUrl,
@@ -322,30 +332,14 @@ func TestReplace(t *testing.T) {
 			},
 		},
 	}
-	if err := serialize.MhToFilesystem(mhNewSameDigest, td, true); err != nil {
-		t.FailNow()
-	}
-	// NOP because same digest
+	// don't write this to the file system - only check to make sure the in-mem cache
+	// is not altered
 	replaceInCache(pr, mhNewSameDigest, td)
-	files, err := os.ReadDir(filepath.Join(td, "blobs"))
-	if err != nil {
-		t.FailNow()
-	}
-	if len(files) != 6 || len(bc.blobs) != 4 {
-		t.FailNow()
-	}
-	for digest := range bc.blobs {
-		if !slices.Contains(digests[0:4], digest) {
-			t.FailNow()
-		}
-	}
-	_, exists := serialize.MhFromFilesystem(firstDigest, true, td)
-	if !exists {
+	if !validateReplace(digests[0:4], td, pr, mhFirst) {
 		t.FailNow()
 	}
 
-	// third manifest has the different digest so should trigger the
-	// replace path
+	// third test - different digest (same url) triggers the replace
 	secondDigest := "1111111111111111111111111111111111111111111111111111111111111456"
 	mhNewDiffDigest := imgpull.ManifestHolder{
 		Type:     imgpull.V1ociManifest,
@@ -363,26 +357,40 @@ func TestReplace(t *testing.T) {
 	if err := serialize.MhToFilesystem(mhNewDiffDigest, td, true); err != nil {
 		t.FailNow()
 	}
+	// write the new blobs
+	for i := 2; i < 6; i++ {
+		os.WriteFile(filepath.Join(td, "blobs", digests[i]), []byte(digests[i]), 0777)
+	}
 	replaceInCache(pr, mhNewDiffDigest, td)
-	files, err = os.ReadDir(filepath.Join(td, "blobs"))
-	if err != nil {
+	if !validateReplace(digests[2:6], td, pr, mhNewDiffDigest) {
 		t.FailNow()
 	}
-	if len(files) != 4 || len(bc.blobs) != 4 {
-		t.FailNow()
+}
+
+func validateReplace(expCachedBlobs []string, testDir string, pr pullrequest.PullRequest, mhExp imgpull.ManifestHolder) bool {
+	if len(bc.blobs) != len(expCachedBlobs) {
+		return false
 	}
-	// only the new blobs should remain
 	for digest := range bc.blobs {
-		if !slices.Contains(digests[2:], digest) {
-			t.FailNow()
+		if !slices.Contains(expCachedBlobs, digest) {
+			return false
+		}
+		if _, err := os.Stat(filepath.Join(testDir, "blobs", digest)); err != nil {
+			return false
 		}
 	}
-	_, exists = serialize.MhFromFilesystem(firstDigest, true, td)
-	if exists {
-		t.FailNow()
+	if mhFound, exists := mc.manifests[pr.Url()]; !exists {
+		return false
+	} else if mhFound.Digest != mhExp.Digest {
+		return false
+	} else {
+		mhFromFs, found := serialize.MhFromFilesystem(mhExp.Digest, true, testDir)
+		if !found {
+			return false
+		}
+		if !reflect.DeepEqual(mhFromFs, mhExp) {
+			return false
+		}
 	}
-	_, exists = serialize.MhFromFilesystem(secondDigest, true, td)
-	if !exists {
-		t.FailNow()
-	}
+	return true
 }

@@ -257,34 +257,50 @@ func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath
 
 // replaceInCache handles the case where the system is configured to "always pull latest", meaning
 // that when a ":latest" tag is pulled, the server always goes to the upstream to (re)pull the image.
-// By the time this function is called, if an image manifest was pulled, then the new image blobs will
-// already have been downloaded and placed on the file system. It could be the case that the old
-// manifest and the new manifest may have overlapping sets of blobs. The function handles that case
-// by only removing blobs that were in the old manifest and not in the new manifest, and only adding
-// blobs that are in the new manifest that were not in the old manifest. The adds only happen in
-// the in-mem blob cache becuase the actual blobs have already been downloaded. But the deletes happen
-// in both the in-mem blob cache _and_ on the file system.
+// By the time this function is called, the 'mhNew' manifest is already written to the file system.
+// If it is an image manifest, then the new image blobs will already have been downloaded and placed
+// on the file system as well. It could be the case that the old manifest and the new manifest may have
+// overlapping sets of blobs. The function handles that case by only removing blobs that were in the old
+// manifest and not in the new manifest, and only adding blobs that are in the new manifest that were
+// not in the old manifest. The adds only happen in the in-mem blob cache becuase the actual blobs have
+// already been downloaded. But the deletes happen in both the in-mem blob cache _and_ on the file
+// system.
 func replaceInCache(pr pullrequest.PullRequest, mhNew imgpull.ManifestHolder, imagePath string) {
 	mc.Lock()
 	defer mc.Unlock()
 	// get the existing manifest from cache
 	mhExisting, exists := mc.manifests[pr.Url()]
-	if exists && mhExisting.Digest == mhNew.Digest {
-		// same manifest: nothing to do
+	if !exists {
+		// same logic as addToCache above
+		addManifestToCache(pr, mhNew)
+		if mhNew.IsImageManifest() {
+			bc.Lock()
+			defer bc.Unlock()
+			addBlobsToCache(mhNew, imagePath)
+		}
 		return
 	}
-	rmManifest(mhExisting, imagePath)
-	bc.Lock()
-	defer bc.Unlock()
-	// add new blobs (in-mem cache only)
-	newBlobsToAdd := LmR(mhNew, mhExisting)
-	for _, digest := range newBlobsToAdd {
-		bc.blobs[digest]++
+	if mhExisting.Digest == mhNew.Digest {
+		// same digest means same manifest: nothing to do
+		log.Debugf("replace manifest %s has same digest - nop", pr.Url())
+		return
 	}
-	// remove old blobs (in-mem cache and file system)
-	existingBlobsToRm := LmR(mhExisting, mhNew)
-	for _, digest := range existingBlobsToRm {
-		rmBlob(digest, imagePath)
+	log.Debugf("replace manifest - removing %s, digest %s", pr.Url(), mhExisting.Digest)
+	rmManifest(mhExisting, imagePath)
+	addManifestToCache(pr, mhNew)
+	if mhNew.IsImageManifest() {
+		bc.Lock()
+		defer bc.Unlock()
+		// add new blobs (in-mem cache only)
+		newBlobsToAdd := LmR(mhNew, mhExisting)
+		for _, digest := range newBlobsToAdd {
+			bc.blobs[digest]++
+		}
+		// remove old blobs (in-mem cache and file system)
+		existingBlobsToRm := LmR(mhExisting, mhNew)
+		for _, digest := range existingBlobsToRm {
+			rmBlob(digest, imagePath)
+		}
 	}
 }
 

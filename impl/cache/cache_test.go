@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
 	"github.com/aceeric/ociregistry/impl/serialize"
 	"github.com/aceeric/ociregistry/mock"
@@ -24,12 +25,6 @@ import (
 	"github.com/opencontainers/go-digest"
 	log "github.com/sirupsen/logrus"
 )
-
-// copy impull test?? ALL PULLS
-
-// test concurrent pulls
-
-// test enqueueing
 
 var v2dockerManifest = `{
 	"schemaVersion": 2,
@@ -81,7 +76,7 @@ func init() {
 	log.SetOutput(io.Discard)
 }
 
-// Setup: creates one each of the four supported manifest types, writes them to the file system,
+// Creates one each of the four supported manifest types, writes them to the file system,
 // along with blobs. Tests that the cache.Load function loads them correctly.
 func TestLoad(t *testing.T) {
 	mts := []imgpull.ManifestType{imgpull.V2dockerManifestList, imgpull.V2dockerManifest, imgpull.V1ociIndex, imgpull.V1ociManifest}
@@ -98,7 +93,7 @@ func TestLoad(t *testing.T) {
 	}
 	// each manifest is cached twice: one with the tag (foo.io/foo/0:v1.2.3) and one with the
 	// digest (foo.io/foo/0@sha256:0)
-	if len(mc.manifests) != len(mts)*2 {
+	if mc.len() != len(mts)*2 {
 		t.Fail()
 	}
 	// two image manifests each with a config and two layers
@@ -132,9 +127,7 @@ func TestLoad(t *testing.T) {
 // in the passed ManifestType array. Each image manifest gets three layers.
 func setupTestLoad(mts []imgpull.ManifestType) (string, error) {
 	td, _ := os.MkdirTemp("", "")
-	for _, dir := range []string{"fat", "img", "blobs"} {
-		os.Mkdir(filepath.Join(td, dir), 0777)
-	}
+	serialize.CreateDirs(td)
 	randomDigest := func() string {
 		s := fmt.Sprintf("%d%d%d%d", rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64())
 		return digest.FromBytes([]byte(s)).Hex()
@@ -149,7 +142,7 @@ func setupTestLoad(mts []imgpull.ManifestType) (string, error) {
 		if mh.IsImageManifest() {
 			digests = []string{randomDigest(), randomDigest(), randomDigest()}
 			for _, digest := range digests {
-				if err := os.WriteFile(filepath.Join(td, "blobs", digest), []byte(digest), 0755); err != nil {
+				if err := os.WriteFile(filepath.Join(td, globals.BlobPath, digest), []byte(digest), 0755); err != nil {
 					return "", err
 				}
 			}
@@ -226,7 +219,6 @@ func TestConcurrentGet(t *testing.T) {
 			if _, err := GetManifest(pr, td, twoSeconds, false); err != nil {
 				errs.Add(1)
 			}
-			//fmt.Print("DONE")
 		}()
 	}
 	wg.Wait()
@@ -235,53 +227,26 @@ func TestConcurrentGet(t *testing.T) {
 	}
 }
 
-// Test that the left-minus-right digest function works as described.
-func TestLMR(t *testing.T) {
-	mhl := imgpull.ManifestHolder{
-		Type: imgpull.V1ociManifest,
-		V1ociManifest: v1oci.Manifest{
-			Config: v1oci.Descriptor{Digest: "A"},
-			Layers: []v1oci.Descriptor{
-				{Digest: "B"},
-				{Digest: "C"},
-				{Digest: "D"},
-			},
-		},
-	}
-	mhr := imgpull.ManifestHolder{
-		Type: imgpull.V1ociManifest,
-		V1ociManifest: v1oci.Manifest{
-			Config: v1oci.Descriptor{Digest: "C"},
-			Layers: []v1oci.Descriptor{
-				{Digest: "D"},
-				{Digest: "E"},
-				{Digest: "F"},
-			},
-		},
-	}
-	v1 := LmR(mhl, mhr)
-	v2 := LmR(mhr, mhl)
-	slices.Sort(v1)
-	slices.Sort(v2)
-	if slices.Compare(v1, []string{"A", "B"}) != 0 || slices.Compare(v2, []string{"E", "F"}) != 0 {
-		t.Fail()
-	}
-}
-
+// Tests replacing a "latest" image in the cache with another "latest" image with a different
+// digest. This is the case where the server is configured to always pull latest, and a latest
+// manifest is pulled with one digest, and a subsequent pull of latest gets a different digest,
+// such as when a newer latest is pushed.
 func TestReplace(t *testing.T) {
 	ResetCache()
 	imageUrl := "foo.io/my-image:latest"
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
-	for _, dir := range []string{"fat", "img", "blobs"} {
-		os.Mkdir(filepath.Join(td, dir), 0777)
-	}
-	// these are blobs - write them all now for simplicity even though E and F
-	// in reality would arrive when pulling the second "latest" manifest
-	digests := make([]string, 6)
-	for idx, letter := range []string{"a", "b", "c", "d", "e", "f"} {
+	serialize.CreateDirs(td)
+
+	uniq := []string{"a", "b", "c", "d", "e", "f"}
+	digests := make([]string, len(uniq))
+	for idx, letter := range uniq {
 		digests[idx] = fmt.Sprintf("000000000000000000000000000000000000000000000000000000000000000%s", letter)
-		os.WriteFile(filepath.Join(td, "blobs", digests[idx]), []byte(digests[idx]), 0777)
+	}
+
+	// first test - should create a manifest since the cache is empty
+	for i := 0; i < 4; i++ {
+		os.WriteFile(filepath.Join(td, globals.BlobPath, digests[i]), []byte(digests[i]), 0777)
 	}
 	firstDigest := "1111111111111111111111111111111111111111111111111111111111111123"
 	mhFirst := imgpull.ManifestHolder{
@@ -305,10 +270,18 @@ func TestReplace(t *testing.T) {
 		t.FailNow()
 	}
 	// add first manifest to in-mem cache
-	addToCache(pr, mhFirst, td)
+	if err := replaceInCache(pr, mhFirst, td); err != nil {
+		t.FailNow()
+	}
+	if !validateReplace(digests[0:4], td, pr, mhFirst) {
+		t.FailNow()
+	}
 
-	// second manifest has the same digest so is interpreted as
-	// the same manifest so - NOP
+	// second test - second manifest has the same digest so is interpreted as
+	// the same manifest so: NOP. Here we change the manifest content which
+	// wouldn't happen in real life because if the digest is the same the content
+	// must be the same but this will ensure that this different manifest is not
+	// replacing the other
 	mhNewSameDigest := imgpull.ManifestHolder{
 		Type:     imgpull.V1ociManifest,
 		ImageUrl: imageUrl,
@@ -322,30 +295,16 @@ func TestReplace(t *testing.T) {
 			},
 		},
 	}
-	if err := serialize.MhToFilesystem(mhNewSameDigest, td, true); err != nil {
+	// don't write this to the file system - only check to make sure the in-mem cache
+	// is not altered
+	if err := replaceInCache(pr, mhNewSameDigest, td); err != nil {
 		t.FailNow()
 	}
-	// NOP because same digest
-	replaceInCache(pr, mhNewSameDigest, td)
-	files, err := os.ReadDir(filepath.Join(td, "blobs"))
-	if err != nil {
-		t.FailNow()
-	}
-	if len(files) != 6 || len(bc.blobs) != 4 {
-		t.FailNow()
-	}
-	for digest := range bc.blobs {
-		if !slices.Contains(digests[0:4], digest) {
-			t.FailNow()
-		}
-	}
-	_, exists := serialize.MhFromFilesystem(firstDigest, true, td)
-	if !exists {
+	if !validateReplace(digests[0:4], td, pr, mhFirst) {
 		t.FailNow()
 	}
 
-	// third manifest has the different digest so should trigger the
-	// replace path
+	// third test - different digest (same url) triggers the replace
 	secondDigest := "1111111111111111111111111111111111111111111111111111111111111456"
 	mhNewDiffDigest := imgpull.ManifestHolder{
 		Type:     imgpull.V1ociManifest,
@@ -363,26 +322,154 @@ func TestReplace(t *testing.T) {
 	if err := serialize.MhToFilesystem(mhNewDiffDigest, td, true); err != nil {
 		t.FailNow()
 	}
-	replaceInCache(pr, mhNewDiffDigest, td)
-	files, err = os.ReadDir(filepath.Join(td, "blobs"))
-	if err != nil {
+	// write the new blobs
+	for i := 4; i < 6; i++ {
+		os.WriteFile(filepath.Join(td, globals.BlobPath, digests[i]), []byte(digests[i]), 0777)
+	}
+	if err := replaceInCache(pr, mhNewDiffDigest, td); err != nil {
 		t.FailNow()
 	}
-	if len(files) != 4 || len(bc.blobs) != 4 {
+	if !validateReplace(digests[2:6], td, pr, mhNewDiffDigest) {
 		t.FailNow()
 	}
-	// only the new blobs should remain
+}
+
+func validateReplace(expCachedBlobs []string, testDir string, pr pullrequest.PullRequest, mhExp imgpull.ManifestHolder) bool {
+	if len(bc.blobs) != len(expCachedBlobs) {
+		return false
+	}
 	for digest := range bc.blobs {
-		if !slices.Contains(digests[2:], digest) {
-			t.FailNow()
+		if !slices.Contains(expCachedBlobs, digest) {
+			return false
+		}
+		if _, err := os.Stat(filepath.Join(testDir, globals.BlobPath, digest)); err != nil {
+			return false
 		}
 	}
-	_, exists = serialize.MhFromFilesystem(firstDigest, true, td)
-	if exists {
+	if mhFound, exists := fromCache(pr.Url()); !exists {
+		return false
+	} else if mhFound.Digest != mhExp.Digest {
+		return false
+	} else {
+		isLatest, err := mhExp.IsLatest()
+		if err != nil {
+			return false
+		}
+		mhFromFs, found := serialize.MhFromFilesystem(mhExp.Digest, isLatest, testDir)
+		if !found {
+			return false
+		}
+		if !reflect.DeepEqual(mhFromFs, mhExp) {
+			return false
+		}
+	}
+	return true
+}
+
+// Tests what happens when a "v1" and "v2" manifest are cached, then "latest" comes
+// in with the same digest as "v1", then latest comes in again with the same digest as "v2",
+// and then latest comes in AGAIN with the same digest as "v1". The cache has to handle
+// the latest flip-flopping correctly and manage the blob ref counts correctly.
+func TestLatestChangesTagAlignment(t *testing.T) {
+	manifestDigests := []string{
+		"0000000000000000000000000000000000000000000000000000000000000000",
+		"1111111111111111111111111111111111111111111111111111111111111111",
+	}
+	blobDigests := []string{
+		"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+		"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+		"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+	}
+	const (
+		v1 = 0
+		v2 = 1
+	)
+	mhs := []imgpull.ManifestHolder{
+		imgpull.ManifestHolder{
+			Type:     imgpull.V1ociManifest,
+			ImageUrl: "foo.io/bar/baz:v1",
+			Digest:   manifestDigests[v1],
+			V1ociManifest: v1oci.Manifest{
+				Config: v1oci.Descriptor{Digest: blobDigests[0]},
+				Layers: []v1oci.Descriptor{
+					{Digest: blobDigests[1]},
+					{Digest: blobDigests[2]},
+				},
+			},
+		},
+		imgpull.ManifestHolder{
+			Type:     imgpull.V1ociManifest,
+			ImageUrl: "foo.io/bar/baz:v2",
+			Digest:   manifestDigests[v2],
+			V1ociManifest: v1oci.Manifest{
+				Config: v1oci.Descriptor{Digest: blobDigests[1]},
+				Layers: []v1oci.Descriptor{
+					{Digest: blobDigests[2]},
+					{Digest: blobDigests[3]},
+				},
+			},
+		},
+	}
+	ResetCache()
+	td, _ := os.MkdirTemp("", "")
+	defer os.RemoveAll(td)
+	serialize.CreateDirs(td)
+	for _, digest := range blobDigests {
+		os.WriteFile(filepath.Join(td, globals.BlobPath, digest), []byte("foo"), 0777)
+	}
+
+	pr, _ := pullrequest.NewPullRequestFromUrl(mhs[v1].ImageUrl)
+	if err := serialize.MhToFilesystem(mhs[v1], td, true); err != nil {
 		t.FailNow()
 	}
-	_, exists = serialize.MhFromFilesystem(secondDigest, true, td)
-	if !exists {
+	if err := addToCache(pr, mhs[v1], td); err != nil {
+		t.FailNow()
+	}
+
+	pr, _ = pullrequest.NewPullRequestFromUrl(mhs[v2].ImageUrl)
+	if err := serialize.MhToFilesystem(mhs[v2], td, true); err != nil {
+		t.FailNow()
+	}
+	if err := addToCache(pr, mhs[v2], td); err != nil {
+		t.FailNow()
+	}
+
+	// change V1 to latest and "pull"
+	mhs[v1].ImageUrl = "foo.io/bar/baz:latest"
+	if err := serialize.MhToFilesystem(mhs[v1], td, true); err != nil {
+		t.FailNow()
+	}
+	pr, _ = pullrequest.NewPullRequestFromUrl(mhs[v1].ImageUrl)
+	if err := replaceInCache(pr, mhs[v1], td); err != nil {
+		t.FailNow()
+	}
+
+	// change V2 to latest and "pull"
+	mhs[v2].ImageUrl = "foo.io/bar/baz:latest"
+	if err := serialize.MhToFilesystem(mhs[v2], td, true); err != nil {
+		t.FailNow()
+	}
+	pr, _ = pullrequest.NewPullRequestFromUrl(mhs[v2].ImageUrl)
+	if err := replaceInCache(pr, mhs[v2], td); err != nil {
+		t.FailNow()
+	}
+
+	// "pull" V1 (still latest) again to overwrite V2 "latest"
+	if err := serialize.MhToFilesystem(mhs[v1], td, true); err != nil {
+		t.FailNow()
+	}
+	pr, _ = pullrequest.NewPullRequestFromUrl(mhs[v1].ImageUrl)
+	if err := replaceInCache(pr, mhs[v1], td); err != nil {
+		t.FailNow()
+	}
+	// no blobs should have been removed
+	if len(bc.blobs) != 4 {
+		t.FailNow()
+	}
+	// should be two V1 (one by tag, one by digest), two V2 (same reason), and
+	// two latest (same reason)
+	if mc.len() != 6 {
 		t.FailNow()
 	}
 }

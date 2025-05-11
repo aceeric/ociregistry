@@ -77,7 +77,7 @@ func RunPruner(stopChan, stoppedChan chan bool) error {
 // Prune is intended to be called by the REST API handlers. It parses the prune configuration
 // received on the API. It also "redirects" the logger so that all the logged messages can be
 // returned to the caller as a big newline-delimited string. The caller can then stream it
-// to the REST client if they choose. To do its work, it just doPrune, just like RunPruner.
+// to the REST client if they choose. To do its work, it calls doPrune, just like RunPruner.
 func Prune(pruneType string, dur *string, expr *string, dryRun *string, count *int) (string, error) {
 	lw := newLogWriter()
 	log.SetOutput(lw)
@@ -110,24 +110,6 @@ func Prune(pruneType string, dur *string, expr *string, dryRun *string, count *i
 	}
 	doPrune(config.GetImagePath(), comparer, cfg.Count, cfg.DryRun)
 	return lw.log, nil
-}
-
-// newLogWriter returns a strut that impements the io.Writer interface
-func newLogWriter() *logWriter {
-	return &logWriter{
-		log: "",
-	}
-}
-
-// io.Writer Write
-func (w *logWriter) Write(b []byte) (cnt int, err error) {
-	w.log += string(b)
-	return len(b), nil
-}
-
-// io.Writer Close
-func (w *logWriter) Close() error {
-	return nil
 }
 
 // ParseCriteria parses the prune criteria in the passed arg and returns a manifest comparer
@@ -190,8 +172,29 @@ func ParseCriteria(cfg config.PruneConfig) (ManifestComparer, error) {
 	return nil, fmt.Errorf("unsupported prune type %q", cfg.Type)
 }
 
-// calcCutoff returns a prune cutoff date by parsing the passed config. If no cutoff time
-// is needed then an empty time.Time struct is returned.
+// newLogWriter returns a struct that impements the io.Writer interface. It supports
+// "redirecting" the system logger to a string array.
+func newLogWriter() *logWriter {
+	return &logWriter{
+		log: "",
+	}
+}
+
+// Write writes to the log redirection struct.  It supports
+// "redirecting" the system logger to a string array.
+func (w *logWriter) Write(b []byte) (cnt int, err error) {
+	w.log += string(b)
+	return len(b), nil
+}
+
+// Close closes log redirection.  It supports
+// "redirecting" the system logger to a string array.
+func (w *logWriter) Close() error {
+	return nil
+}
+
+// calcCutoff returns a prune cutoff date by parsing the passed config. If no cutoff
+// date/time is specified then an empty time.Time struct is returned.
 func calcCutoff(cfg config.PruneConfig) (time.Time, error) {
 	if !slices.Contains([]string{createdType, accessedType}, strings.ToLower(cfg.Type)) {
 		return time.Time{}, nil
@@ -249,46 +252,63 @@ func prune(mh imgpull.ManifestHolder, imagePath string) {
 // rmManifest removes the passed manifest from the manifest cache and the file system. If the
 // manifest is by tag, then the pair by-digest manifest is also removed from in-mem cache if
 // one exists. Manifests only exist once on the file system, but may exist twice in the in-mem
-// cache: once by tag and once by digest for retrieval both ways.
+// cache: once by tag and once by digest for retrieval both ways. The blobs for the manifest
+// (if any) are *not* removed.
 func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
 	pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
 	if err != nil {
 		log.Errorf("error parsing manifest URL: %s", err)
 		return
 	}
-	delete(mc.manifests, pr.Url())
-	if pr.PullType == pullrequest.ByTag {
-		delete(mc.manifests, pr.UrlWithDigest("sha256:"+mh.Digest))
-	}
+	mc.delete(pr, mh.Digest)
 	if err := serialize.RmManifest(imagePath, mh); err != nil {
 		log.Errorf("error removing manifest %q from the file system. the error was: %s", pr.Url(), err)
 	}
 	log.Infof("removed manifest: %s", pr.Url())
 }
 
+// delete actually deletes a manifest from the in-mem cache taking into account whether
+// the manifest is tagged "latest" or not.
+func (mc *manifestCache) delete(pr pullrequest.PullRequest, digest string) {
+	if pr.IsLatest() {
+		delete(mc.latest, pr.Url())
+		// IsLatest means the manifest has tag "latest"
+		delete(mc.latest, pr.UrlWithDigest("sha256:"+digest))
+	} else {
+		delete(mc.manifests, pr.Url())
+		if pr.PullType == pullrequest.ByTag {
+			delete(mc.manifests, pr.UrlWithDigest("sha256:"+digest))
+		}
+	}
+}
+
 // rmBlobs decrements the ref count of all blobs ref'd by the passed image manifest in the in-mem
 // blob map and if the ref count is zero, the blob is removed from the map and the file system.
-func rmBlobs(mh imgpull.ManifestHolder, imagePath string) {
+func rmBlobs(mh imgpull.ManifestHolder, imagePath string) error {
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)
-		rmBlob(digest, imagePath)
+		if err := rmBlob(digest, imagePath); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // rmBlob decrements the ref count for the passed blob digest. If zero, the function removes the
 // blob from the blob map and the file system.
-func rmBlob(digest string, imagePath string) {
+func rmBlob(digest string, imagePath string) error {
 	bc.blobs[digest]--
 	if bc.blobs[digest] == 0 {
 		delete(bc.blobs, digest)
 		if err := serialize.RmBlob(imagePath, digest); err != nil {
-			log.Errorf("error removing blob %q from the file system. the error was: %s", digest, err)
+			return fmt.Errorf("error removing blob %q from the file system. the error was: %s", digest, err)
 		}
 	} else if bc.blobs[digest] < 0 {
-		log.Errorf("negative blob count for digest %q (should never happen)", digest)
+		return fmt.Errorf("negative blob count for digest %q (should never happen)", digest)
 	} else {
 		log.Infof("removed blob: %s", digest)
 	}
+	return nil
 }
 
 // days2hrs converts a days string like "-1d" to an hours string like "-24h" because

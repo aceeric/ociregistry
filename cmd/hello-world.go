@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/globals"
+	"github.com/aceeric/ociregistry/impl/serialize"
 )
 
 //go:embed hello_world/config.json
@@ -32,7 +34,7 @@ func helloWorldMode() (string, error) {
 	config.SetAirGapped(true)
 	config.SetPreloadImages("")
 	config.SetImagePath(tmpdir)
-	if err := ensureImagePaths(); err != nil {
+	if err := serialize.CreateDirs(config.GetImagePath()); err != nil {
 		return "", err
 	}
 	filelist := []struct {
@@ -40,10 +42,10 @@ func helloWorldMode() (string, error) {
 		Dir   string
 		Bytes *[]byte
 	}{
-		{Name: "424f1f86cdf501deb591ace8d14d2f40272617b51b374915a87a2886b2025ece", Dir: "fat", Bytes: &manifestList},
-		{Name: "03b62250a3cb1abd125271d393fc08bf0cc713391eda6b57c02d1ef85efcc25c", Dir: "img", Bytes: &imageManifest},
-		{Name: "74cc54e27dc41bb10dc4b2226072d469509f2f22f1a3ce74f4a59661a1d44602", Dir: "blobs", Bytes: &configJson},
-		{Name: "e6590344b1a5dc518829d6ea1524fc12f8bcd14ee9a02aa6ad8360cce3a9a9e9", Dir: "blobs", Bytes: &blobTarGz},
+		{Name: "424f1f86cdf501deb591ace8d14d2f40272617b51b374915a87a2886b2025ece", Dir: globals.LtsPath, Bytes: &manifestList},
+		{Name: "03b62250a3cb1abd125271d393fc08bf0cc713391eda6b57c02d1ef85efcc25c", Dir: globals.LtsPath, Bytes: &imageManifest},
+		{Name: "74cc54e27dc41bb10dc4b2226072d469509f2f22f1a3ce74f4a59661a1d44602", Dir: globals.BlobPath, Bytes: &configJson},
+		{Name: "e6590344b1a5dc518829d6ea1524fc12f8bcd14ee9a02aa6ad8360cce3a9a9e9", Dir: globals.BlobPath, Bytes: &blobTarGz},
 	}
 	for _, file := range filelist {
 		if err := os.WriteFile(filepath.Join(tmpdir, file.Dir, file.Name), *file.Bytes, 0600); err != nil {

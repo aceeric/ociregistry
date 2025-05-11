@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# Run this from project root. Usage:
+#
+# hack/test-local-server <optional path to image list>
+#
+# E.g.:
+#
+# hack/test-local-server hack/image-list
+#
+
+if [[ "$#" -ne 1 ]]; then
+  echo "usage: pull-image-list <file with list of images>"
+  exit 1
+fi
+
+cat $1 | while read image; do
+  tarfile=$(echo $image | sed "s|[/:]|-|g").tar
+  echo "pulling $image"
+  if ! imgpull localhost:8080/$image $tarfile --scheme http; then
+    echo "ERROR PULLING $image"
+  fi
+done

@@ -13,6 +13,8 @@ import (
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/cache"
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/globals"
+	"github.com/aceeric/ociregistry/impl/serialize"
 	"github.com/labstack/echo/v4"
 )
 
@@ -136,11 +138,9 @@ func setupTests() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	for _, dir := range []string{"fat", "img", "blobs"} {
-		os.Mkdir(filepath.Join(td, dir), 0777)
-	}
+	serialize.CreateDirs(td)
 	for _, blobDigest := range blobDigests {
-		if err = os.WriteFile(filepath.Join(td, "blobs", blobDigest), []byte(blobDigest), 0777); err != nil {
+		if err = os.WriteFile(filepath.Join(td, globals.BlobPath, blobDigest), []byte(blobDigest), 0777); err != nil {
 			return td, err
 		}
 	}
@@ -151,7 +151,7 @@ func setupTests() (string, error) {
 	for i := 0; i < 3; i++ {
 		md := fmt.Sprintf(manifestDigest, i)
 		mfst := fmt.Sprintf(manifest, md, orgs[i])
-		if err = os.WriteFile(filepath.Join(td, "img", md), []byte(mfst), 0777); err != nil {
+		if err = os.WriteFile(filepath.Join(td, globals.ImgPath, md), []byte(mfst), 0777); err != nil {
 			return td, err
 		}
 	}

@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
+	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"
@@ -39,12 +41,14 @@ func TestRunPruner(t *testing.T) {
 	time.Sleep(time.Second)
 	stopPruneCh <- true
 	<-pruneStoppedCh
-	if len(mc.manifests) != 1 {
+	// each manifest stored twice - once by tag and once by digest
+	if mc.len() != 2 {
 		t.Fail()
 	}
 }
 
-// Create three manifests and call the pruner used by the REST API.
+// Create three manifests and call the pruner used by the REST API. Same
+// logic and expected outcome as TestRunPruner.
 func TestPrunerFromApi(t *testing.T) {
 	td, err := setupPrune()
 	if err != nil {
@@ -61,7 +65,7 @@ func TestPrunerFromApi(t *testing.T) {
 	if err != nil {
 		t.FailNow()
 	}
-	if len(mc.manifests) != 1 {
+	if mc.len() != 2 {
 		t.Fail()
 	}
 }
@@ -71,9 +75,7 @@ func TestPrune(t *testing.T) {
 	ResetCache()
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
-	for _, dir := range []string{"fat", "img", "blobs"} {
-		os.Mkdir(filepath.Join(td, dir), 0777)
-	}
+	serialize.CreateDirs(td)
 	mh := imgpull.ManifestHolder{
 		Type:     imgpull.V1ociManifest,
 		Digest:   strconv.Itoa(int(imgpull.V1ociManifest)),
@@ -85,7 +87,7 @@ func TestPrune(t *testing.T) {
 		"1111111111111111111111111111111111111111111111111111111111111113",
 	}
 	for _, digest := range digests {
-		if err := os.WriteFile(filepath.Join(td, "blobs", digest), []byte(digest), 0755); err != nil {
+		if err := os.WriteFile(filepath.Join(td, globals.BlobPath, digest), []byte(digest), 0755); err != nil {
 			t.Fail()
 		}
 	}
@@ -98,13 +100,16 @@ func TestPrune(t *testing.T) {
 	}
 
 	addManifestToCache(pr, mh)
-	addBlobsToCache(mh, td)
+	err = addBlobsToCache(mh, td)
+	if err != nil {
+		t.Fail()
+	}
 	// manifests that are pulled by tag are added twice - one by tag and a second by digest
-	if len(mc.manifests) != 2 || len(bc.blobs) != 3 {
+	if mc.len() != 2 || len(bc.blobs) != 3 {
 		t.Fail()
 	}
 	prune(mh, td)
-	if len(mc.manifests) != 0 {
+	if mc.len() != 0 {
 		t.Fail()
 	}
 	for _, digest := range digests {
@@ -213,15 +218,14 @@ func TestComparer(t *testing.T) {
 func setupPrune() (string, error) {
 	ResetCache()
 	td, _ := os.MkdirTemp("", "")
-	for _, dir := range []string{"fat", "img", "blobs"} {
-		os.Mkdir(filepath.Join(td, dir), 0777)
-	}
+	serialize.CreateDirs(td)
 	curDt := time.Now()
 	for i := 0; i < 3; i++ {
 		mhDate := curDt.AddDate(0, 0, -(i * 2))
 		mh := imgpull.ManifestHolder{
-			Type:     imgpull.V1ociManifest,
-			Digest:   strconv.Itoa(int(imgpull.V1ociManifest)),
+			Type: imgpull.V1ociManifest,
+			//Digest:   strconv.Itoa(int(imgpull.V1ociManifest)),
+			Digest:   fmt.Sprintf("000000000000000000000000000000000000000000000000000000000000000%d", i),
 			ImageUrl: fmt.Sprintf("docker.io/test/manifest:v1.2.%d", i),
 			Created:  mhDate.Format(dateFormat),
 		}

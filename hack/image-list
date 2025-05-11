@@ -15,7 +15,7 @@ quay.io/cilium/hubble-relay:v1.16.3
 quay.io/cilium/operator:v1.16.3
 quay.io/coreos/etcd:v3.4.34
 quay.io/curl/curl:8.10.1
-quay.io/infinispan/server:15.0.10.Final
+quay.io/infinispan/server:15.0
 quay.io/jetstack/cert-manager-acmesolver:v1.16.1
 quay.io/jetstack/cert-manager-cainjector:v1.16.1
 quay.io/jetstack/cert-manager-controller:v1.16.1
@@ -28,7 +28,6 @@ quay.io/kubescape/storage:latest
 quay.io/libpod/alpine:3.2
 quay.io/metallb/controller:v0.14.8
 quay.io/metallb/speaker:v0.14
-quay.io/minio/minio:RELEASE.2024-10-29T16-01-48Z.fips
 quay.io/mongodb/mongodb-kubernetes-operator:0.9.0
 quay.io/oauth2-proxy/oauth2-proxy:v7.7.1-alpine
 quay.io/operatorhubio/catalog:latest

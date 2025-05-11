@@ -89,7 +89,7 @@ func doPull(imageUrl string, imagePath string, platformArch string, platformOs s
 	if err != nil {
 		return itemcnt, err
 	}
-	mh, cnt, err := getFromCacheOrRemote(puller, md.Digest, md.IsImageManifest(), imagePath)
+	mh, cnt, err := getFromCacheOrRemote(puller, md.Digest, pr.IsLatest(), md.IsImageManifest(), imagePath)
 	if err != nil {
 		return itemcnt, err
 	}
@@ -99,7 +99,7 @@ func doPull(imageUrl string, imagePath string, platformArch string, platformOs s
 		if err != nil {
 			return itemcnt, err
 		}
-		if mh, cnt, err = getFromCacheOrRemote(puller, digest, true, imagePath); err != nil {
+		if mh, cnt, err = getFromCacheOrRemote(puller, digest, pr.IsLatest(), true, imagePath); err != nil {
 			return itemcnt, err
 		}
 		itemcnt += cnt
@@ -111,16 +111,12 @@ func doPull(imageUrl string, imagePath string, platformArch string, platformOs s
 // passed 'digest' arg. If already present on the file system, then does nothing. Otherwise pulls
 // from the upstream using the url in the passed puller and saves the manifest (and blobs if an
 // image url) to the file system.
-func getFromCacheOrRemote(puller imgpull.Puller, digest string, isImageManifest bool, imagePath string) (imgpull.ManifestHolder, int, error) {
-	mtype := "list"
-	if isImageManifest {
-		mtype = "image"
-	}
-	if mh, found := serialize.MhFromFilesystem(digest, isImageManifest, imagePath); found {
-		log.Infof("already cached: %s (%s)", puller.GetUrl(), mtype)
+func getFromCacheOrRemote(puller imgpull.Puller, digest string, isLatest bool, isImageManifest bool, imagePath string) (imgpull.ManifestHolder, int, error) {
+	if mh, found := serialize.MhFromFilesystem(digest, isLatest, imagePath); found {
+		log.Infof("already cached: %s", puller.GetUrl())
 		return mh, 0, nil
 	}
-	log.Infof("pulling %s (%s)", puller.GetUrl(), mtype)
+	log.Infof("pulling %s", puller.GetUrl())
 	var mh imgpull.ManifestHolder
 	var err error
 	if isImageManifest {
@@ -135,7 +131,7 @@ func getFromCacheOrRemote(puller imgpull.Puller, digest string, isImageManifest 
 		return imgpull.ManifestHolder{}, 0, err
 	}
 	if mh.IsImageManifest() {
-		blobDir := filepath.Join(imagePath, globals.BlobsDir)
+		blobDir := filepath.Join(imagePath, globals.BlobPath)
 		if err = puller.PullBlobs(mh, blobDir); err != nil {
 			return mh, 0, err
 		}

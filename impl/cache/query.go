@@ -107,9 +107,9 @@ func (mhr *MHReader) Read(b []byte) (n int, err error) {
 func GetManifestsCompare(comparer ManifestComparer, count int) []imgpull.ManifestHolder {
 	mc.Lock()
 	defer mc.Unlock()
-	mhs := make([]imgpull.ManifestHolder, 0, len(mc.manifests))
+	mhs := []imgpull.ManifestHolder{}
 	matches := 0
-	for url, mh := range mc.manifests {
+	for url, mh := range mc.allManifests {
 		if url != mh.ImageUrl {
 			// when manifests are added to the in-mem cache, if the manifest has a tag
 			// it is added by tag and again by digest so it is retrievable both ways. When

@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+img=localhost:5000/foo
+
+for tag in v1 v2; do
+  docker buildx build -t $img:$tag -f Dockerfile.$tag .
+  docker push $img:$tag
+done
+
+# imgpull localhost:5000/foo:v1 foo-v1.tar --scheme http
+# imgpull localhost:5000/foo:v2 foo-v2.tar --scheme http
+
+# tar -tvf foo-v1.tar 
+# -rw-rw-r-- eace/eace    715153 2025-05-11 19:06 5c1cde1e9386a41084804b7bf02181a587e0b1c6f55ef3ff962e8d29d80a7ced.tar.gz
+# -rw-rw-r-- eace/eace        93 2025-05-11 19:06 4aa5eaa6418e3d9d4aafb446697547cd80ecc60fe8f8c6a80443c7100c83a1c1.tar.gz
+# -rw-rw-r-- eace/eace       176 2025-05-11 19:06 75d5e8eb7f331efe229d57f740273b09d128a52e61d3669332eee4aded282c01.tar.gz
+# -rw-rw-r-- eace/eace       149 2025-05-11 19:06 8912ed508594049d4f9dc35d5b4b85f62f3473954a8a5f214cecc205b89f49d1.tar.gz
+# -rw-rw-r-- eace/eace       527 2025-05-11 19:06 manifest.json
+# -rw-rw-r-- eace/eace      1251 2025-05-11 19:06 sha256:f30d47b4eee0cccd212bf6b612fa0e8ddc25632f10e352567a3c784ea9c3827a
+# tar -tvf foo-v2.tar 
+# -rw-rw-r-- eace/eace    715153 2025-05-11 19:06 5c1cde1e9386a41084804b7bf02181a587e0b1c6f55ef3ff962e8d29d80a7ced.tar.gz
+# -rw-rw-r-- eace/eace        93 2025-05-11 19:06 4aa5eaa6418e3d9d4aafb446697547cd80ecc60fe8f8c6a80443c7100c83a1c1.tar.gz
+# -rw-rw-r-- eace/eace       175 2025-05-11 19:06 1ddfd03f86cbde6ba57b391b2e9cd2c53b68e67f6684b0a569c48b82b3cba0f2.tar.gz
+# -rw-rw-r-- eace/eace       147 2025-05-11 19:06 e0a60b3df700addedae0e0dda64782741aa74d88f1e645252cebdb496b31e0ef.tar.gz
+# -rw-rw-r-- eace/eace       527 2025-05-11 19:06 manifest.json
+# -rw-rw-r-- eace/eace      1251 2025-05-11 19:06 sha256:2c56660c2808956ab537090de6c419094f0931c5be7bd60f214a8299042f5ba6
+
+# imgpull localhost:8888/foo:v1 --ns localhost:5000 pullthru-v1.tar --scheme http
+# image "localhost:8888/foo:v1" saved to "pullthru-v1.tar" in 38.825453ms
+
+# imgpull localhost:8888/foo:v2 --ns localhost:5000 pullthru-v2.tar --scheme http
+# image "localhost:8888/foo:v1" saved to "pullthru-v2.tar" in 32.839622ms
+
+# docker tag localhost:5000/foo:v1 localhost:5000/foo:latest
+# docker push localhost:5000/foo:latest
+
+docker image ls localhost:5000/foo
+REPOSITORY           TAG       IMAGE ID       CREATED          SIZE
+localhost:5000/foo   v2        2c56660c2808   14 minutes ago   1.13MB
+localhost:5000/foo   latest    f30d47b4eee0   14 minutes ago   1.13MB
+localhost:5000/foo   v1        f30d47b4eee0   14 minutes ago   1.13MB
+
+imgpull localhost:8888/foo:latest --ns localhost:5000 pullthru-v1.latest --scheme http
+
+docker tag localhost:5000/foo:v2 localhost:5000/foo:latest
+docker push localhost:5000/foo:latest
+
+
+REPRO CASE:
+
+docker tag localhost:5000/foo:v2 localhost:5000/foo:latest
+docker push localhost:5000/foo:latest
+imgpull localhost:8888/foo:latest --ns localhost:5000 pullthrulatest.tar --scheme http
+docker tag localhost:5000/foo:v1 localhost:5000/foo:latest
+docker push localhost:5000/foo:latest
+imgpull localhost:8888/foo:latest --ns localhost:5000 pullthrulatest.tar --scheme http
+
+INFO[0171] head /v2/                                    
+INFO[0171] echo server HEAD:/v2/ status=200 latency=106.973µs host=localhost:8888 ip=127.0.0.1 
+INFO[0171] pulling manifest from upstream: "localhost:5000/foo:latest" 
+DEBU[0171] replace manifest - removing localhost:5000/foo:latest, digest 6aeb65ce19619e7bf09ef0135b8aa1ab24ba7b90ef59fc3719cfee41faa54c4e 
+INFO[0171] removed manifest: localhost:5000/foo:latest  
+ERRO[0171] negative blob count for digest "sha256:1ddfd03f86cbde6ba57b391b2e9cd2c53b68e67f6684b0a569c48b82b3cba0f2" (should never happen) 
+ERRO[0171] negative blob count for digest "sha256:e0a60b3df700addedae0e0dda64782741aa74d88f1e645252cebdb496b31e0ef" (should never happen) 
+ERRO[0171] negative blob count for digest "sha256:2c56660c2808956ab537090de6c419094f0931c5be7bd60f214a8299042f5ba6" (should never happen) 
+INFO[0171] echo server GET:/v2/foo/manifests/latest?ns=localhost:5000 status=200 latency=5.97333ms host=localhost:8888 ip=127.0.0.1 
+INFO[0171] echo server GET:/v2/foo/blobs/sha256:5c1cde1e93?ns=localhost:5000 status=200 latency=1.511506ms host=localhost:8888 ip=127.0.0.1 
+INFO[0171] echo server GET:/v2/foo/blobs/sha256:4aa5eaa641?ns=localhost:5000 status=200 latency=370.969µs host=localhost:8888 ip=127.0.0.1 
+INFO[0171] echo server GET:/v2/foo/blobs/sha256:75d5e8eb7f?ns=localhost:5000 status=200 latency=390.991µs host=localhost:8888 ip=127.0.0.1 
+INFO[0171] echo server GET:/v2/foo/blobs/sha256:8912ed5085?ns=localhost:5000 status=200 latency=950.996µs host=localhost:8888 ip=127.0.0.1 
+INFO[0171] echo server GET:/v2/foo/blobs/sha256:f30d47b4ee?ns=localhost:5000 status=200 latency=349.64µs host=localhost:8888 ip=127.0.0.1 
+
+
+
+
+
+

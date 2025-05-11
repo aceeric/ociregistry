@@ -26,7 +26,7 @@ func GetDigestFrom(str string) string {
 // string
 func GetBlobPath(base string, shaPat string) string {
 	shaPat = GetDigestFrom(shaPat)
-	blobFile := filepath.Join(base, globals.BlobsDir, shaPat)
+	blobFile := filepath.Join(base, globals.BlobPath, shaPat)
 	_, err := os.Stat(blobFile)
 	if err != nil {
 		return ""

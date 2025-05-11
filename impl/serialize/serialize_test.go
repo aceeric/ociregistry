@@ -275,6 +275,20 @@ var manifestTests = []manifestTest{
 		bytes:     []byte(v1ociManifest),
 		mtype:     imgpull.V1ociManifest,
 	},
+	{
+		imgurl:    "quay.io/foo/bar:latest",
+		mediatype: "application/vnd.oci.image.index.v1+json",
+		digest:    "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff0000",
+		bytes:     []byte(v1ociIndex),
+		mtype:     imgpull.V1ociIndex,
+	},
+	{
+		imgurl:    "quay.io/foo/bar@sha256:aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1111",
+		mediatype: "application/vnd.oci.image.manifest.v1+json",
+		digest:    "aaaaaaaaaabbbbbbbbbbccccccccccddddddddddeeeeeeeeeeffffffffff1111",
+		bytes:     []byte(v1ociManifest),
+		mtype:     imgpull.V1ociManifest,
+	},
 }
 
 // Test saving and loading manifest holders.
@@ -282,44 +296,47 @@ func TestSaveAndLoad(t *testing.T) {
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 
-	var mhOut imgpull.ManifestHolder
-
 	for _, tst := range manifestTests {
-		mhOut = imgpull.ManifestHolder{
+		mhOut := imgpull.ManifestHolder{
 			Type:     tst.mtype,
 			Digest:   tst.digest,
 			ImageUrl: tst.imgurl,
 			Bytes:    tst.bytes,
 		}
+
 		switch tst.mtype {
 		case imgpull.V2dockerManifestList:
 			if err := json.Unmarshal(mhOut.Bytes, &mhOut.V2dockerManifestList); err != nil {
-				t.Fail()
+				t.FailNow()
 			}
 		case imgpull.V2dockerManifest:
 			if err := json.Unmarshal(mhOut.Bytes, &mhOut.V2dockerManifest); err != nil {
-				t.Fail()
+				t.FailNow()
 			}
 
 		case imgpull.V1ociIndex:
 			if err := json.Unmarshal(mhOut.Bytes, &mhOut.V1ociIndex); err != nil {
-				t.Fail()
+				t.FailNow()
 			}
 
 		case imgpull.V1ociManifest:
 			if err := json.Unmarshal(mhOut.Bytes, &mhOut.V1ociManifest); err != nil {
-				t.Fail()
+				t.FailNow()
 			}
 		}
 		if MhToFilesystem(mhOut, td, false) != nil {
-			t.Fail()
+			t.FailNow()
 		}
-		mhIn, found := MhFromFilesystem(tst.digest, mhOut.IsImageManifest(), td)
+		isLatest, err := mhOut.IsLatest()
+		if err != nil {
+			t.FailNow()
+		}
+		mhIn, found := MhFromFilesystem(tst.digest, isLatest, td)
 		if !found {
-			t.Fail()
+			t.FailNow()
 		}
 		if !reflect.DeepEqual(mhOut, mhIn) {
-			t.Fail()
+			t.FailNow()
 		}
 	}
 }

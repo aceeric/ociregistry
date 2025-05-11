@@ -3,12 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/aceeric/ociregistry/cmd/subcmd"
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/preload"
+	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )
@@ -54,7 +54,7 @@ func realMain() int {
 		} else {
 			defer os.RemoveAll(tmpDir)
 		}
-	} else if err := ensureImagePaths(); err != nil {
+	} else if err := serialize.CreateDirs(config.GetImagePath()); err != nil {
 		fmt.Fprintf(os.Stderr, "unable to verify image path: %s\n", err)
 		return 1
 	}
@@ -85,22 +85,4 @@ func realMain() int {
 		}
 	}
 	return 0
-}
-
-// ensureImagePaths ensures that the configured image cache directories exist and
-// are writeable or returns an error.
-func ensureImagePaths() error {
-	for _, subDir := range []string{"fat", "img", "blobs"} {
-		if absPath, err := filepath.Abs(filepath.Join(config.GetImagePath(), subDir)); err == nil {
-			if err := os.MkdirAll(absPath, 0755); err != nil {
-				return err
-			}
-		}
-	}
-	pt := filepath.Join(config.GetImagePath(), ".permtest")
-	defer os.Remove(pt)
-	if _, err := os.Create(pt); err != nil {
-		return fmt.Errorf("directory %s is not writable", config.GetImagePath())
-	}
-	return nil
 }

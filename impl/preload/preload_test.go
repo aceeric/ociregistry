@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/mock"
 
 	log "github.com/sirupsen/logrus"
@@ -44,7 +45,7 @@ func TestPreload(t *testing.T) {
 		t.Fail()
 	}
 	// the hello-world latest image has two blobs
-	blobs, _ := os.ReadDir(filepath.Join(d, "blobs"))
+	blobs, _ := os.ReadDir(filepath.Join(d, globals.BlobPath))
 	if len(blobs) != 2 {
 		t.Fail()
 	}

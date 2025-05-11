@@ -119,7 +119,7 @@ curl localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io | jq
         "os": "linux"
       }
     },
-  ...
+  (etc...)
 ```
 
 ### Curl an Image Manifest

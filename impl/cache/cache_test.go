@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -19,6 +20,7 @@ import (
 	"github.com/aceeric/ociregistry/mock"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
+	"github.com/aceeric/imgpull/pkg/imgpull/v1oci"
 	"github.com/opencontainers/go-digest"
 	log "github.com/sirupsen/logrus"
 )
@@ -126,6 +128,8 @@ func TestLoad(t *testing.T) {
 	}
 }
 
+// setupTestLoad creates manifests on the file system for each of the manifest types
+// in the passed ManifestType array. Each image manifest gets three layers.
 func setupTestLoad(mts []imgpull.ManifestType) (string, error) {
 	td, _ := os.MkdirTemp("", "")
 	for _, dir := range []string{"fat", "img", "blobs"} {
@@ -228,5 +232,157 @@ func TestConcurrentGet(t *testing.T) {
 	wg.Wait()
 	if upstreamPulls.Load() != 1 || errs.Load() != 0 {
 		t.Fail()
+	}
+}
+
+// Test that the left-minus-right digest function works as described.
+func TestLMR(t *testing.T) {
+	mhl := imgpull.ManifestHolder{
+		Type: imgpull.V1ociManifest,
+		V1ociManifest: v1oci.Manifest{
+			Config: v1oci.Descriptor{Digest: "A"},
+			Layers: []v1oci.Descriptor{
+				{Digest: "B"},
+				{Digest: "C"},
+				{Digest: "D"},
+			},
+		},
+	}
+	mhr := imgpull.ManifestHolder{
+		Type: imgpull.V1ociManifest,
+		V1ociManifest: v1oci.Manifest{
+			Config: v1oci.Descriptor{Digest: "C"},
+			Layers: []v1oci.Descriptor{
+				{Digest: "D"},
+				{Digest: "E"},
+				{Digest: "F"},
+			},
+		},
+	}
+	v1 := LmR(mhl, mhr)
+	v2 := LmR(mhr, mhl)
+	slices.Sort(v1)
+	slices.Sort(v2)
+	if slices.Compare(v1, []string{"A", "B"}) != 0 || slices.Compare(v2, []string{"E", "F"}) != 0 {
+		t.Fail()
+	}
+}
+
+func TestReplace(t *testing.T) {
+	ResetCache()
+	imageUrl := "foo.io/my-image:latest"
+	td, _ := os.MkdirTemp("", "")
+	defer os.RemoveAll(td)
+	for _, dir := range []string{"fat", "img", "blobs"} {
+		os.Mkdir(filepath.Join(td, dir), 0777)
+	}
+	// these are blobs - write them all now for simplicity even though E and F
+	// in reality would arrive when pulling the second "latest" manifest
+	digests := make([]string, 6)
+	for idx, letter := range []string{"a", "b", "c", "d", "e", "f"} {
+		digests[idx] = fmt.Sprintf("000000000000000000000000000000000000000000000000000000000000000%s", letter)
+		os.WriteFile(filepath.Join(td, "blobs", digests[idx]), []byte(digests[idx]), 0777)
+	}
+	firstDigest := "1111111111111111111111111111111111111111111111111111111111111123"
+	mhFirst := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociManifest,
+		ImageUrl: imageUrl,
+		Digest:   firstDigest,
+		V1ociManifest: v1oci.Manifest{
+			Config: v1oci.Descriptor{Digest: digests[0]},
+			Layers: []v1oci.Descriptor{
+				{Digest: digests[1]},
+				{Digest: digests[2]},
+				{Digest: digests[3]},
+			},
+		},
+	}
+	if err := serialize.MhToFilesystem(mhFirst, td, true); err != nil {
+		t.FailNow()
+	}
+	pr, err := pullrequest.NewPullRequestFromUrl(imageUrl)
+	if err != nil {
+		t.FailNow()
+	}
+	// add first manifest to in-mem cache
+	addToCache(pr, mhFirst, td)
+
+	// second manifest has the same digest so is interpreted as
+	// the same manifest so - NOP
+	mhNewSameDigest := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociManifest,
+		ImageUrl: imageUrl,
+		Digest:   firstDigest,
+		V1ociManifest: v1oci.Manifest{
+			Config: v1oci.Descriptor{Digest: digests[2]},
+			Layers: []v1oci.Descriptor{
+				{Digest: digests[3]},
+				{Digest: digests[4]},
+				{Digest: digests[5]},
+			},
+		},
+	}
+	if err := serialize.MhToFilesystem(mhNewSameDigest, td, true); err != nil {
+		t.FailNow()
+	}
+	// NOP because same digest
+	replaceInCache(pr, mhNewSameDigest, td)
+	files, err := os.ReadDir(filepath.Join(td, "blobs"))
+	if err != nil {
+		t.FailNow()
+	}
+	if len(files) != 6 || len(bc.blobs) != 4 {
+		t.FailNow()
+	}
+	for digest := range bc.blobs {
+		if !slices.Contains(digests[0:4], digest) {
+			t.FailNow()
+		}
+	}
+	_, exists := serialize.MhFromFilesystem(firstDigest, true, td)
+	if !exists {
+		t.FailNow()
+	}
+
+	// third manifest has the different digest so should trigger the
+	// replace path
+	secondDigest := "1111111111111111111111111111111111111111111111111111111111111456"
+	mhNewDiffDigest := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociManifest,
+		ImageUrl: imageUrl,
+		Digest:   secondDigest,
+		V1ociManifest: v1oci.Manifest{
+			Config: v1oci.Descriptor{Digest: digests[2]},
+			Layers: []v1oci.Descriptor{
+				{Digest: digests[3]},
+				{Digest: digests[4]},
+				{Digest: digests[5]},
+			},
+		},
+	}
+	if err := serialize.MhToFilesystem(mhNewDiffDigest, td, true); err != nil {
+		t.FailNow()
+	}
+	replaceInCache(pr, mhNewDiffDigest, td)
+	files, err = os.ReadDir(filepath.Join(td, "blobs"))
+	if err != nil {
+		t.FailNow()
+	}
+	if len(files) != 4 || len(bc.blobs) != 4 {
+		t.FailNow()
+	}
+	// only the new blobs should remain
+	for digest := range bc.blobs {
+		if !slices.Contains(digests[2:], digest) {
+			t.FailNow()
+		}
+	}
+	_, exists = serialize.MhFromFilesystem(firstDigest, true, td)
+	if exists {
+		t.FailNow()
+	}
+	_, exists = serialize.MhFromFilesystem(secondDigest, true, td)
+	if !exists {
+		t.FailNow()
 	}
 }

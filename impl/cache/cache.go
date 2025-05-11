@@ -97,10 +97,10 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 			return emptyManifestHolder, err
 		}
 		if forcePull {
-			// remove the old because it will be replaced by the new
-			prune(mh, imagePath)
+			replaceInCache(pr, mh, imagePath)
+		} else {
+			addToCache(pr, mh, imagePath)
 		}
-		addToCache(pr, mh, imagePath)
 		return mh, nil
 	} else {
 		select {
@@ -129,7 +129,8 @@ func GetBlob(digest string) int {
 
 // DoPull gets an image list manifest - or image manifest - from an upstream OCI distribution
 // server. If an image manifest is pulled, then all the blobs for the image manifest are
-// also pulled.
+// also pulled. On return, the pulled manifest will have been serialized to the file system by
+// the function (along with blobs, if an image manifest.)
 func DoPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, error) {
 	opts, err := config.ConfigFor(pr.Remote)
 	if err != nil {
@@ -240,10 +241,9 @@ func pullsInProgress() int {
 	return len(cp.pulls)
 }
 
-// addToCache adds the passed ManifestHolder to the manifest cache. If the manifest is an image
-// manifest then the blobs are added to the blob cache. If not readOnly, then the create date
-// on the manifest is set to the current time. The filesystem is expected to have been updated
-// before this function is called.
+// addToCache adds the passed ManifestHolder to the in-mem manifest cache. If the manifest is
+// an image manifest then the blobs are added to the in-mem blob cache. The manifest is expected
+// to already exist on the file system before this function is called.
 func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string) {
 	mc.Lock()
 	defer mc.Unlock()
@@ -253,6 +253,61 @@ func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath
 		defer bc.Unlock()
 		addBlobsToCache(mh, imagePath)
 	}
+}
+
+// replaceInCache handles the case where the system is configured to "always pull latest", meaning
+// that when a ":latest" tag is pulled, the server always goes to the upstream to (re)pull the image.
+// By the time this function is called, if an image manifest was pulled, then the new image blobs will
+// already have been downloaded and placed on the file system. It could be the case that the old
+// manifest and the new manifest may have overlapping sets of blobs. The function handles that case
+// by only removing blobs that were in the old manifest and not in the new manifest, and only adding
+// blobs that are in the new manifest that were not in the old manifest. The adds only happen in
+// the in-mem blob cache becuase the actual blobs have already been downloaded. But the deletes happen
+// in both the in-mem blob cache _and_ on the file system.
+func replaceInCache(pr pullrequest.PullRequest, mhNew imgpull.ManifestHolder, imagePath string) {
+	mc.Lock()
+	defer mc.Unlock()
+	// get the existing manifest from cache
+	mhExisting, exists := mc.manifests[pr.Url()]
+	if exists && mhExisting.Digest == mhNew.Digest {
+		// same manifest: nothing to do
+		return
+	}
+	rmManifest(mhExisting, imagePath)
+	bc.Lock()
+	defer bc.Unlock()
+	// add new blobs (in-mem cache only)
+	newBlobsToAdd := LmR(mhNew, mhExisting)
+	for _, digest := range newBlobsToAdd {
+		bc.blobs[digest]++
+	}
+	// remove old blobs (in-mem cache and file system)
+	existingBlobsToRm := LmR(mhExisting, mhNew)
+	for _, digest := range existingBlobsToRm {
+		rmBlob(digest, imagePath)
+	}
+}
+
+// LmR (Left minus Right) returns an array of blob digests that are present in
+// the left manifest that are not present in the right manifest. In other words
+// LmR([A,B,C,D], [C,D,E,F]) returns [A,B].
+func LmR(mhl, mhr imgpull.ManifestHolder) []string {
+	exists := make(map[string]bool, len(mhl.Layers()))
+	for _, lLayer := range mhl.Layers() {
+		for _, rLayer := range mhr.Layers() {
+			if lLayer.Digest == rLayer.Digest {
+				exists[lLayer.Digest] = true
+				break
+			}
+		}
+	}
+	toReturn := []string{}
+	for _, lLayer := range mhl.Layers() {
+		if _, exists := exists[lLayer.Digest]; !exists {
+			toReturn = append(toReturn, lLayer.Digest)
+		}
+	}
+	return toReturn
 }
 
 // addManifestToCache adds the passed manifest to the in-mem manifest map, keyed by
@@ -268,8 +323,8 @@ func addManifestToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
 
 // addBlobsToCache adds entries to the in-mem blob map and/or increments the ref count
 // for existing blobs in the blob map based on the layers (and the config blob) in the
-// passed manifest. The filesystem is expected to have been updated before this function
-// is called.
+// passed manifest. The blobs are expected to already exist on the file system before
+// this function is called.
 func addBlobsToCache(mh imgpull.ManifestHolder, imagePath string) {
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)

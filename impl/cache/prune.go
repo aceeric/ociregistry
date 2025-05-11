@@ -263,7 +263,7 @@ func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
 	if err := serialize.RmManifest(imagePath, mh); err != nil {
 		log.Errorf("error removing manifest %q from the file system. the error was: %s", pr.Url(), err)
 	}
-	log.Infof("pruned: %s", pr.Url())
+	log.Infof("removed manifest: %s", pr.Url())
 }
 
 // rmBlobs decrements the ref count of all blobs ref'd by the passed image manifest in the in-mem
@@ -271,17 +271,23 @@ func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
 func rmBlobs(mh imgpull.ManifestHolder, imagePath string) {
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)
-		bc.blobs[digest]--
-		if bc.blobs[digest] == 0 {
-			delete(bc.blobs, digest)
-			if err := serialize.RmBlob(imagePath, digest); err != nil {
-				log.Errorf("error removing blob %q from the file system. the error was: %s", digest, err)
-			}
-		} else if bc.blobs[digest] < 0 {
-			log.Errorf("negative blob count for digest %q (should never happen)", digest)
-		} else {
-			log.Infof("pruned blob: %s", digest)
+		rmBlob(digest, imagePath)
+	}
+}
+
+// rmBlob decrements the ref count for the passed blob digest. If zero, the function removes the
+// blob from the blob map and the file system.
+func rmBlob(digest string, imagePath string) {
+	bc.blobs[digest]--
+	if bc.blobs[digest] == 0 {
+		delete(bc.blobs, digest)
+		if err := serialize.RmBlob(imagePath, digest); err != nil {
+			log.Errorf("error removing blob %q from the file system. the error was: %s", digest, err)
 		}
+	} else if bc.blobs[digest] < 0 {
+		log.Errorf("negative blob count for digest %q (should never happen)", digest)
+	} else {
+		log.Infof("removed blob: %s", digest)
 	}
 }
 

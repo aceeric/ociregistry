@@ -22,6 +22,7 @@ The goals of the project are:
 
 **Table of Contents**
 
+- [Main branch CHANGES MAY 2025](#main-changes-may-2025)
 - [1.8.0 CHANGES APRIL 2025](#180-changes-april-2025)
 - [Quick Start - Desktop](#quick-start---desktop)
 - [Quick Start - Kubernetes](#quick-start---kubernetes)
@@ -37,6 +38,29 @@ The goals of the project are:
 - [REST API Implementation](#rest-api-implementation)
 - [Kubernetes Considerations](#kubernetes-considerations)
 - [Administrative REST API](#administrative-rest-api)
+
+## Main Changes May 2025
+
+> **If you are not upgrading from a version prior to 1.8.3, skip this section.**
+
+The main branch (soon to be tagged 1.9.0) has a different image cache directory structure:
+
+```
+<image root>
+├── blobs
+├── img
+└── lts
+```
+
+The `fat` directory is deprecated. The `lts` directory is added. The `lts` directory stored `latest`-tagged images. Server internals were modified to cache `latest` images separately. To convert a prior cache structure, navigate to the image cache root. Then:
+
+```
+mkdir lts
+grep -l ':latest' fat/* | xargs -I % mv % lts
+grep -l ':latest' img/* | xargs -I % mv % lts
+mv fat/* img
+rm -rf fat
+```
 
 ## 1.8.0 Changes April 2025
 
@@ -105,6 +129,8 @@ Curl a manifest list. Note the `ns` query parameter in the URL below which tells
 curl localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io | jq
 ```
 
+_(The server also supports in-path namespaces like `localhost:8080/v2/registry.k8s.io/kube-scheduler/manifests/v1.29.1`)_
+
 ### Result
 ```json
   "schemaVersion": 2,
@@ -147,11 +173,10 @@ find /tmp/images
 etc..
 /tmp/images/img
 /tmp/images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
-/tmp/images/fat
-/tmp/images/fat/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
+/tmp/images/img/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
 ```
 
-The manifest list was saved in: `images/fat/4afe5bf0ee...` and the image manifest was saved in: `images/img/019d7877d1...`. When you curled the image manifest the server pulled and cached the blobs at the same time.
+The manifest list was saved in: `images/img/4afe5bf0ee...` and the image manifest was saved in: `images/img/019d7877d1...`. When you curled the image manifest the server pulled and cached the blobs at the same time.
 
 ### Restart the Server and Repeat
 
@@ -239,22 +264,25 @@ logFile:
 preloadImages:
 # ignored unless preloadImages specified
 imageFile:
+# the port to serve on
 port: 8080
-# OS and arch default to the host running the server
+# OS and arch default to the host running the server so usually comment
+# out:
 #os: linux
 #arch: amd64
+# number of milliseconds before a pull from an upstream will time out
 pullTimeout: 60000
 # if true, then whenever a latest tag is pulled, the server will always pull
 # from the upstream - in other words it acts like a basic proxy. Useful when
 # supporting dev environments where latest is frequently changing.
 alwaysPullLatest: false
-# If true, will not pull from an upstream when an image is requested that
+# if true, will not pull from an upstream when an image is requested that
 # is not cached.
 airGapped: false
-# For testing. Only serves 'docker.io/hello-world:latest' from embedded blobs
+# for testing. Only serves 'docker.io/hello-world:latest' from embedded blobs
 # and manifests
 helloWorld: false
-# A port number to run a /health endpoint on for Kubernetes liveness and
+# a port number to run a /health endpoint on for Kubernetes liveness and
 # readiness. By default, the server doesn't listen on a health port. The
 # Helm chart enables this by default when running the server as a cluster
 # workload.
@@ -307,7 +335,7 @@ registries:
 Each entry supports the following configuration structure:
 
 ```yaml
-- name: my-upstream # or my-upstream:PORT
+- name: my-upstream # or my-upstream:PORT, e.g. index.docker.io
   description: Something that makes sense to you (or omit it - it is optional)
   scheme: https # (the default), also accepts http
   auth:
@@ -461,17 +489,28 @@ The image store is persisted to the file system. This includes blobs and manifes
 ```shell
 /var/lib/ociregistry
 ├── blobs
-├── fat
-└── img
+├── img
+└── lts
 ```
 
 1. `blobs` are where the blobs are stored.
-2. `fat` is where the image list manifests are stored.
-3. `img` stores the image manifests.
+2. `img` stores the non-`latest`-tagged image manifests.
+3. `lts` stores the `latest`-tagged image manifests. (See _About Latest_ below.)
 
 Everything is stored by digest. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
 
 The program uses a data structure called a `ManifestHolder` to hold all the image metadata and the actual manifest bytes from the upstream registry. These are simply serialized to the file system as JSON. (So you can find and inspect them if needed for troubleshooting with `grep`, `cat`, and `jq`.)
+
+## About "Latest"
+
+Internally, `latest`-tagged images are stored side by side with non-latest and treated as separate manifests. This enables the server to support cases that occur in development environments where latest images are in a constant state of flux. Storing `latest` images this way works in tandem with the `--always-pull-latest` flag as follows:
+
+| Action | Always Pull Latest | Result |
+|-|-|-|
+| Pull `foo:latest` | `false` (the default) | The image is pulled exactly once. All subsequent pulls return the same image regardless of what happens in the upstream. |
+| Pull `foo:latest` | `true` | The image is pulled from the upstream on each pull from the pull-through server **for each client**. Each pull completely replaces the prior pull. In other words - for latest images the server is a stateless proxy. (This could consume a fair bit of network bandwidth.) |
+
+> I'm evaluating an optimization where the server issues a HEAD request to the upstream and then skips the pull if the digest matches the current `latest` digest.
 
 ## Pruning the cache
 

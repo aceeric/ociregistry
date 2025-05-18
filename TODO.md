@@ -1,5 +1,7 @@
 # In progress
 
+- HEAD the upstream on latest and don't pull if digest is unchanged.
+
 # TODO
 
 - CI

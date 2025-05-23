@@ -1,7 +1,0 @@
-from docker.io/busybox:1.27.0
-
-WORKDIR /foo
-
-RUN echo FOO > LAYER1
-
-RUN echo FOO > LAYER2

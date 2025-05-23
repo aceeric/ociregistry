@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-
-docker run -d\
-  --name registry\
-  -p 5000:5000\
-  registry:3.0.0

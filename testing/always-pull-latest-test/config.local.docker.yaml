@@ -1,9 +1,0 @@
-# bin/ociregistry --config-file ~/projects/ociregistry/testing/always-pull-latest-test/config.local.docker.yaml serve --port 8888
----
-imagePath: /tmp/localreg
-logLevel: debug
-alwaysPullLatest: true
-registries:
-  - name: localhost:5000
-    description: Local registry running in Docker daemon
-    scheme: http

@@ -1,6 +1,6 @@
 ![logo](resources/ociregistry.logo.png)
 
-![Version: 1.8.3](https://img.shields.io/badge/Version-1.8.3-informational?style=rounded-square)
+![Version: 1.9.0](https://img.shields.io/badge/Version-1.9.0-informational?style=rounded-square)
 [![Unit tests](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/aceeric/ociregistry)](https://goreportcard.com/report/github.com/aceeric/ociregistry)
 [![Go Vuln Check](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml)
@@ -22,7 +22,7 @@ The goals of the project are:
 
 **Table of Contents**
 
-- [Main branch CHANGES MAY 2025](#main-changes-may-2025)
+- [1.9.0 CHANGES MAY 2025](#190-changes-may-2025)
 - [1.8.0 CHANGES APRIL 2025](#180-changes-april-2025)
 - [Quick Start - Desktop](#quick-start---desktop)
 - [Quick Start - Kubernetes](#quick-start---kubernetes)
@@ -39,11 +39,11 @@ The goals of the project are:
 - [Kubernetes Considerations](#kubernetes-considerations)
 - [Administrative REST API](#administrative-rest-api)
 
-## Main Changes May 2025
+## 1.9.0 Changes May 2025
 
-> **If you are not upgrading from a version prior to 1.8.3, skip this section.**
+> **If you are not upgrading from a version prior to 1.9.0, skip this section.**
 
-The main branch (soon to be tagged 1.9.0) has a different image cache directory structure:
+This version has a different image cache directory structure:
 
 ```
 <image root>
@@ -145,8 +145,8 @@ _(The server also supports in-path namespaces like `localhost:8080/v2/registry.k
         "os": "linux"
       }
     },
-  (etc...)
 ```
+(etc...)
 
 ### Curl an Image Manifest
 

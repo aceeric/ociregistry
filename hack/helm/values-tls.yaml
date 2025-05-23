@@ -10,7 +10,7 @@
 # helm upgrade --install ociregistry ../../charts/ociregistry\
 #  --namespace ociregistry\
 #  --create-namespace\
-#  --set image.ociregistry.tag=1.8.3-test\
+#  --set image.ociregistry.tag=1.9.0-test\
 #  --values values-tls.yaml\
 #  --set-file serverTls.cert=/tmp/localhost.crt\
 #  --set-file serverTls.key=/tmp/localhost.key\

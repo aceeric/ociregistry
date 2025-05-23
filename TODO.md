@@ -4,8 +4,6 @@
 
 # TODO
 
-- CI
-  - coverage report
 - Server base url (for ingress)
 - Readthedocs
   - concurrency design

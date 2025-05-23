@@ -103,8 +103,8 @@ func TestPrunebyDate(t *testing.T) {
 	i := 0
 	for _, mh := range mhs {
 		// change create date - one per month
-		year, month, day := time.Now().AddDate(0, -1, 0).Date()
-		datestr := fmt.Sprintf("%04d-%02d-%02dT23:24:25", year, month, day+i)
+		year, month, day := time.Now().AddDate(0, 0, -30+i).Date()
+		datestr := fmt.Sprintf("%04d-%02d-%02dT23:24:25", year, month, day)
 		tstamp, err := time.Parse(dateFormat, datestr)
 		if err != nil {
 			t.FailNow()

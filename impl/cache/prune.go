@@ -302,11 +302,11 @@ func rmBlob(digest string, imagePath string) error {
 		delete(bc.blobs, digest)
 		if err := serialize.RmBlob(imagePath, digest); err != nil {
 			return fmt.Errorf("error removing blob %q from the file system. the error was: %s", digest, err)
+		} else {
+			log.Infof("removed blob: %s", digest)
 		}
 	} else if bc.blobs[digest] < 0 {
 		return fmt.Errorf("negative blob count for digest %q (should never happen)", digest)
-	} else {
-		log.Infof("removed blob: %s", digest)
 	}
 	return nil
 }

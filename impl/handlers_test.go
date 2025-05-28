@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/mock"
 
@@ -191,5 +193,40 @@ func TestPullImageAndBlob(t *testing.T) {
 	r.handleV2GetOrgImageBlobsDigest(ctx, "", "hello-world", "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a")
 	if ctx.Response().Status != 200 {
 		t.Fail()
+	}
+}
+
+type TestAuthToken struct {
+	Token string `json:"token"`
+}
+
+func TestHandleV2Auth(t *testing.T) {
+	r := NewOciRegistry(nil)
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	ctx := e.NewContext(req, rec)
+	scope := "SCOPE"
+	service := "SERVICE"
+	params := models.V2AuthParams{
+		Scope:         &scope,
+		Service:       &service,
+		Authorization: "AUTHORIZATION",
+	}
+	r.handleV2Auth(ctx, params)
+	if ctx.Response().Status != 200 {
+		t.Fail()
+	}
+	token, err := io.ReadAll(rec.Body)
+	if err != nil {
+		t.FailNow()
+	}
+	parsedToken := TestAuthToken{}
+	err = json.Unmarshal(token, &parsedToken)
+	if err != nil {
+		t.FailNow()
+	}
+	if parsedToken.Token != "FROBOZZ" {
+		t.FailNow()
 	}
 }

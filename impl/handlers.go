@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	. "github.com/aceeric/ociregistry/api/models"
+	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/cache"
 	"github.com/aceeric/ociregistry/impl/helpers"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
@@ -76,7 +76,7 @@ func (r *OciRegistry) handleV2HeadDefault(ctx echo.Context) error {
 
 // GET /v2/auth. The server doesn't do anything with tokens but if the client wants a token
 // it gets one.
-func (r *OciRegistry) handleV2Auth(ctx echo.Context, params V2AuthParams) error {
+func (r *OciRegistry) handleV2Auth(ctx echo.Context, params models.V2AuthParams) error {
 	log.Infof("get auth scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization)
 	body := struct {
 		Token string `json:"token"`

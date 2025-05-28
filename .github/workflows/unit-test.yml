@@ -25,12 +25,9 @@ jobs:
       - name: Coverage Badge
         uses: vladopajic/go-test-coverage@v2
         with:
-          profile: cover.out
-          threshold-total: 50
-          #git-token: ${{ github.ref_name == 'main' && secrets.MY_TOKEN || '' }}
+          config: ./.testcoverage.yml
           git-token: ${{ secrets.MY_TOKEN }}
           git-branch: badges
-          debug: true
 
       - name: Go Report Card
         uses: creekorful/goreportcard-action@v1.0

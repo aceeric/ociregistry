@@ -1,12 +1,14 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
+	"github.com/aceeric/ociregistry/mock"
 )
 
 var testCfg = `
@@ -83,5 +85,53 @@ func TestLoadConfigFile(t *testing.T) {
 	}
 	if !reflect.DeepEqual(config, expectConfig) {
 		t.Fail()
+	}
+}
+
+var testCfgTls = `
+---
+registries:
+  - name: %[1]s
+    description: tls config
+    scheme: https
+    tls:
+      ca:   %[2]s/ca.pem
+      cert: %[2]s/cert.pem
+      key:  %[2]s/key.pem
+      insecureSkipVerify: true
+`
+
+// Test that a registry with TLS configuration is parsed
+func TestTlsConfig(t *testing.T) {
+	td, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.RemoveAll(td)
+
+	certSetup, err := mock.NewCertSetup()
+	if err != nil {
+		t.FailNow()
+	}
+	certSetup.ServerCertToFile(td, "cert.pem")
+	certSetup.ServerCertPrivKeyToFile(td, "key.pem")
+	certSetup.CaToFile(td, "ca.pem")
+
+	registry := "tls.io"
+	cfgFile := filepath.Join(td, "testcfg.yaml")
+	cfgWithPath := fmt.Sprintf(testCfgTls, registry, td)
+	os.WriteFile(cfgFile, []byte(cfgWithPath), 0700)
+	if Load(cfgFile) != nil {
+		t.Fail()
+	}
+	opts, err := ConfigFor(registry)
+	if err != nil {
+		t.Fail()
+	}
+	if opts.Scheme != "https" || opts.TlsCfg == nil || !opts.TlsCfg.InsecureSkipVerify {
+		t.FailNow()
+	}
+	if !reflect.DeepEqual(opts.TlsCfg.Certificates[0].Leaf.Subject, certSetup.ServerCert.Leaf.Subject) {
+		t.FailNow()
 	}
 }

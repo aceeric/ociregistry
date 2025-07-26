@@ -1,4 +1,4 @@
-SERVER_VERSION ?= 1.9.0
+SERVER_VERSION ?= 1.9.1-experimental
 GO_VERSION     ?= 1.24.2
 DATETIME       := $(shell date -u +%Y-%m-%dT%T.%2NZ)
 REGISTRY       := quay.io
@@ -53,7 +53,12 @@ server:
 
 .PHONY: image
 image:
-	docker buildx build --tag $(REGISTRY)/$(ORG)/ociregistry:$(SERVER_VERSION)\
+	docker buildx inspect ociregistry > /dev/null 2>&1 && docker buildx rm ociregistry || :
+	docker buildx create --name ociregistry --driver docker-container
+	docker buildx build --platform linux/arm64,linux/amd64\
+	 --builder=ociregistry\
+	 --push --provenance=false --sbom=false\
+	 --tag $(REGISTRY)/$(ORG)/ociregistry:$(SERVER_VERSION)\
 	 --build-arg SERVER_VERSION=$(SERVER_VERSION)\
 	 --build-arg DATETIME=$(DATETIME)\
 	 --build-arg GO_VERSION=$(GO_VERSION)\

@@ -16,7 +16,7 @@ RUN mkdir /var/lib/emptydir
 ARG SERVER_VERSION
 ARG DATETIME
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build\
+RUN CGO_ENABLED=0 go build\
     -ldflags "-X 'main.buildVer=v$SERVER_VERSION' -X 'main.buildDtm=$DATETIME'" -a -o server cmd/*.go
 
 FROM gcr.io/distroless/static:nonroot

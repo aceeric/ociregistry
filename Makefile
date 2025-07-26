@@ -31,7 +31,7 @@ coverage:
 	go tool cover -html=$(ROOT)/cover.out
 
 .PHONY: coverage-rpt
-coverage-rpt:
+coverage-rpt: # requires go install github.com/vladopajic/go-test-coverage/v2@latest
 	go-test-coverage --config=$(ROOT)/.testcoverage.yml
 
 .PHONY: vet
@@ -64,9 +64,13 @@ image:
 	 --build-arg GO_VERSION=$(GO_VERSION)\
 	 $(ROOT)
 
-.PHONY: push
-push:
-	docker push $(REGISTRY)/$(ORG)/ociregistry:$(SERVER_VERSION)
+.PHONY: old-image # save this for desktop testing
+old-image:
+	docker buildx build --tag $(REGISTRY)/$(ORG)/ociregistry:$(SERVER_VERSION)\
+	 --build-arg SERVER_VERSION=$(SERVER_VERSION)\
+	 --build-arg DATETIME=$(DATETIME)\
+	 --build-arg GO_VERSION=$(GO_VERSION)\
+	 $(ROOT)
 
 .PHONY: helm-docs # requires https://github.com/norwoodj/helm-docs
 helm-docs:
@@ -100,37 +104,36 @@ test              Runs the unit tests.
 vet               Runs go vet.
 
 vulncheck         Runs govulncheck.
+                  Requires 'go install golang.org/x/vuln/cmd/govulncheck@latest'.
 
 gocyclo           Runs gocyclo.
 
-coverage          Runs 'go tool cover' to show coverage of the most recent test run in
-                  a browser window. (Does not run the unit tests.)
+coverage          Runs 'go tool cover' to show coverage of the most recent test run in a browser
+                  window. (Does not run the unit tests.)
 
-coverage-rpt      Uses https://github.com/marketplace/actions/go-test-coverage to
-                  create a coverage report  of the most recent test run. (Does not
-                  run the unit tests.)
+coverage-rpt      Creates a coverage report of the most recent test run. (Does not run the unit tests.)
+                  Requires 'go install github.com/vladopajic/go-test-coverage/v2@latest'
 
-oapi-codegen      Generates go code in the 'api' directory from the 'ociregistry.yaml'
-                  open API schema and configuration files in that directory.
+oapi-codegen      Generates go code in the 'api' directory from the 'ociregistry.yaml' open API
+                  schema and configuration files in that directory.
+                  Requires 'go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest'.
 
-server            Builds the server binary on your desktop. After building then:
-                  'bin/ociregistry --help' to simply run the server on your desktop for
-                  testing purposes. You can also use the server binary as a systemd
-                  service. See the 'systemd-service' directory for more details.
+server            Builds the server binary on your desktop. After building then run the server
+                  on your desktop: 'bin/ociregistry --help' for testing. You can also run the server
+                  binary as a systemd service. See the 'systemd-service' directory for more details.
 
-image             Builds the server OCI image and stores it in the local Docker image
-                  cache.
-
-push              Pushes the image built in the 'image' step to the '$(REGISTRY)' OCI
-                  distribution server, in the '$(ORG)' user/org. Requires the
-                  appropriate push permissions, of course.
+image             Builds the server '$(SERVER_VERSION)' OCI image and and pushes it to the
+                  '$(REGISTRY)' OCI distribution server, in the '$(ORG)' user/org.
+                  Requires the appropriate push permissions, of course.
 
 helm-docs         Builds the Helm chart README from values and the README template.
+                  Requires 'go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest'.
 
 helm-package      Builds the Helm chart tarball.
 
 helm-push         Publishes the Helm chart to Quay.
 
 helm-artifacthub  Pushes Artifact hub verified publisher file to Quay.
+                  Requires https://oras.land/docs/installation/#linux.
 
 endef

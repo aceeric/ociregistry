@@ -34,6 +34,9 @@ jobs:
       - name: Check out
         uses: actions/checkout@v4
 
+      - name: Set up QEMU for Buildx Multi-Platform
+        uses: docker/setup-qemu-action@v2
+
       - name: Build the server image
         shell: bash
         run: |

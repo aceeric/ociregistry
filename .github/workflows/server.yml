@@ -8,7 +8,7 @@ on:
 # env vars are used by Make
 env:
   SERVER_VERSION: ${{ github.ref_name }}
-  GO_VERSION: 1.24.2
+  GO_VERSION: 1.24.5
 
 jobs:
   test:

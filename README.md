@@ -1,6 +1,6 @@
 ![logo](resources/ociregistry.logo.png)
 
-![Version: 1.9.0](https://img.shields.io/badge/Version-1.9.0-informational?style=rounded-square)
+![Version: 1.9.1](https://img.shields.io/badge/Version-1.9.1-informational?style=rounded-square)
 [![Unit tests](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/aceeric/ociregistry)](https://goreportcard.com/report/github.com/aceeric/ociregistry)
 [![Go Vuln Check](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml)
@@ -12,19 +12,17 @@ _Ociregistry_ is a **pull-only**, **pull-through**, **caching** OCI Distribution
 1. It exclusively provides _pull_ capability. You can't push images to it, it doesn't support the `/v2/_catalog` endpoint, etc. (Though you can pre-load it. More on that below.)
 2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public; supporting the following types of access: anonymous, basic auth, HTTP, HTTPS, one-way TLS, and mTLS.
 
-This OCI distribution server is intended to satisfy one use case: the need for a Kubernetes caching pull-through registry that enables a k8s cluster to run reliably in disrupted, disconnected, intermittent and low-bandwidth (DDIL) edge environments. (However, it also nicely mitigates rate-limiting issues when doing local Kubernetes development.)
+This OCI distribution server is intended to satisfy one use case: the need for a Kubernetes caching pull-through registry that enables a k8s cluster to run reliably in disrupted, disconnected, intermittent and low-bandwidth (DDIL) edge environments. One of the overriding goals was simplicity: only one binary is needed to run the server, and all state is persisted as simple files on the file system under one subdirectory. Other distribution servers index for availability and fault tolerance at the cost of increased complexity. This server indexes for simplicity and accepts the level of availability and fault tolerance provided by the host.
 
 The goals of the project are:
 
 1. Implement one use case
-2. Be simple and reliable
+2. Be simple _and_ reliable
 
 ----
 
 **Table of Contents**
 
-- [1.9.0 CHANGES MAY 2025](#190-changes-may-2025)
-- [1.8.0 CHANGES APRIL 2025](#180-changes-april-2025)
 - [Quick Start - Desktop](#quick-start---desktop)
 - [Quick Start - Kubernetes](#quick-start---kubernetes)
 - [Configuring containerd](#configuring-containerd)
@@ -39,56 +37,6 @@ The goals of the project are:
 - [REST API Implementation](#rest-api-implementation)
 - [Kubernetes Considerations](#kubernetes-considerations)
 - [Administrative REST API](#administrative-rest-api)
-
-## 1.9.0 Changes May 2025
-
-> **If you are not upgrading from a version prior to 1.9.0, skip this section.**
-
-This version has a different image cache directory structure:
-
-```
-<image root>
-├── blobs
-├── img
-└── lts
-```
-
-The `fat` directory is deprecated. The `lts` directory is added. The `lts` directory stored `latest`-tagged images. Server internals were modified to cache `latest` images separately. To convert a prior cache structure, navigate to the image cache root. Then:
-
-```
-mkdir lts
-grep -l ':latest' fat/* | xargs -I % mv % lts
-grep -l ':latest' img/* | xargs -I % mv % lts
-mv fat/* img
-rm -rf fat
-```
-
-## 1.8.0 Changes April 2025
-
-> **If you are not upgrading from a version prior to 1.8.0, skip this section.**
-
-Version 1.8.0 implements substantial changes from the prior release. The changes are:
-
-1. Implemented a CLI using [urfave/cli](https://github.com/urfave/cli), so the command line structure is completely new.
-2. The server supports background cache pruning (while the server is running) and improves command line pruning of the file system (when the server isn't running).
-3. Replaced the Google Crane library with my own [Image Puller](https://github.com/aceeric/imgpull) library for pulling images from the upstream registries.
-4. Added the ability to supply full configuration from a config file (`--config-file`), the command line, or both.
-5. Added the `--air-gapped` flag so that in the air gap the server does not reach out to the upstream if an image is requested but not cached.
-6. Added a lean administrative REST API to get information about the in-memory cache, and perform ad-hoc pruning against the running server. Only accessible via `curl` for now.
-
-**Important about pruning:**
-
-In order to support prune by create date and accessed date, the structure of the manifests on the file system had to change. Two new fields were added: `created` and `pulled`. The new server can directly read prior versions' manifests as-is. On every pull the server updates the `pulled` field to support prune by recency of access. But the server _won't_ update the `created` field. (The `created` field is only set on initial pull.) Before running the new server you must hand-patch the old manifests if you want to use pruning.
-
-Example:
-```shell
-CREATED="2025-04-01T22:07:01"
-PULLED="2025-04-01T22:07:01"
-sed  -i -e 's/}}$/},"created":"$CREATED","pulled":"$PULLED"}/'\
-  /var/lib/ociregistry/img/* /var/lib/ociregistry/fat/*
-```
-
-This works because the old manifests ended with two closing curly braces at the very end of the file.
 
 ## Quick Start - Desktop
 

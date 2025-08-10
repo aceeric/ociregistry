@@ -1,1099 +1,1098 @@
 openapi: 3.0.3
 info:
   title: OCI Registry - OpenAPI 3.0
-  description: Pull-only pull-through caching registry
-  termsOfService: ""
+  description: Pull-only pull-through caching OCI Distribution Server
+  termsOfService: "None"
   contact:
-    email:
+    email: "appzygy@proton.me"
   license:
-    name: Apache 2.0
-    url: http://www.apache.org/licenses/LICENSE-2.0.html
+    name: MIT License (modified)
+    url: https://raw.githubusercontent.com/aceeric/ociregistry/refs/heads/main/LICENSE
   version: 1.0.0
 externalDocs:
-  description:
-  url: ""
-servers:
-  - url: https://ociregistry/api/v2
+  description: "GitHub source code"
+  url: "https://github.com/aceeric/ociregistry"
+servers: []
 tags: []
 paths:
   /:
-    connect:
+    get:
       tags: []
-      summary:
-      description:
-      operationId: connect
+      summary: ""
+      description: ""
+      operationId: root
       parameters: []
       responses:
         '200':
-          description:
+          description: ""
           content: {}
   /v2/:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-default
       parameters: []
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '401':
-          description:
+          description: ""
     head:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-head-default
       parameters: []
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '401':
-          description:
+          description: ""
   /v2/auth:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-auth
       parameters:
       - name: authorization
         in: header
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: scope
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: service
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '401':
-          description:
+          description: ""
   /v2/{ns}/{org}/{image}/blobs/{digest}:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-get-ns-org-image-blobs-digest
       parameters:
       - name: ns
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     head:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-head-ns-org-image-blobs-digest
       parameters:
       - name: ns
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     delete:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-delete-ns-org-image-blobs-digest
       parameters:
       - name: ns
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '202':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
         '405':
-          description:
+          description: ""
   /v2/{org}/{image}/blobs/{digest}:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-get-org-image-blobs-digest
       parameters:
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     head:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-head-org-image-blobs-digest
       parameters:
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     delete:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-delete-org-image-blobs-digest
       parameters:
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '202':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
         '405':
-          description:
+          description: ""
   /v2/{image}/blobs/{digest}:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-get-image-blobs-digest
       parameters:
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     head:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-head-image-blobs-digest
       parameters:
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     delete:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-delete-image-blobs-digest
       parameters:
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '202':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
         '405':
-          description:
+          description: ""
   /v2/{name}/blobs/uploads:
     post:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-post-name-blobs-uploads
       parameters:
       - name: name
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: mount
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: from
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       responses:
         '201':
-          description:
+          description: ""
           content: {}
         '202':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '404':
-          description:
+          description: ""
   /v2/{name}/blobs/uploads/{reference}:
     put:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-put-name-blobs-uploads-reference
       parameters:
       - name: name
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       responses:
         '201':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '404':
-          description:
+          description: ""
     patch:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-patch-name-blobs-uploads-reference
       parameters:
       - name: name
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '202':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
         '416':
-          description:
+          description: ""
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-get-name-blobs-uploads-reference
       parameters:
       - name: name
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '204':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
   /v2/{ns}/{org}/{image}/manifests/{reference}:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-get-ns-org-image-manifests-reference
       parameters:
       - name: ns
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     head:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-head-ns-org-image-manifests-reference
       parameters:
       - name: ns
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     put:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-put-ns-org-image-manifests-reference
       parameters:
       - name: ns
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '201':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     delete:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-delete-ns-org-image-manifests-reference
       parameters:
       - name: ns
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '202':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '404':
-          description:
+          description: ""
         '405':
-          description:
+          description: ""
   /v2/{org}/{image}/manifests/{reference}:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-get-org-image-manifests-reference
       parameters:
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: ns
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     head:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-head-org-image-manifests-reference
       parameters:
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: ns
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     put:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-put-org-image-manifests-reference
       parameters:
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '201':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     delete:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-delete-org-image-manifests-reference
       parameters:
       - name: org
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '202':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '404':
-          description:
+          description: ""
         '405':
-          description:
+          description: ""
   /v2/{image}/manifests/{reference}:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-get-image-manifests-reference
       parameters:
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: ns
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     head:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-head-image-manifests-reference
       parameters:
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: ns
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     put:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-put-image-manifests-reference
       parameters:
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '201':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
     delete:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-delete-image-manifests-reference
       parameters:
       - name: image
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: reference
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       responses:
         '202':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '404':
-          description:
+          description: ""
         '405':
-          description:
+          description: ""
   /v2/{name}/tags/list:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-get-name-tags-list
       parameters:
       - name: name
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: n
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: last
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '404':
-          description:
+          description: ""
   /v2/{name}/referrers/{digest}:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: v2-get-name-referrers-digest
       parameters:
       - name: name
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: digest
         in: path
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: artifactType
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '404':
-          description:
+          description: ""
   /cmd/stop:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: cmd-stop
       parameters: []
       responses:
         '200':
-          description:
+          description: ""
           content: {}
   /cmd/manifest/list:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: cmd-manifestlist
       parameters:
       - name: pattern
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: count
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: integer
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '404':
-          description:
+          description: ""
   /cmd/blob/list:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: cmd-bloblist
       parameters:
       - name: substr
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: count
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: integer
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '404':
-          description:
+          description: ""
   /cmd/image/list:
     get:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: cmd-imagelist
       parameters:
       - name: pattern
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: digest
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: count
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: integer
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '404':
-          description:
+          description: ""
   /cmd/prune:
     delete:
       tags: []
-      summary:
-      description:
+      summary: ""
+      description: ""
       operationId: cmd-prune
       parameters:
       - name: type
         in: query
-        description:
+        description: ""
         required: true
         schema:
           type: string
       - name: dur
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: expr
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: dryRun
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: string
       - name: count
         in: query
-        description:
+        description: ""
         required: false
         schema:
           type: integer
       responses:
         '200':
-          description:
+          description: ""
           content: {}
         '400':
-          description:
+          description: ""
         '404':
-          description:
+          description: ""

@@ -45,8 +45,8 @@ func NewOciRegistry(ch chan bool) *OciRegistry {
 	}
 }
 
-// CONNECT
-func (r *OciRegistry) Connect(ctx echo.Context) error {
+// GET /
+func (r *OciRegistry) Root(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, nil)
 }
 

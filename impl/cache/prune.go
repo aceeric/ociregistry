@@ -55,6 +55,10 @@ func RunPruner(stopChan, stoppedChan chan bool) error {
 	if cfg.Freq != "" {
 		freq = cfg.Freq
 	}
+	freq, err = days2hrs(freq)
+	if err != nil {
+		return err
+	}
 	runFreq, err := time.ParseDuration(freq)
 	if err != nil {
 		return err

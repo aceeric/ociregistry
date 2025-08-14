@@ -11,9 +11,6 @@ ingress:
     - path: /
       pathType: ImplementationSpecific
 
-serverConfig:
-  config:
-
 service:
   type: ClusterIP
   nodePort:

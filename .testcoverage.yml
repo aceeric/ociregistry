@@ -11,6 +11,7 @@ exclude:
   paths:
     - api/
     - impl/ociregistry\.go
+    - mock/
 
 breakdown-file-name: ''
 

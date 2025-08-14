@@ -43,8 +43,9 @@ const (
 type AuthType string
 
 const (
-	BASIC AuthType = "basic auth"
-	NONE  AuthType = "no auth"
+	BASIC  AuthType = "basic auth"
+	NONE   AuthType = "no auth"
+	BEARER AuthType = "BEARER"
 )
 
 // fileToLoad has a test file to load and the pointer of the variable to load it in to.
@@ -94,6 +95,7 @@ func ServerWithCallback(params MockParams, callback *func(string)) (*httptest.Se
 
 	gmtTimeLoc := time.FixedZone("GMT", 0)
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, hasAuthHeader := r.Header["Authorization"]
 		if callback != nil {
 			(*callback)(r.URL.Path)
 		}
@@ -102,28 +104,30 @@ func ServerWithCallback(params MockParams, callback *func(string)) (*httptest.Se
 			time.Sleep(time.Duration(params.DelayMs) * time.Millisecond)
 		}
 		p := strings.Replace(r.URL.Path, "/library/", "/", 1)
-		if p == "/v2/" {
-			if params.Auth == NONE {
-				w.WriteHeader(http.StatusOK)
-			} else {
-				authUrl := `Bearer realm="%s://%s/v2/auth",service="registry.docker.io"`
-				w.Header().Set("Content-Length", "87")
-				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("Date", time.Now().In(gmtTimeLoc).Format(http.TimeFormat))
-				w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
-				w.Header().Set("Www-Authenticate", fmt.Sprintf(authUrl, params.Scheme, r.Host))
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(`{"errors":[{"code":"UNAUTHORIZED","message":"authentication required","detail":null}]}`))
+		if p == "/v2/hello-world/manifests/latest" && r.Method == http.MethodHead && !hasAuthHeader && params.Auth != NONE {
+			body := []byte(`{"errors":[{"code":"UNAUTHORIZED","message":"authentication required","detail":null}]}`)
+			authUrl := `Basic realm="%s://%s"`
+			if params.Auth == BEARER {
+				authUrl = `Bearer realm="%s://%s/v2/auth",service="registry.docker.io"`
 			}
-		} else if p == "/v2/auth" {
-			if params.Auth == BASIC {
-				if r.Header.Get("Authorization") == "" {
-					w.WriteHeader(http.StatusUnauthorized)
-				}
-			}
-			w.Header().Set("Content-Length", "19")
+			authHdr := fmt.Sprintf(authUrl, params.Scheme, r.Host)
+			w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 			w.Header().Set("Content-Type", "application/json")
-			w.Write([]byte(`{"token":"FROBOZZ"}`))
+			w.Header().Set("Date", time.Now().In(gmtTimeLoc).Format(http.TimeFormat))
+			w.Header().Set("Docker-Distribution-Api-Version", "registry/2.0")
+			w.Header().Set("Www-Authenticate", authHdr)
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write(body)
+		} else if p == "/v2/" || p == "/v2" {
+			w.WriteHeader(http.StatusOK)
+		} else if p == "/v2/auth" {
+			if params.Auth != BEARER {
+				w.WriteHeader(http.StatusUnauthorized)
+			} else {
+				w.Header().Set("Content-Length", "19")
+				w.Header().Set("Content-Type", "application/json")
+				w.Write([]byte(`{"token":"FROBOZZ"}`))
+			}
 		} else if p == "/v2/hello-world/manifests/latest" {
 			w.Header().Set("Content-Length", strconv.Itoa(len(manifestList))) // 9125
 			w.Header().Set("Content-Type", "application/vnd.oci.image.index.v1+json")

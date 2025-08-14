@@ -44,7 +44,10 @@ func TestManifestGetWithNs(t *testing.T) {
 	}
 	defer os.RemoveAll(td)
 	cnt := 0
+	expectCnt := 2
 	callback := func(url string) {
+		// one call to HEAD the server to check and see if auth is required and
+		// a second call to get the manifest
 		if url == "/v2/hello-world/manifests/latest" {
 			cnt++
 		}
@@ -68,7 +71,7 @@ func TestManifestGetWithNs(t *testing.T) {
 			t.Fail()
 		}
 	}
-	if cnt != 1 {
+	if cnt != expectCnt {
 		t.Fail()
 	}
 }
@@ -83,6 +86,8 @@ func TestNeverCacheLatest(t *testing.T) {
 	defer os.RemoveAll(td)
 	cnt := 0
 	callback := func(url string) {
+		// since no images are cached each image pull will access this url two times:
+		// once to HEAD for auth check and a second to pull the manifest
 		if url == "/v2/hello-world/manifests/latest" {
 			cnt++
 		}
@@ -100,13 +105,14 @@ func TestNeverCacheLatest(t *testing.T) {
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
 	getCnt := 5
+	expectCnt := getCnt * 2
 	for i := 0; i < getCnt; i++ {
 		r.handleV2OrgImageManifestsReference(ctx, "", "hello-world", "latest", http.MethodGet, &url)
 		if ctx.Response().Status != 200 {
 			t.Fail()
 		}
 	}
-	if cnt != getCnt {
+	if cnt != expectCnt {
 		t.Fail()
 	}
 }

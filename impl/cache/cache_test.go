@@ -189,7 +189,9 @@ func TestConcurrentGet(t *testing.T) {
 	params.DelayMs = 500
 	var upstreamPulls atomic.Int32
 	callback := func(url string) {
-		// if pulls are concurrent, only one should be going to the upstream
+		// if pulls are concurrent, only one should be going to the upstream which means
+		// this gets called twice for the pulling goroutine - once to check auth and second
+		// to actually pull
 		if url == "/v2/hello-world/manifests/latest" {
 			upstreamPulls.Add(1)
 		}
@@ -211,7 +213,8 @@ func TestConcurrentGet(t *testing.T) {
 	}
 	var wg sync.WaitGroup
 	var errs atomic.Int32
-	for i := 0; i < 2; i++ {
+	expectCnt := int32(2)
+	for i := 0; i < 3; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -222,7 +225,7 @@ func TestConcurrentGet(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	if upstreamPulls.Load() != 1 || errs.Load() != 0 {
+	if upstreamPulls.Load() != expectCnt || errs.Load() != 0 {
 		t.Fail()
 	}
 }

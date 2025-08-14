@@ -3,7 +3,7 @@ module github.com/aceeric/ociregistry
 go 1.24.5
 
 require (
-	github.com/aceeric/imgpull v1.12.0
+	github.com/aceeric/imgpull v1.12.1
 	github.com/getkin/kin-openapi v0.132.0
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/oapi-codegen/echo-middleware v1.0.2

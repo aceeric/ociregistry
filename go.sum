@@ -1,6 +1,6 @@
 github.com/RaveNoX/go-jsoncommentstrip v1.0.0/go.mod h1:78ihd09MekBnJnxpICcwzCMzGrKSKYe4AqU6PDYYpjk=
-github.com/aceeric/imgpull v1.12.0 h1:gLvyM8pfGKnbEIdNspjISvKxDTK6Psy8txmBkMcPflc=
-github.com/aceeric/imgpull v1.12.0/go.mod h1:yTCvfgQUZgp3R4M9FuR5J+c02l5dtxBB+AOTYOmxzu4=
+github.com/aceeric/imgpull v1.12.1 h1:BzTW1GG4uuJtOHOf6xGA+RZmPXMVfFkYdkqETkMTen0=
+github.com/aceeric/imgpull v1.12.1/go.mod h1:fN5hnNkB1NZ2ubbm24NtIHqcBlJBhmqGYENDVeBu//U=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0 h1:axGnT1gRIfimI7gJifB699GoE/oq+F2MU7Dml6nw9rQ=
 github.com/apapsch/go-jsonmerge/v2 v2.0.0/go.mod h1:lvDnEdqiQrp0O42VQGgmlKpxL1AP2+08jFMw88y4klk=
 github.com/bmatcuk/doublestar v1.1.1/go.mod h1:UD6OnuiIn0yFxxA2le/rnRU1G4RaI4UvFv1sNto9p6w=

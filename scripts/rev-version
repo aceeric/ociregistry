@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+if [[ "$#" -eq 2 ]]; then
+  sed -e "s/$1/$2/g" ./Makefile
+  sed -e "s/$1/$2/g" ./charts/ociregistry/Chart.yaml
+  sed -e "s/$1/$2/g" ./charts/ociregistry/values.yaml
+elif [[ "$#" -eq 3 ]] && [[ "$3" == "--update" ]]; then
+  sed -i"" -e "s/$1/$2/g" ./Makefile
+  sed -i"" -e "s/$1/$2/g" ./charts/ociregistry/Chart.yaml
+  sed -i"" -e "s/$1/$2/g" ./charts/ociregistry/values.yaml
+else
+  echo "can't parse args: $@"
+  exit 1
+fi

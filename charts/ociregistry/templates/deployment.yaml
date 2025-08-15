@@ -1,3 +1,8 @@
+{{- if .Values.persistence.hostPath.enabled }}
+  {{- if .Values.persistence.persistentVolumeClaim.enabled }}
+    {{- fail "Error: 'persistence.hostPath' and 'persistence.persistentVolumeClaim' are mutually exclusive" }}
+  {{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -9,12 +14,15 @@ spec:
   selector:
     matchLabels:
       {{- include "ociregistry.selectorLabels" . | nindent 6 }}
+  strategy:
+    {{- toYaml .Values.deploymentStrategy | nindent 4 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/registry-config-cm.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       labels:
         {{- include "ociregistry.labels" . | nindent 8 }}
 	      {{- with .Values.podLabels }}
@@ -28,6 +36,10 @@ spec:
       serviceAccountName: {{ include "ociregistry.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
       - name: {{ .Chart.Name }}
         command:
@@ -42,7 +54,7 @@ spec:
         - --health
         - {{ .Values.health.port | quote }}
         {{- end }}
-        {{- if .Values.serverConfig.configuration.health }}
+        {{- if and .Values.serverConfig.configuration .Values.serverConfig.configuration.health }}
         - --health
         - {{ .Values.serverConfig.configuration.health | quote }}
         {{- end }}
@@ -59,7 +71,7 @@ spec:
           {{- if .Values.health.port }}
           containerPort: {{ .Values.health.port }}
           {{- end }}
-          {{- if .Values.serverConfig.configuration.health }}
+          {{- if and .Values.serverConfig.configuration .Values.serverConfig.configuration.health }}
           containerPort: {{ .Values.serverConfig.configuration.health }}
           {{- end }}
           protocol: TCP
@@ -110,7 +122,7 @@ spec:
           type: {{ .Values.persistence.hostPath.type }}
           path: {{ .Values.persistence.hostPath.path }}
       {{- end }}
-      {{- if .Values.persistence.emptyDir.enabled }}
+      {{- if and .Values.persistence.emptyDir.enabled (not .Values.persistence.hostPath.enabled) (not .Values.persistence.persistentVolumeClaim.enabled) }}
       - name: images
         emptyDir:
           sizeLimit: {{ .Values.persistence.emptyDir.sizeLimit }}

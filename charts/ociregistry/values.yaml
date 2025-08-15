@@ -104,6 +104,7 @@ ingress:
   #   - path: /ociregistry(/|$)(.*)
   #     pathType: ImplementationSpecific
   tls: []
+  # Example
   #- secretName: chart-example-tls
   #  hosts:
   #  - somehost.my.org
@@ -137,13 +138,36 @@ tolerations: []
 # -- Defines Pod affinity
 affinity: {}
 
+# -- Allows the addition of init containers, e.g. to initialize persistent storage permissions
+# if needed.
+initContainers: []
+# Example
+# - name: pvc-permissions
+#   image: busybox:latest
+#   env:
+#     - name: UID
+#       value: 1000
+#     - name: GID
+#       value: 1000
+#     - name: MNTPATH
+#       value: /var/lib/ociregistry
+#   command: ["sh", "-c", "chown -R $UID:$GID $MNTPATH && chmod -R 755 $MNTPATH"]
+#   volumeMounts:
+#     - name: images
+#       mountPath: /var/lib/ociregistry
+
+# -- [Deployment Strategy](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy).
+deploymentStrategy:
+  type: Recreate
+
 # -- Persistence establishes the persistence strategy. For ephemeral storage (i.e. for
 # testing or experimentation) the `emptyDir` option is enabled by default. If you have a storage
 # provisioner, enable the `persistentVolumeClaim` option. The `hostPath` option uses
-# host storage.
+# host storage. Setting either persistentVolumeClaim` or `hostPath` to `enabled=true` will
+# override (disable) `emptyDir`.
 # @default -- See sub-fields
 persistence:
-  # -- Creates a PVC for persistent storage
+  # -- Creates a PVC for persistent storage. If enabled, don't also enable `hostPath`.
   # @default -- See sub-fields
   persistentVolumeClaim:
     # -- Persistent storage is disabled by default. Set to `true` to enable persistent storage
@@ -171,7 +195,7 @@ persistence:
       #  matchLabels: {}
       #  matchExpressions: []
   # -- Implements host path storage for the server. Suitable for testing and a quick
-  # capability evaluation.
+  # capability evaluation. If enabled, don't also enable `persistentVolumeClaim`.
   # @default -- See sub-fields
   hostPath:
     # -- Host path is disabled by default
@@ -199,8 +223,8 @@ extraManifests: []
 #    data:
 #      foo: bar
 
-# -- Supports overriding default (built-in) configuration. If you change
-# `serverConfig.configuration.imagePath` then change `volumeMounts['image'].mountPath`
+# -- Supports overriding default (built-in) configuration. If you override
+# `serverConfig.configuration.imagePath` then override this value elsewhere
 # to match. The values shown are the defaults hard-coded in the binary, except
 # for `logLevel` which defaults to `error` and is overridden below as `info`.
 # The explicit values are provided mainly for documentation purposes. The `os`
@@ -209,6 +233,8 @@ extraManifests: []
 # @default -- See sub-fields
 serverConfig:
   mountPath: /var/ociregistry/config
+  # -- You must override each field. Or null out the config and run with all
+  # defaults. E.g.: `configuration: null`
   configuration:
     imagePath: /var/lib/ociregistry
     logLevel: info

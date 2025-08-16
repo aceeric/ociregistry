@@ -38,9 +38,12 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- with .Values.initContainers }}
       initContainers:
-        {{- toYaml . | nindent 8 }}
+      {{- toYaml . | nindent 6 }}
       {{- end }}
       containers:
+      {{- with .Values.sidecarContainers }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
       - name: {{ .Chart.Name }}
         command:
         - /ociregistry/server
@@ -66,7 +69,7 @@ spec:
         - name: http
           containerPort: {{ .Values.service.port }}
           protocol: TCP
-        {{- if or .Values.health.port .Values.serverConfig.configuration.health }}
+        {{- if or .Values.health.port (and .Values.serverConfig.configuration .Values.serverConfig.configuration.health) }}
         - name: health
           {{- if .Values.health.port }}
           containerPort: {{ .Values.health.port }}

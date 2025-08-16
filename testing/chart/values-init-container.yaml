@@ -1,0 +1,25 @@
+initContainers:
+- name: pvc-permissions
+  securityContext:
+    runAsUser: 0
+  image: busybox:latest
+  env:
+  - name: UID
+    value: "1000"
+  - name: GID
+    value: "1000"
+  - name: MNTPATH
+    value: /var/lib/ociregistry
+  command: ["sh", "-c", "chown -R $UID:$GID $MNTPATH && chmod -R 755 $MNTPATH"]
+  volumeMounts:
+    - name: images
+      mountPath: /var/lib/ociregistry
+
+persistence:
+  persistentVolumeClaim:
+    enabled: true
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000

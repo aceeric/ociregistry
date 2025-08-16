@@ -67,11 +67,12 @@ health:
 # then the chart creates a secret in the cluster called "releasename"-tls. If `secretName`
 # is provided then uses the provided secret to configure TLS. (The secret is expected to
 # already exist in the cluster namespace.) In both cases, the secret keys are expected as
-# `tls.crt`, `tls.key`, and `ca.crt`. The secret is mounted into the server deployment. The
-# composition of the secret affects how the server configures the TLS handshake. Valid
-# permutations are: 1) `tls.crt` and `tls.key` for 1-way TLS. 2) `tls.crt`, `tls.key` and
-# `clientAuth=verify` for mTLS using the OS (container) trust store. 3) `tls.crt`, `tls.key`,
-# `ca.crt` and `clientAuth=verify` for mTLS using the CA from the secret.
+# `tls.crt`, `tls.key`, and `ca.crt`. The secret is mounted into the server deployment and
+# the server is configured to terminate TLS for clients (e.g. containerd). The composition
+# of the secret affects how the server configures the TLS handshake. Valid permutations are:
+# 1) `tls.crt` and `tls.key` for 1-way TLS. 2) `tls.crt`, `tls.key` and `clientAuth=verify`
+# for mTLS using the OS (container) trust store. 3) `tls.crt`, `tls.key`, `ca.crt` and
+# `clientAuth=verify` for mTLS using the CA from the secret.
 # @default -- `enabled: false`
 serverTls:
   enabled: false
@@ -138,6 +139,9 @@ tolerations: []
 # -- Defines Pod affinity
 affinity: {}
 
+# -- Allows the addition of sidecar containers
+sidecarContainers: []
+
 # -- Allows the addition of init containers, e.g. to initialize persistent storage permissions
 # if needed.
 initContainers: []
@@ -146,9 +150,9 @@ initContainers: []
 #   image: busybox:latest
 #   env:
 #     - name: UID
-#       value: 1000
+#       value: "1000"
 #     - name: GID
-#       value: 1000
+#       value: "1000"
 #     - name: MNTPATH
 #       value: /var/lib/ociregistry
 #   command: ["sh", "-c", "chown -R $UID:$GID $MNTPATH && chmod -R 755 $MNTPATH"]

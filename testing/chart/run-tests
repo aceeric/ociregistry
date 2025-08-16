@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+#
+# Run this from the project root. E.g.: testing/chart/run-tests
+# Cert generation functionality per:
+#   https://letsencrypt.org/docs/certificates-for-localhost/#making-and-trusting-your-own-certificates
+#
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+gen_certs="false"
+dry_run="--dry-run=server"
+controller_ip=192.168.122.30
+
+if [[ "$#" -ge 1 ]]; then
+  for arg in "$@"; do
+    if [[ "$arg" == "--gen-certs" ]]; then
+      gen_certs="true"
+    elif [[ "$arg" == "--no-dry-run" ]]; then
+      dry_run=""
+    elif [[ "$arg" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+      controller_ip=$arg
+    else
+      echo "unknown arg: $arg"
+      exit 1
+    fi
+  done
+fi
+
+if [[ "$gen_certs" == "true" ]]; then
+  echo "generate certs into /tmp/localhost.{crt,key}"
+  CONFIG=$(printf\
+"[dn]
+CN=localhost
+[req]
+distinguished_name = dn
+[EXT]
+subjectAltName=IP:$controller_ip
+keyUsage=digitalSignature
+extendedKeyUsage=serverAuth,clientAuth")
+
+  openssl req -x509 -out /tmp/localhost.crt -keyout /tmp/localhost.key \
+   -newkey rsa:2048 -nodes -sha256 \
+   -subj '/CN=localhost' -extensions EXT -config <( echo "$CONFIG" )
+fi
+
+echo
+read -p "First test: With ingress (dtk.io). Press ENTER to run or CTRL-C to terminate"
+
+helm upgrade --install ociregistry charts/ociregistry\
+ --namespace ociregistry\
+ --create-namespace\
+ --values $script_dir/values-ingress.yaml\
+ --wait $dry_run
+
+if [[ "$dry_run" == "" ]]; then
+  read -p "Press ENTER to curl the server or CTRL-C to terminate"
+  curl http://frobozz.io/v2/quay.io/appzygy/ociregistry/manifests/1.9.1
+fi
+
+echo
+read -p "Next test: NodePort and TLS termination using external secret. Press ENTER to run or CTRL-C to terminate"
+
+kubectl create ns ociregistry && kubectl -n ociregistry create secret generic my-tls-secret\
+  --from-file=tls.crt=/tmp/localhost.crt\
+  --from-file=tls.key=/tmp/localhost.key\
+  --from-file=ca.crt=/tmp/localhost.crt
+
+helm upgrade --install ociregistry charts/ociregistry\
+ --namespace ociregistry\
+ --create-namespace\
+ --values $script_dir/values-tls-ex-secret.yaml\
+ --wait $dry_run
+
+if [[ "$dry_run" == "" ]]; then
+  read -p "Press ENTER to curl the server or CTRL-C to terminate"
+  curl --cert /tmp/localhost.crt --key /tmp/localhost.key\
+  --cacert /tmp/localhost.crt https://$controller_ip:31080/v2/quay.io/appzygy/ociregistry/manifests/1.9.1
+fi
+
+echo
+read -p "Next test: TLS termination with inlined certs. (Uses cert files created above.) Press ENTER to run or CTRL-C to terminate"
+
+helm upgrade --install ociregistry charts/ociregistry\
+ --namespace ociregistry\
+ --create-namespace\
+ --values $script_dir/values-tls-inline.yaml\
+ --set-file serverTls.cert=/tmp/localhost.crt\
+ --set-file serverTls.key=/tmp/localhost.key\
+ --set-file serverTls.ca=/tmp/localhost.crt\
+ --wait $dry_run
+
+if [[ "$dry_run" == "" ]]; then
+  read -p "Press ENTER to curl the server or CTRL-C to terminate"
+  curl --cert /tmp/localhost.crt --key /tmp/localhost.key\
+  --cacert /tmp/localhost.crt https://$controller_ip:31080/v2/quay.io/appzygy/ociregistry/manifests/1.9.1
+fi
+
+echo
+read -p "Next test: No config. Press ENTER to run or CTRL-C to terminate"
+
+helm upgrade --install ociregistry charts/ociregistry\
+ --namespace ociregistry\
+ --create-namespace\
+ --values $script_dir/values-no-config.yaml\
+ --wait $dry_run
+
+if [[ "$dry_run" == "" ]]; then
+  read -p "Press ENTER to curl the server or CTRL-C to terminate"
+  curl http://$controller_ip:31080/v2/quay.io/appzygy/ociregistry/manifests/1.9.1
+fi
+
+echo
+read -p "Next test: PVC & init container. Press ENTER to run or CTRL-C to terminate"
+
+helm upgrade --install ociregistry charts/ociregistry\
+ --namespace ociregistry\
+ --create-namespace\
+ --values $script_dir/values-init-container.yaml\
+ --wait $dry_run
+
+if [[ "$dry_run" == "" ]]; then
+  read -p "Press ENTER to curl the server or CTRL-C to terminate"
+  curl http://$controller_ip:31080/v2/quay.io/appzygy/ociregistry/manifests/1.9.1
+fi
+
+echo
+echo "done"

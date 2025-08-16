@@ -1,0 +1,12 @@
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+  - host: frobozz.io
+    paths:
+    - path: /
+      pathType: ImplementationSpecific
+
+service:
+  type: ClusterIP
+  nodePort:

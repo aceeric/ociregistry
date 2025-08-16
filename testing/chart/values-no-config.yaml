@@ -1,0 +1,5 @@
+serverConfig:
+  configuration: null
+
+health:
+  port:

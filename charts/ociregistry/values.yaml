@@ -239,6 +239,7 @@ serverConfig:
   mountPath: /var/ociregistry/config
   # -- You must override each field. Or null out the config and run with all
   # defaults. E.g.: `configuration: null`
+  # @default -- See sub-fields
   configuration:
     imagePath: /var/lib/ociregistry
     logLevel: info
@@ -256,6 +257,7 @@ serverConfig:
     health:
     registries: []
     # -- Pruning is disabled by default
+    # @default -- See sub-fields
     pruneConfig:
       enabled: false
       duration: 30d

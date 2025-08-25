@@ -1,6 +1,6 @@
 ![logo](resources/ociregistry.logo.png)
 
-![Version: 1.9.2-prerelease](https://img.shields.io/badge/Version-1.9.2-prerelease-informational?style=rounded-square)
+![Version: 1.9.2](https://img.shields.io/badge/Version-1.9.2-informational?style=rounded-square)
 [![Unit tests](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/aceeric/ociregistry)](https://goreportcard.com/report/github.com/aceeric/ociregistry)
 [![Go Vuln Check](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml)
@@ -9,10 +9,12 @@
 
 _Ociregistry_ is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 
-1. It exclusively provides _pull_ capability. You can't push images to it, it doesn't support the `/v2/_catalog` endpoint, etc. (Though you can pre-load it. More on that below.)
-2. It provides *caching pull-through* capability to any upstream registry: internal, air-gapped, or public; supporting the following types of access: anonymous, basic auth, HTTP, HTTPS, one-way TLS, and mTLS.
+1. It exclusively provides _pull_ capability.
+2. It provides *caching pull-through* capability to multiple upstream registries: internal, air-gapped, or public; supporting the following types of access: anonymous, basic auth, HTTP, HTTPS, one-way TLS, and mTLS. In other words, one running instance of this server can simultaneously pull from `docker.io`, `quay.io`, `registry.k8s.io`, `ghcr.io`, your air-gapped registries, etc.
 
-This OCI distribution server is intended to satisfy one use case: the need for a Kubernetes caching pull-through registry that enables a k8s cluster to run reliably in disrupted, disconnected, intermittent and low-bandwidth (DDIL) edge environments. One of the overriding goals was simplicity: only one binary is needed to run the server, and all state is persisted as simple files on the file system under one subdirectory. Other distribution servers index for availability and fault tolerance at the cost of increased complexity. This server indexes for simplicity and accepts the level of availability and fault tolerance provided by the host.
+One of the overriding goals was simplicity: only one binary is needed to run the server, and all state is persisted as files on the file system under one subdirectory. This supports the airgap use case of populating the server in a connected environment, and then moving the server (and image cache) to an air gap.
+
+Other distribution servers index for availability and fault tolerance at the cost of increased complexity. This is not a criticism - it is simply a fact of design trade-offs. This server indexes for simplicity and accepts the availability and fault tolerance provided by the host.
 
 The goals of the project are:
 

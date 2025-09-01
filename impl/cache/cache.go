@@ -316,7 +316,7 @@ func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath
 // function handles that case by only removing blobs that were in the old manifest and not in the new
 // manifest, and only adding blobs that are in the new manifest that were not in the old manifest.
 //
-// The blob adds only happen in the in-mem blob cache becuase the actual blobs have already been downloaded
+// The blob adds only happen in the in-mem blob cache because the actual blobs have already been downloaded
 // But the deletes happen in both the in-mem blob cache _and_ on the file system.
 func replaceInCache(pr pullrequest.PullRequest, mhNew imgpull.ManifestHolder, imagePath string) error {
 	mc.Lock()

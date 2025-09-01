@@ -389,7 +389,7 @@ func TestLatestChangesTagAlignment(t *testing.T) {
 		v2 = 1
 	)
 	mhs := []imgpull.ManifestHolder{
-		imgpull.ManifestHolder{
+		{
 			Type:     imgpull.V1ociManifest,
 			ImageUrl: "foo.io/bar/baz:v1",
 			Digest:   manifestDigests[v1],
@@ -401,7 +401,7 @@ func TestLatestChangesTagAlignment(t *testing.T) {
 				},
 			},
 		},
-		imgpull.ManifestHolder{
+		{
 			Type:     imgpull.V1ociManifest,
 			ImageUrl: "foo.io/bar/baz:v2",
 			Digest:   manifestDigests[v2],

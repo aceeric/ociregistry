@@ -139,6 +139,8 @@ tolerations: []
 # -- Defines Pod affinity
 affinity: {}
 
+priorityClassName: ""
+
 # -- Allows the addition of sidecar containers
 sidecarContainers: []
 

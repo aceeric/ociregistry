@@ -7,7 +7,7 @@ image:
     # -- The image repository
     repository: appzygy/ociregistry
     # -- The image tag
-    tag: 1.9.3
+    tag: 1.9.4
     # -- Specify a digest to use instead of the tag
     digest:
     # -- The image pull policy

@@ -45,6 +45,7 @@ project root
 ├── bin
 ├── charts
 ├── cmd
+├── docs
 ├── impl
 │   ├── cache
 │   ├── cmdline

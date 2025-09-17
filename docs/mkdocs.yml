@@ -1,4 +1,5 @@
 site_name: Caching Pull-through OCI Distribution Server
+site_url: https://aceeric.github.io/ociregistry
 
 nav:
   - Overview: index.md

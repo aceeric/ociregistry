@@ -65,6 +65,7 @@ project root
 | `bin`  | Has the compiled server after `make server`. |
 | `charts`  | The Helm chart. |
 | `cmd`  | Entry point (`ociregistry.go`) and sub-commands. |
+| `docs`  | [MKDocs](https://www.mkdocs.org/) documentation ([Material](https://github.com/squidfunk/mkdocs-material) theme.) |
 | `impl` | Has the implementation of the server. |
 | `impl/cache` | Implements the in-memory cache. |
 | `impl/cmdline` | Parses the command line. |

@@ -1,10 +1,6 @@
 # In progress
 
-- MKdocs
-  - concurrency design
-  - volumetrics
 - Administrative API - all handle count -1?
-- Config file - os and arch - if key is present but empty... if key omitted ?
 
 # Parked
 

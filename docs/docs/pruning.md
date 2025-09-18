@@ -2,7 +2,11 @@
 
 The compiled binary can be used as a CLI to prune the cache on the file system.
 
-> The server must be stopped while pruning this way because the CLI only manipulates the file system, not the in-memory representation of the cache. There is a REST API to perform ad-hoc pruning of the running server cache documented in another section.
+> The server can also be configured to prune as a continual background process. For information on that, see [Prune Configuration](configuring-the-server.md/#prune-configuration) in the _Configuring the Server_ page. There is also a REST API for ad-hoc pruning the running server's cache. See the [Administrative REST API](rest-api.md) document for information on that.
+
+**This** page is about manually pruning using the server binary as a CLI.
+
+The server must be stopped while pruning using the binar as a CLI because the CLI only manipulates the file system, not the in-memory representation of the cache. There is a REST API to perform ad-hoc pruning of the running server cache documented in another section.
 
 Pruning removes manifest lists, manifests, and possibly blobs (more on blobs below.)
 

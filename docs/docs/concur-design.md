@@ -23,12 +23,12 @@ Here is how that looks:
 5. The red goroutine accesses the image from the cache, sychronized.
 6. The red goroutine exits the synchronization block and serves the image asynchronously.
 
-Pull synchronization (from upstreams) is by image tag, and is separate from the synchronization for images in cache. In other words, ten clients pulling hello-world:**v3** because it is un-cached and ten other clients pulling hello-world:**v2** that is un-cached and ten other clients accessing hello-world:**v1** from cache are three disjoint synchronization constructs that don't effect each other.
+Pull synchronization (from upstreams) is by image tag, and is separate from the synchronization for images in cache. In other words, ten clients pulling hello-world:**v3** because it is un-cached and ten other clients pulling hello-world:**v2** that is un-cached and ten other clients accessing hello-world:**v1** from cache are three disjoint synchronization contexts that don't effect each other.
 
 ## Blobs
 
 The concurrency design for blobs is a little different. The reason is that there is no need to update pull timestamps on blobs to support image pruning since blobs are children of image manifests. When a manifest is pruned the manifest blobs can simply be pruned by reference. Whereas a manifest is updated each time it is pulled, a blob is never updated. Therefore blobs are synchronized with a Go [RWMutex](https://pkg.go.dev/sync#RWMutex).
 
-This enables many concurrent pulls but supports the infrequent addition of blobs resulting from new image pulls, and the removal of blobs as a result of image pruning. When blobs are added because of new pulls, or removed because of pruning, this will temporarily lock the blob cache. The server offers optimization methods for this. For example, when configuring background pruning, you can configure _Ociregistry_ to prune small sets with greater frequency.
+This enables many concurrent pulls very minimal sycnhronization overhead, but supports the infrequent addition of blobs resulting from new image pulls, and the removal of blobs as a result of image pruning. When blobs are added because of new pulls, or removed because of pruning, this will temporarily lock the blob cache. The server offers optimization techniques for this. For example, when configuring background pruning, you can configure _Ociregistry_ to prune small sets with greater frequency.
 
-For blobs, only the digest is cached in memory. This is used to efficiently determine if the blob is cached. The blob itself is served from the file system.
+For blobs, only the digest is cached in memory. This is used to efficiently determine if the blob is cached. Whereas manifests are served from memory, blobs are served from the file system.

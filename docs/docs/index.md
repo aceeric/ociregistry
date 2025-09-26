@@ -11,7 +11,7 @@ _Ociregistry_ is a **pull-only**, **pull-through**, **caching** OCI Distribution
 
 ## Goals
 
-The goal of the project is to build a performant, simple, reliable edge OCI Distribution server for Kubernetes. One of the overriding goals was simplicity: only one binary is needed to run the server, and all state is persisted as files on the file system under one subdirectory. This supports the following use cases for running Kubernetes:
+The goal of the project is to build a performant, simple, reliable edge OCI Distribution server for Kubernetes. One of the overriding goals was simplicity: only one binary is needed to run the server, and all state is persisted as simple files on the file system under one subdirectory. This supports the following use cases for running Kubernetes:
 
 1. Edge clusters.
 2. Air-gapped clusters - loading the server in a connected environment, and then serving a cluster in an air gap.

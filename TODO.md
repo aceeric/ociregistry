@@ -1,6 +1,5 @@
 # In progress
 
-- migrate to "go.yaml.in/yaml/v4"
 - document every command option with an example
 - Config parse
 

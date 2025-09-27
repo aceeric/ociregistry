@@ -82,9 +82,9 @@ project root
 
 ## REST API Implementation
 
-As stated above, the _Ociregistry_ server implements a portion of the OCI Distribution Spec: only those endpoints needed to meet its goal of being a pull-only OCI Distribution Server. It does this by running a web service that handles endpoints defined in the spec.
+As stated above, the _Ociregistry_ server implements **a portion** of the OCI Distribution Spec consisting of only the endpoints in the spec needed to meet its goal of being a pull-only OCI Distribution Server. It does this by running a web service that handles endpoints defined in the spec.
 
-The _Ociregistry_ server REST API is built by first creating an Open API spec. See `ociregistry.yaml` in the `api` directory. Then the [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen) tool is used to generate the API code and the Model code using configuration in the `api` directory of the project. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/oapi-codegen/oapi-codegen/tree/main/examples/petstore-expanded) example.
+The _Ociregistry_ server REST API is built by first creating an Open API spec: see [ociregistry.yaml](https://github.com/aceeric/ociregistry/blob/main/api/ociregistry.yaml) in the `api` directory of the project. Then the [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen) tool is used to generate the API code and the Model code using configuration in the `api` directory of the project. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/oapi-codegen/oapi-codegen/tree/main/examples/petstore-expanded) example.
 
 *Oapi-codegen* is installed by the following command:
 

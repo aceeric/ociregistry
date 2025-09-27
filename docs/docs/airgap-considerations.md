@@ -1,6 +1,6 @@
 # Airgap Considerations
 
-As stated in the Overview, one main objective of the project is to support running Kubernetes in air-gapped and DDIL environments. To accomplish this, you will likely adopt one of two approaches:
+As stated in the Overview, one objective of the project is to support running Kubernetes in air-gapped and DDIL environments. To accomplish this, you will likely adopt one of two approaches:
 
 1. Stand the cluster up in a connected environment, pre-load the distribution server with all required images, then disconnect and ship the cluster to its edge location.
 2. Ship the cluster to its edge location and pre-load the distribution server there using stable comms. If comms are later degraded or lost then the required images remain cached.

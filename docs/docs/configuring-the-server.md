@@ -62,7 +62,7 @@ serverTlsConfig: {}
 |`os` | keyword | runtime.GOOS | `--os` | If loading or preloading, the OS and arch. If empty, then defaults to the host running the server. So usually comment these out. |
 |`arch` | keyword | runtime.GOARCH | `--arch` | " |
 |`pullTimeout` | Integer | 60000 | `--pull-timeout` | Number of milliseconds before a pull from an upstream will time out. |
-|`alwaysPullLatest` | Boolean | false | `--always-pull-latest` | If true, then whenever a latest tag is pulled, the server will always pull from the upstream - in other words it acts like a basic proxy. Useful when supporting dev environments where latest is frequently changing. |
+| `alwaysPullLatest` {: .nowrap-column } | Boolean | false | `--always-pull-latest` | If true, then whenever a latest tag is pulled, the server will always pull from the upstream - in other words it acts like a basic proxy. Useful when supporting dev environments where latest is frequently changing. |
 |`airGapped` | Boolean | false | `--air-gapped` | If true, will not attempt to pull from an upstream when an image is requested that is not cached. |
 |`helloWorld` | Boolean | false | `--hello-world` | For testing. Only serves 'docker.io/hello-world:latest' from embedded blobs and manifests |
 |`health` | Integer | - | `--health` | A port number to run a /health endpoint on for Kubernetes liveness and readiness. By default, the server doesn't listen on a health port. The Helm chart enables this by default when running the server as a cluster workload. |

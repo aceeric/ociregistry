@@ -27,6 +27,7 @@ plugins:
   - search
 
 markdown_extensions:
+  - attr_list:
   - pymdownx.superfences:
       custom_fences:
         - name: mermaid
@@ -34,3 +35,9 @@ markdown_extensions:
           format: !!python/name:pymdownx.superfences.fence_code_format
   - toc:
       permalink: true
+  - admonition:
+  - pymdownx.details:
+  - pymdownx.superfences:
+
+extra_css:
+  - extra.css

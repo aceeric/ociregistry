@@ -70,7 +70,7 @@ Loading is additive, meaning if you run the load command to load 100 images, the
 
 Internally, `latest`-tagged images are stored side-by-side with non-latest images and treated as separate manifests. This enables the server to support cases that occur in development environments where `latest` images are in a constant state of flux. Storing `latest` images this way works in tandem with the `--always-pull-latest` flag as follows:
 
-| Action | `--always-pull-latest` | Result |
+| Action | `--always-pull-latest` {: .nowrap-column } | Result |
 |-|-|-|
 | Pull `foo:latest` | `false` (the default) | The image is pulled exactly once. All subsequent pulls return the same image regardless of what happens in the upstream. |
-| Pull `foo:latest` | `true` | The image is pulled from the upstream on each pull from the pull-through server **for each client**. Each pull completely replaces the prior pull. In other words - for latest images the server is a stateless proxy. (This could consume a fair bit of network bandwidth.) |
+| Pull `foo:latest` {: .nowrap-column } | `true` | The image is pulled from the upstream on each pull from the pull-through server **for each client**. Each pull completely replaces the prior pull. In other words - for latest images the server is a stateless proxy. (This could consume a fair bit of network bandwidth.) |

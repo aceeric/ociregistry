@@ -6,8 +6,30 @@ The compiled server binary can be used as a CLI to prune the cache on the file s
 
 **This** page is about ad-hoc manual pruning using the server binary as a CLI.
 
-The server must be stopped while pruning using the binary as a CLI because the CLI only manipulates the file system, not the in-memory representation of the cache. 
-Pruning removes manifest lists, manifests, and possibly blobs (more on blobs below.)
+!!! Important
+    The server must be stopped while pruning using the binary as a CLI because the CLI only manipulates the file system, not the in-memory representation of the cache. Pruning removes manifest lists, manifests, and possibly blobs (more on blobs below.)
+
+## List Images
+
+Generally, it is expected that you will use the server binary as a CLI to list the images before deciding which images to prune. E.g.:
+
+```
+bin/ociregistry --image-path /my/image/cache list --pattern dashboard
+```
+
+Result (for example) truncated in the doc for readability:
+```
+docker.io/kubernetesui/dashboard-web@sha256:05ad8120...
+docker.io/kubernetesui/dashboard-metrics-scraper@sha256:0cdefa04...
+docker.io/kubernetesui/dashboard:v2.7.0
+docker.io/kubernetesui/dashboard-metrics-scraper:1.2.2
+docker.io/kubernetesui/dashboard-api:1.12.0
+docker.io/kubernetesui/dashboard-web:1.6.2
+docker.io/kubernetesui/dashboard-auth:1.2.4
+docker.io/kubernetesui/dashboard@sha256:ca93706e...
+docker.io/kubernetesui/dashboard-auth@sha256:d6dd67b7...
+docker.io/kubernetesui/dashboard-api@sha256:dcc897f8...
+```
 
 ## Dry Run
 

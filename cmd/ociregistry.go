@@ -39,6 +39,10 @@ func main() {
 // to the OS.
 func realMain() int {
 	command, err := getCfg()
+	writeable := true
+	if command == listCmd {
+		writeable = false
+	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error getting configuration: %s\n", err)
 		return 1
@@ -54,7 +58,7 @@ func realMain() int {
 		} else {
 			defer os.RemoveAll(tmpDir)
 		}
-	} else if err := serialize.CreateDirs(config.GetImagePath()); err != nil {
+	} else if err := serialize.CreateDirs(config.GetImagePath(), writeable); err != nil {
 		fmt.Fprintf(os.Stderr, "unable to verify image path: %s\n", err)
 		return 1
 	}

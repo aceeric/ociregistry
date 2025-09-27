@@ -75,7 +75,7 @@ func TestPrune(t *testing.T) {
 	ResetCache()
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
-	serialize.CreateDirs(td)
+	serialize.CreateDirs(td, true)
 	mh := imgpull.ManifestHolder{
 		Type:     imgpull.V1ociManifest,
 		Digest:   strconv.Itoa(int(imgpull.V1ociManifest)),
@@ -218,7 +218,7 @@ func TestComparer(t *testing.T) {
 func setupPrune() (string, error) {
 	ResetCache()
 	td, _ := os.MkdirTemp("", "")
-	serialize.CreateDirs(td)
+	serialize.CreateDirs(td, true)
 	curDt := time.Now()
 	for i := 0; i < 3; i++ {
 		mhDate := curDt.AddDate(0, 0, -(i * 2))

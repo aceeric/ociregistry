@@ -138,7 +138,7 @@ func setupTests() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	serialize.CreateDirs(td)
+	serialize.CreateDirs(td, true)
 	for _, blobDigest := range blobDigests {
 		if err = os.WriteFile(filepath.Join(td, globals.BlobPath, blobDigest), []byte(blobDigest), 0777); err != nil {
 			return td, err

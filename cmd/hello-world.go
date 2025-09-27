@@ -34,7 +34,7 @@ func helloWorldMode() (string, error) {
 	config.SetAirGapped(true)
 	config.SetPreloadImages("")
 	config.SetImagePath(tmpdir)
-	if err := serialize.CreateDirs(config.GetImagePath()); err != nil {
+	if err := serialize.CreateDirs(config.GetImagePath(), true); err != nil {
 		return "", err
 	}
 	filelist := []struct {

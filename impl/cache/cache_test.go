@@ -127,7 +127,7 @@ func TestLoad(t *testing.T) {
 // in the passed ManifestType array. Each image manifest gets three layers.
 func setupTestLoad(mts []imgpull.ManifestType) (string, error) {
 	td, _ := os.MkdirTemp("", "")
-	serialize.CreateDirs(td)
+	serialize.CreateDirs(td, true)
 	randomDigest := func() string {
 		s := fmt.Sprintf("%d%d%d%d", rand.Uint64(), rand.Uint64(), rand.Uint64(), rand.Uint64())
 		return digest.FromBytes([]byte(s)).Hex()
@@ -239,7 +239,7 @@ func TestReplace(t *testing.T) {
 	imageUrl := "foo.io/my-image:latest"
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
-	serialize.CreateDirs(td)
+	serialize.CreateDirs(td, true)
 
 	uniq := []string{"a", "b", "c", "d", "e", "f"}
 	digests := make([]string, len(uniq))
@@ -417,7 +417,7 @@ func TestLatestChangesTagAlignment(t *testing.T) {
 	ResetCache()
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
-	serialize.CreateDirs(td)
+	serialize.CreateDirs(td, true)
 	for _, digest := range blobDigests {
 		os.WriteFile(filepath.Join(td, globals.BlobPath, digest), []byte("foo"), 0777)
 	}

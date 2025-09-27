@@ -173,7 +173,7 @@ func verifyBlobPrune(testdir string, cnt int, sharedBlobDigest string) error {
 //  3. An error (or nil)
 func makeTestFiles(cnt int) (string, string, []imgpull.ManifestHolder, error) {
 	dir, _ := os.MkdirTemp("", "")
-	serialize.CreateDirs(dir)
+	serialize.CreateDirs(dir, true)
 	r := fmt.Sprintf("%d", rand.Uint64())
 	sharedBlobDigest := digest.FromBytes([]byte(r)).Hex()
 	if err := os.WriteFile(filepath.Join(dir, globals.BlobPath, sharedBlobDigest), []byte("foo\n"), 0777); err != nil {

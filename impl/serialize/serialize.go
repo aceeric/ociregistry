@@ -156,9 +156,10 @@ func GetAllBlobs(imagePath string) map[string]int {
 	return blobMap
 }
 
-// CreateDirs creates the required subdirectory structure under the passed root and ensures
-// that the root is writeable by the current process.
-func CreateDirs(root string) error {
+// CreateDirs creates the required subdirectory structure under the passed root if they do
+// not already exists, and if writeable is true, then ensures that the root is writeable
+// by the current process.
+func CreateDirs(root string, writeable bool) error {
 	for _, subDir := range []string{globals.LtsPath, globals.ImgPath, globals.BlobPath} {
 		if absPath, err := filepath.Abs(filepath.Join(root, subDir)); err == nil {
 			if err := os.MkdirAll(absPath, 0755); err != nil {
@@ -166,10 +167,12 @@ func CreateDirs(root string) error {
 			}
 		}
 	}
-	pt := filepath.Join(root, ".permtest")
-	defer os.Remove(pt)
-	if _, err := os.Create(pt); err != nil {
-		return fmt.Errorf("directory %s is not writable", root)
+	if writeable {
+		pt := filepath.Join(root, ".permtest")
+		defer os.Remove(pt)
+		if _, err := os.Create(pt); err != nil {
+			return fmt.Errorf("directory %s is not writable", root)
+		}
 	}
 	return nil
 }

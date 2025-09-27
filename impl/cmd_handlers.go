@@ -2,6 +2,7 @@ package impl
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"regexp"
 	"strings"
@@ -83,7 +84,8 @@ func (r *OciRegistry) CmdPrune(ctx echo.Context, params models.CmdPruneParams) e
 			log.Errorf("handled panic: %s", err)
 		}
 	}()
-	logs, err := cache.Prune(params.Type, params.Dur, params.Expr, params.DryRun, params.Count)
+	cnt := count(params.Count)
+	logs, err := cache.Prune(params.Type, params.Dur, params.Expr, params.DryRun, &cnt)
 	if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
@@ -130,9 +132,13 @@ func makeComparer(pattern *string, digest *string) (cache.ManifestComparer, erro
 }
 
 // count supports a default throttle for all commands unless explicitly
-// overridden with ...?count=X
+// overridden with ...?count=X. If -1 is passed, then max int is returned since
+// it's unlikely that the number of cached images would ever exceeed that.
 func count(count *int) int {
 	if count != nil {
+		if *count == -1 {
+			return math.MaxInt32
+		}
 		return *count
 	}
 	return 50

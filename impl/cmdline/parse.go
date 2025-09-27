@@ -113,7 +113,7 @@ var cmds = &cli.Command{
 					Value:       8080,
 					Usage:       "The port to serve on",
 					Destination: &cfg.Port,
-					Action: func(ctx context.Context, cmd *cli.Command, _ int64) error {
+					Action: func(ctx context.Context, cmd *cli.Command, _ int) error {
 						fromCmdline.Port = true
 						return nil
 					},
@@ -143,7 +143,7 @@ var cmds = &cli.Command{
 					Value:       60000,
 					Usage:       "The max time to pull an image in milliseconds before timing out",
 					Destination: &cfg.PullTimeout,
-					Action: func(ctx context.Context, cmd *cli.Command, _ int64) error {
+					Action: func(ctx context.Context, cmd *cli.Command, _ int) error {
 						fromCmdline.PullTimeout = true
 						return nil
 					},
@@ -152,7 +152,7 @@ var cmds = &cli.Command{
 					Name:        "health",
 					Usage:       "Specify a port number to have the server run a /health endpoint for liveness/readiness",
 					Destination: &cfg.Health,
-					Action: func(ctx context.Context, cmd *cli.Command, _ int64) error {
+					Action: func(ctx context.Context, cmd *cli.Command, _ int) error {
 						fromCmdline.Health = true
 						return nil
 					},
@@ -239,7 +239,7 @@ var cmds = &cli.Command{
 					Value:       60000,
 					Usage:       "The max time to pull an image in milliseconds before timing out",
 					Destination: &cfg.PullTimeout,
-					Action: func(ctx context.Context, cmd *cli.Command, _ int64) error {
+					Action: func(ctx context.Context, cmd *cli.Command, _ int) error {
 						fromCmdline.PullTimeout = true
 						return nil
 					},

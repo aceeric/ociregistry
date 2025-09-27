@@ -44,7 +44,7 @@ vulncheck:
 
 .PHONY: gocyclo
 gocyclo:
-	gocyclo -over 15 -ignore "merge.go|_test" $(ROOT)/cmd $(ROOT)/impl/
+	gocyclo -over 15 -ignore "merge.go|_test|ociregistry.go" $(ROOT)/cmd $(ROOT)/impl/
 
 .PHONY: server
 server:

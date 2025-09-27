@@ -9,7 +9,7 @@ import (
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 
-	"gopkg.in/yaml.v3"
+	yaml "go.yaml.in/yaml/v4"
 )
 
 // authCfg holds basic auth user/pass for registry access
@@ -71,11 +71,11 @@ type Configuration struct {
 	ImagePath        string           `yaml:"imagePath"`
 	PreloadImages    string           `yaml:"preloadImages"`
 	ImageFile        string           `yaml:"imageFile"`
-	Port             int64            `yaml:"port"`
+	Port             int              `yaml:"port"`
 	Os               string           `yaml:"os"`
 	Arch             string           `yaml:"arch"`
-	PullTimeout      int64            `yaml:"pullTimeout"`
-	Health           int64            `yaml:"health"`
+	PullTimeout      int              `yaml:"pullTimeout"`
+	Health           int              `yaml:"health"`
 	AlwaysPullLatest bool             `yaml:"alwaysPullLatest"`
 	AirGapped        bool             `yaml:"airGapped"`
 	HelloWorld       bool             `yaml:"helloWorld"`
@@ -152,7 +152,7 @@ func GetImageFile() string {
 	return config.ImageFile
 }
 
-func GetPort() int64 {
+func GetPort() int {
 	return config.Port
 }
 
@@ -164,11 +164,11 @@ func GetArch() string {
 	return config.Arch
 }
 
-func GetPullTimeout() int64 {
+func GetPullTimeout() int {
 	return config.PullTimeout
 }
 
-func GetHealth() int64 {
+func GetHealth() int {
 	return config.Health
 }
 

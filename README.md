@@ -1,6 +1,6 @@
 ![logo](resources/ociregistry.logo.png)
 
-![Version: 1.9.4](https://img.shields.io/badge/Version-1.9.4-informational?style=rounded-square)
+![Version: 1.9.5](https://img.shields.io/badge/Version-1.9.5-informational?style=rounded-square)
 [![Unit tests](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/unit-test.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/aceeric/ociregistry)](https://goreportcard.com/report/github.com/aceeric/ociregistry)
 [![Go Vuln Check](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml)
@@ -46,7 +46,7 @@ bin/ociregistry --log-level info --image-path /tmp/images serve --port 8080
 ```shell
 ----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
-Version: 1.9.4, build date: 2025-09-10T23:28:59.21Z
+Version: 1.9.5, build date: 2025-09-10T23:28:59.21Z
 Started: 2025-09-17 17:26:02.905608021 -0400 EDT (port 8080)
 Running as (uid:gid) 1000:1000
 Process id: 95070

@@ -150,7 +150,7 @@ var cmds = &cli.Command{
 				},
 				&cli.IntFlag{
 					Name:        "health",
-					Usage:       "Specify a value to have the server run a /health endpoint for liveness/readiness",
+					Usage:       "Specify a port number to have the server run a /health endpoint for liveness/readiness",
 					Destination: &cfg.Health,
 					Action: func(ctx context.Context, cmd *cli.Command, _ int64) error {
 						fromCmdline.Health = true

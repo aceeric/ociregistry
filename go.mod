@@ -1,6 +1,6 @@
 module github.com/aceeric/ociregistry
 
-go 1.25.0
+go 1.25.1
 
 require (
 	github.com/aceeric/imgpull v1.12.1

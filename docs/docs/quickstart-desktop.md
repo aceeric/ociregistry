@@ -23,8 +23,8 @@ bin/ociregistry --image-path /tmp/images serve --port 8080
 ```shell
 ----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
-Version: 1.9.4, build date: 2025-09-08T00:05:54.37Z
-Started: 2025-09-10 19:30:24.133946199 -0400 EDT (port 8080)
+Version: 1.9.6, build date: 2025-10-06T23:35:46.56Z
+Started: 2025-10-06 19:49:57.169081368 -0400 EDT (port 8080)
 Running as (uid:gid) 1000:1000
 Process id: 27010
 Tls: none

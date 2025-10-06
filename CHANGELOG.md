@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.9.6
+
+06-Oct-2025
+
+1. Fix bug in bearer auth.
+
 ## 1.9.5
 
 27-Sep-2025

@@ -14,19 +14,30 @@ const (
 )
 
 // PullRequest has the individual components of an image pull. If initialized with
-// 'index.docker.io/hello-world:latest' then the struct members are like so:
+// 'quay.io/argoproj/argocd:v2.11.11' then the struct members are like so:
 //
 //	PullType  = ByTag
-//	Org       = ""
-//	Image     = hello-world
-//	Reference = latest
-//	Remote    = docker.io
+//	Org       = argoproj
+//	Image     = argocd
+//	Reference = v2.11.11
+//	Remote    = quay.io
 type PullRequest struct {
-	PullType  PullType
-	Org       string
-	Image     string
+	PullType PullType
+	// Org is the organization. E.g. if initialized with quay.io/argoproj/argocd:v2.11.11
+	// the this field has value 'argoproj'
+	Org string
+	// Image is the repository. E.g. if initialized with quay.io/argoproj/argocd:v2.11.11
+	// the this field has value 'argocd'
+	Image string
+	// Reference is the tag or digest. E.g. if initialized with quay.io/argoproj/argocd:v2.11.11
+	// the this field has value 'v2.11.11'
 	Reference string
-	Remote    string
+	// Remote is the remote host. E.g. if initialized with quay.io/argoproj/argocd:v2.11.11
+	// the this field has value 'quay.io'
+	Remote string
+	// Digest is used to optimize the always-pull-latest feature. It holds the digest of an existing
+	// (cached) "latest" manifest so that - if it matches the digest of the upstream latest, the
+	// pull can be skipped.
 }
 
 // NewPullRequest returns a 'PullRequest' struct from the passed args

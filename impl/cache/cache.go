@@ -55,7 +55,12 @@ type blobCache struct {
 }
 
 var (
-	// cp has concurrent pulls in progress. 99.999+% of the time this will be empty.
+	// cp has pulls in progress. Will only have entries when a pull from an upstream is actively
+	// ocurring otherwise empty. The key is a manifest url, and the value is a map of channels for
+	// parked goroutines waiting for the image to be pulled by a pulling goroutine. If only the
+	// pulling goroutine is running then the map of channels is empty. The instant any other goroutine
+	// concurrently requests the image, a channel is created for that goroutine and added to the map
+	// and each parked goroutine will wait to be signaled on its channel.
 	cp concurrentPulls = concurrentPulls{
 		pulls: make(map[string][]chan bool),
 	}

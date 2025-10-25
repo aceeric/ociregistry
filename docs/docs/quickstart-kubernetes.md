@@ -56,7 +56,7 @@ kubectl -n ociregistry logs -f -l app.kubernetes.io/name=ociregistry
 
 ### Observe the startup logs
 
-```shell
+```text
 time="2025-04-24T21:11:41Z" level=info msg="loaded 0 manifest(s) from the file system in 102.136µs"
 ----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
@@ -80,7 +80,7 @@ kubectl run hello-world --image docker.io/hello-world:latest &&\
 
 ### Result
 
-```shell
+```text
 Hello from Docker!
 This message shows that your installation appears to be working correctly.
 
@@ -95,7 +95,7 @@ To generate this message, Docker took the following steps:
 
 ### Observe the **new** Ociregistry log entries
 
-```shell
+```text
 time="2025-04-24T21:13:54Z" level=info msg="pulling manifest from upstream: \"docker.io/library/hello-world:latest\""
 time="2025-04-24T21:13:54Z" level=info msg="echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=501.131286ms host=localhost:31080 ip=10.200.0.232"
 time="2025-04-24T21:13:54Z" level=info msg="serving manifest from cache: \"docker.io/library/hello-world@sha256:c41088499908a59aae84b0a49c70e86f4731e588a737f1637e73c8c09d995654\""
@@ -119,7 +119,7 @@ kubectl run hello-world-2 --image docker.io/hello-world:latest\
 
 These entries indicate that the _Ociregistry_ server is serving from the image cache instead of re-pulling from DockerHub:
 
-```shell
+```text
 time="2025-04-24T21:34:35Z" level=info msg="serving manifest from cache: \"docker.io/library/hello-world:latest\""
 time="2025-04-24T21:34:35Z" level=info msg="echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=204.413µs host=localhost:31080 ip=10.200.0.232"
 time="2025-04-24T21:34:36Z" level=info msg="serving manifest from cache: \"docker.io/library/hello-world:latest\""

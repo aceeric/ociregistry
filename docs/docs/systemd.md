@@ -2,7 +2,7 @@
 
 The `systemd-service` directory has a systemd unit file for running the server as a systemd service:
 
-```shell
+```text
 [Unit]
 Description=ociregistry
 Documentation=https://github.com/aceeric/ociregistry

@@ -1,5 +1,6 @@
 # In progress
 
+- cmd/ API not closing the connection?
 - document every command option with an example
 - Config parse
 

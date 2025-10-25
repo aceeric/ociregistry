@@ -20,7 +20,7 @@ bin/ociregistry --image-path /tmp/images serve --port 8080
 ```
 
  Result:
-```shell
+```text
 ----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
 Version: 1.9.6, build date: 2025-10-06T23:35:46.56Z
@@ -125,7 +125,7 @@ Run the same two curl commands.
 
 You will notice that the manifest list and the image manifest are now being returned from cache. You can see this in the logs:
 
-```shell
+```text
 INFO[0000] server is running                            
 INFO[0007] serving manifest from cache: "registry.k8s.io/kube-scheduler:v1.29.1" 
 INFO[0007] echo server GET:/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io status=200 latency=663.938µs host=localhost:8888 ip=::1 
@@ -143,7 +143,7 @@ docker pull localhost:8080/registry.k8s.io/kube-scheduler:v1.29.1
 
  Result:
 
-```shell
+```text
 v1.29.1: Pulling from registry.k8s.io/kube-scheduler
 aba5379b9c6d: Pull complete 
 e5dbef90bae3: Pull complete 
@@ -165,7 +165,7 @@ localhost:8888/registry.k8s.io/kube-scheduler:v1.29.1
 
 The _Ociregistry_ server displays new log entries that show the image is being served from cache:
 
-```shell
+```text
 ...
 INFO[0294] get /v2/                                     
 INFO[0294] echo server GET:/v2/ status=200 latency=117.389µs host=localhost:8888 ip=127.0.0.1 
@@ -193,7 +193,7 @@ INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:6523e
 
 Running `docker image ls` should show the newly pulled image:
 
-```shell
+```text
 REPOSITORY                                      TAG       IMAGE ID       CREATED         SIZE
 localhost:8888/registry.k8s.io/kube-scheduler   v1.29.1   406945b51154   20 months ago   59.5MB
 ```

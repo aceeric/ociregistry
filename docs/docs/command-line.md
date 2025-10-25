@@ -2,7 +2,7 @@
 
 The command line parser uses the [urfave/cli](https://github.com/urfave/cli) parser. Running the server with no arguments shows the following sub-commands:
 
-```shell
+```text
 NAME:
    ociregistry - a pull-only, pull-through, caching OCI distribution server
 

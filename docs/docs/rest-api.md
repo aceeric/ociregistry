@@ -14,7 +14,11 @@ Prunes the in-memory cache and the file system while the server is running.
 | `count` | Max manifests to prune. Defaults to `50`. `-1` means no limit. |
 | `dryRun` | If `true` then logs messages but does not prune. **Defaults to false, meaning: will prune by default.** |
 
-Example: `curl -X DELETE "http://hostname:8080/cmd/prune?type=created&dur=10d&count=50&dryRun=true"`
+Example:
+
+```shell
+curl -X DELETE "http://hostname:8080/cmd/prune?type=created&dur=10d&count=50&dryRun=true"
+```
 
 Explanation: Prunes manifests created (initially downloaded) more than 10 days ago. Only prune a max of 50. Since _dry run_ is true, doesn't actually prune - only show what prune would do.
 
@@ -28,7 +32,10 @@ Lists image manifests, and the blobs that are referenced by the selected manifes
 | `digest` | Digest (or substring) of any blob referenced by the image. (Not the manifest digest!) |
 | `count` | Max number of manifests to return. Defaults to `50`. `-1` means no limit. |
 
-Example: `curl "http://hostname:8080/cmd/image/list?pattern=docker.io&count=10"`
+Example:
+```shell
+curl "http://hostname:8080/cmd/image/list?pattern=docker.io&count=10"
+```
 
 Explanation: List a max of 10 image manifests with `docker.io` in the URL.
 
@@ -41,7 +48,10 @@ Lists blobs and ref counts.
 | `substr` | Digest (or substring) of a blob. |
 | `count` | Max number of manifests to return. Defaults to `50`. `-1` means no limit. |
 
-Example: `curl "http://hostname:8080/cmd/blob/list?substr=56aebe9b&count=10"`
+Example:
+```shell
+curl "http://hostname:8080/cmd/blob/list?substr=56aebe9b&count=10"
+```
 
 ## `/cmd/manifest/list`
 
@@ -52,7 +62,10 @@ List manifests.
 | `pattern` | Comma-separated go regex expressions of manifest URLs. |
 | `count` | Max number of manifests to return. Defaults to `50`. `-1` means no limit. |
 
-Example: `curl "http://hostname:8080/cmd/manifest/list?pattern=calico,cilium&count=10"`
+Example:
+```shell
+curl "http://hostname:8080/cmd/manifest/list?pattern=calico,cilium&count=10"
+```
 
 ## `/cmd/stop`
 

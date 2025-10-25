@@ -13,12 +13,13 @@ The compiled server binary can be used as a CLI to prune the cache on the file s
 
 Generally, it is expected that you will use the server binary as a CLI to list the images before deciding which images to prune. E.g.:
 
-```
+```shell
 bin/ociregistry --image-path /my/image/cache list --pattern dashboard
 ```
 
 Result (for example) truncated in the doc for readability:
-```
+
+```text
 docker.io/kubernetesui/dashboard-web@sha256:05ad8120...
 docker.io/kubernetesui/dashboard-metrics-scraper@sha256:0cdefa04...
 docker.io/kubernetesui/dashboard:v2.7.0
@@ -65,7 +66,7 @@ bin/ociregistry prune --pattern calico/typha:v3.27.0 --dry-run
 
 In this case, on a Linux/amd64 machine running the server the CLI will find **two** manifests:
 
-```shell
+```text
 docker.io/calico/typha:v3.27.0
 docker.io/calico/typha@sha256:eca01eab...
 ```

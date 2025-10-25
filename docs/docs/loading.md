@@ -29,7 +29,7 @@ Since the entirety of the image cache consists of files and sub-directories unde
 
 The image store is persisted to the file system. This includes blobs and manifests. Let's say you run the server with `--image-path=/var/lib/ociregistry`, which is the default. Then:
 
-```shell
+```text
 /var/lib/ociregistry
 ├── blobs
 ├── img

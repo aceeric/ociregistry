@@ -39,7 +39,7 @@ To support this, the server caches both the image list manifest and the image ma
 
 The source code is organized as shown:
 
-```shell
+```text
 project root
 ├── api
 ├── bin
@@ -94,7 +94,7 @@ go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 
 The key components of the API scaffolding supported by OAPI-Codegen are shown below:
 
-```shell
+```
 ├── api
 │   ├── models
 │   │   └──models.gen.go   (generated)

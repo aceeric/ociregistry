@@ -20,6 +20,7 @@ theme:
   name: material
   features:
     - navigation.footer
+    - content.code.copy
 
 repo_url: https://github.com/aceeric/ociregistry
 

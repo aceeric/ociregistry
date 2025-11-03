@@ -14,8 +14,9 @@ import (
 
 // authCfg holds basic auth user/pass for registry access
 type authCfg struct {
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
+	User            string `yaml:"user"`
+	Password        string `yaml:"password"`
+	PasswordFromEnv string `yaml:"passwordFromEnv"` // Environment variable name to read password from
 }
 
 // tlsCfg holds TLS configuration for upstream registry access
@@ -113,7 +114,7 @@ var (
 	// config is the gloal configuration, accessed through getters and setters
 	// below
 	config    Configuration
-	emptyAuth = authCfg{User: "", Password: ""}
+	emptyAuth = authCfg{User: "", Password: "", PasswordFromEnv: ""}
 	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", InsecureSkipVerify: false}
 	emptyOpts = imgpull.PullerOpts{}
 )
@@ -277,7 +278,12 @@ func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 
 	if found.Auth != emptyAuth {
 		opts.Username = found.Auth.User
-		opts.Password = found.Auth.Password
+		// If passwordFromEnv is specified, read password from environment variable
+		if found.Auth.PasswordFromEnv != "" {
+			opts.Password = os.Getenv(found.Auth.PasswordFromEnv)
+		} else {
+			opts.Password = found.Auth.Password
+		}
 	}
 
 	if found.Tls != emptyTls {

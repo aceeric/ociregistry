@@ -202,6 +202,150 @@ func TestPullImageAndBlob(t *testing.T) {
 	}
 }
 
+// Tests Range header support for chunked blob downloads
+func TestBlobRangeRequest(t *testing.T) {
+	td, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.RemoveAll(td)
+	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
+	cfg := fmt.Sprintf(serverCfg, td, 1000, false, url)
+	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
+		t.Fail()
+	}
+	defer server.Close()
+
+	r := NewOciRegistry(nil)
+	e := echo.New()
+
+	// First pull the manifest and blob
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	ctx := e.NewContext(req, rec)
+	r.handleV2OrgImageManifestsReference(ctx, "", "hello-world", "sha256:e2fc4e5012d16e7fe466f5291c476431beaa1f9b90a5c2125b493ed28e2aba57", http.MethodGet, &url)
+	if ctx.Response().Status != 200 {
+		t.Fail()
+	}
+
+	// Test 1: Request with Range header for first 100 bytes
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Range", "bytes=0-99")
+	rec = httptest.NewRecorder()
+	ctx = e.NewContext(req, rec)
+	r.handleV2GetOrgImageBlobsDigest(ctx, "", "hello-world", "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a")
+	if ctx.Response().Status != http.StatusPartialContent {
+		t.Errorf("expected status %d, got %d", http.StatusPartialContent, ctx.Response().Status)
+	}
+	if ctx.Response().Header().Get("Content-Range") == "" {
+		t.Error("expected Content-Range header to be set")
+	}
+	if ctx.Response().Header().Get("Accept-Ranges") != "bytes" {
+		t.Error("expected Accept-Ranges header to be 'bytes'")
+	}
+	contentLength := ctx.Response().Header().Get("Content-Length")
+	if contentLength != "100" {
+		t.Errorf("expected Content-Length to be 100, got %s", contentLength)
+	}
+
+	// Test 2: Request with open-ended Range (from byte 50 to end)
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Range", "bytes=50-")
+	rec = httptest.NewRecorder()
+	ctx = e.NewContext(req, rec)
+	r.handleV2GetOrgImageBlobsDigest(ctx, "", "hello-world", "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a")
+	if ctx.Response().Status != http.StatusPartialContent {
+		t.Errorf("expected status %d, got %d", http.StatusPartialContent, ctx.Response().Status)
+	}
+
+	// Test 3: Request without Range header should return 200 OK
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	rec = httptest.NewRecorder()
+	ctx = e.NewContext(req, rec)
+	r.handleV2GetOrgImageBlobsDigest(ctx, "", "hello-world", "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a")
+	if ctx.Response().Status != http.StatusOK {
+		t.Errorf("expected status %d, got %d", http.StatusOK, ctx.Response().Status)
+	}
+	if ctx.Response().Header().Get("Accept-Ranges") != "bytes" {
+		t.Error("expected Accept-Ranges header to be 'bytes' even without Range request")
+	}
+
+	// Test 4: Invalid Range header should return 416 Range Not Satisfiable
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Range", "bytes=999999999-")
+	rec = httptest.NewRecorder()
+	ctx = e.NewContext(req, rec)
+	r.handleV2GetOrgImageBlobsDigest(ctx, "", "hello-world", "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a")
+	if ctx.Response().Status != http.StatusRequestedRangeNotSatisfiable {
+		t.Errorf("expected status %d, got %d", http.StatusRequestedRangeNotSatisfiable, ctx.Response().Status)
+	}
+}
+
+// Tests parseRangeHeader helper function
+func TestParseRangeHeader(t *testing.T) {
+	fileSize := int64(1000)
+
+	// Test 1: Normal range
+	start, end, err := parseRangeHeader("bytes=0-99", fileSize)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if start != 0 || end != 99 {
+		t.Errorf("expected range 0-99, got %d-%d", start, end)
+	}
+
+	// Test 2: Open-ended range
+	start, end, err = parseRangeHeader("bytes=500-", fileSize)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if start != 500 || end != 999 {
+		t.Errorf("expected range 500-999, got %d-%d", start, end)
+	}
+
+	// Test 3: Suffix range (last N bytes)
+	start, end, err = parseRangeHeader("bytes=-100", fileSize)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if start != 900 || end != 999 {
+		t.Errorf("expected range 900-999, got %d-%d", start, end)
+	}
+
+	// Test 4: Range beyond file size should be adjusted
+	start, end, err = parseRangeHeader("bytes=0-9999", fileSize)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if start != 0 || end != 999 {
+		t.Errorf("expected range 0-999 (adjusted), got %d-%d", start, end)
+	}
+
+	// Test 5: Invalid range (start beyond file size)
+	_, _, err = parseRangeHeader("bytes=1001-", fileSize)
+	if err == nil {
+		t.Error("expected error for start position beyond file size")
+	}
+
+	// Test 6: Invalid range format
+	_, _, err = parseRangeHeader("invalid", fileSize)
+	if err == nil {
+		t.Error("expected error for invalid range format")
+	}
+
+	// Test 7: Multiple ranges not supported
+	_, _, err = parseRangeHeader("bytes=0-99,200-299", fileSize)
+	if err == nil {
+		t.Error("expected error for multiple ranges")
+	}
+
+	// Test 8: Start > End
+	_, _, err = parseRangeHeader("bytes=100-50", fileSize)
+	if err == nil {
+		t.Error("expected error for start > end")
+	}
+}
+
 type TestAuthToken struct {
 	Token string `json:"token"`
 }

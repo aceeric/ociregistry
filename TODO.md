@@ -1,8 +1,12 @@
 # In progress
 
-- cmd/ API not closing the connection?
-- document every command option with an example
-- Config parse
+- chunked transfer in containerd errors
+
+# On deck
+
+- default docker.io namespace
+- password as env var (Helm chart)
+- `cmd/` API not closing the connection?
 
 # Parked
 
@@ -10,6 +14,8 @@
 
 # TODO
 
+- Document every command option with an example
+- Config parse
 - Server base url (for ingress)
 - Consider https://github.com/OpenAPITools/openapi-generator
 - Instrumentation

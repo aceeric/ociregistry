@@ -1,6 +1,7 @@
 package globals
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -10,10 +11,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const msg = "echo server %s:%s status=%d latency=%s host=%s ip=%s"
+const msg_base = "echo server %s:%s status=%d latency=%s host=%s ip=%s"
+const msg_debug = msg_base + " hdrs=%s"
 const srch = `.*sha256:([a-f0-9]{64}).*`
 
 var re = regexp.MustCompile(srch)
+var msg = msg_base
+var logFldcnt = 6
 
 // ConfigureLogging sets logging attributes
 func ConfigureLogging(level string, logfile string) error {
@@ -25,6 +29,10 @@ func ConfigureLogging(level string, logfile string) error {
 			return err
 		}
 		log.SetOutput(lf)
+	}
+	if log.GetLevel() >= log.DebugLevel {
+		msg = msg_debug
+		logFldcnt = 7
 	}
 	return nil
 }
@@ -72,13 +80,21 @@ func GetEchoLoggingFunc() echo.MiddlewareFunc {
 				req.RequestURI = strings.Replace(req.RequestURI, dgst[1], dgst[1][:10], 1)
 			}
 
-			flds := make([]interface{}, 6)
+			flds := make([]any, logFldcnt)
 			flds[0] = req.Method
 			flds[1] = req.RequestURI
 			flds[2] = res.Status
 			flds[3] = time.Since(start)
 			flds[4] = req.Host
 			flds[5] = c.RealIP()
+			if log.GetLevel() >= log.DebugLevel {
+				hdrs := make([]string, 0)
+				for key, values := range c.Request().Header {
+					hdrvals := strings.Join(values, ",")
+					hdrs = append(hdrs, fmt.Sprintf("%s: %s", key, hdrvals))
+				}
+				flds[6] = fmt.Sprintf("[%s]", strings.Join(hdrs, "; "))
+			}
 
 			switch {
 			case res.Status >= 500:

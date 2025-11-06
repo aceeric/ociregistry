@@ -12,11 +12,13 @@ import (
 	yaml "go.yaml.in/yaml/v4"
 )
 
-// authCfg holds basic auth user/pass for registry access
+// authCfg holds basic auth user/pass for registry access. The PasswordFromEnv field specifies
+// an environment variable name to read the password from which supports running the server as a
+// Kubernetes workload
 type authCfg struct {
 	User            string `yaml:"user"`
 	Password        string `yaml:"password"`
-	PasswordFromEnv string `yaml:"passwordFromEnv"` // Environment variable name to read password from
+	PasswordFromEnv string `yaml:"passwordFromEnv"`
 }
 
 // tlsCfg holds TLS configuration for upstream registry access

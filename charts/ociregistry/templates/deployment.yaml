@@ -25,7 +25,7 @@ spec:
         {{- end }}
       labels:
         {{- include "ociregistry.labels" . | nindent 8 }}
-	      {{- with .Values.podLabels }}
+        {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
@@ -48,7 +48,7 @@ spec:
         command:
         - /ociregistry/server
         env:
-        {{- with .Values.env }} 
+        {{- with .Values.env }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
         args:

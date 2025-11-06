@@ -128,6 +128,7 @@ To read the password from an environment variable, use the `passwordFromEnv` key
   auth:
     user: theuser
     passwordFromEnv: THEPASS_ENV_VAR
+```
 
 Here's another scenario. Let's say your corp DNS resolves `index.docker.io` to an in-house registry mirror that requires an NPE cert. Then your registry entry might look like:
 ```yaml

@@ -138,7 +138,6 @@ env: []
   #       key: ghcr-password
   #       name: ghcr-credentials
 
-
 # -- Defines a node selector
 nodeSelector: {}
 

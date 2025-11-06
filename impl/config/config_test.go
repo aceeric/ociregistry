@@ -135,3 +135,35 @@ func TestTlsConfig(t *testing.T) {
 		t.FailNow()
 	}
 }
+
+var testEnvPass = `
+---
+registries:
+  - name: testme
+    auth:
+      user: testme
+      passwordFromEnv: TESTME
+`
+
+// Test getting a password from an environment variable
+func TestPassFromEnv(t *testing.T) {
+	expPass := "1234567890"
+	td, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.RemoveAll(td)
+	cfgFile := filepath.Join(td, "testcfg.yaml")
+	os.WriteFile(cfgFile, []byte(testEnvPass), 0700)
+	if Load(cfgFile) != nil {
+		t.Fail()
+	}
+	t.Setenv("TESTME", expPass)
+	opts, err := ConfigFor("testme")
+	if err != nil {
+		t.Fail()
+	}
+	if opts.Password != expPass {
+		t.Fail()
+	}
+}

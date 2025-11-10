@@ -98,6 +98,7 @@ Each entry supports the following configuration structure overall. Not all value
   auth:
     user: theuser
     password: thepass
+    passwordFromEnv: THEPASS_ENV_VAR
   tls:
     ca: /my/ca.crt
     cert: /my/client.cert
@@ -119,6 +120,14 @@ Say your corp registry server requires user and password. Then you would configu
   auth:
     user: theuser
     password: thepass
+```
+
+To read the password from an environment variable, use the `passwordFromEnv` key:
+```yaml
+- name: my-corp-registry.myco.org:8888
+  auth:
+    user: theuser
+    passwordFromEnv: THEPASS_ENV_VAR
 ```
 
 Here's another scenario. Let's say your corp DNS resolves `index.docker.io` to an in-house registry mirror that requires an NPE cert. Then your registry entry might look like:

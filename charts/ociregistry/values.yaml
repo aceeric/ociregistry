@@ -130,6 +130,14 @@ volumeMounts:
   mountPath: /var/lib/ociregistry
   readOnly: false
 
+# -- Specify environment variables for the deployment such as registry credentials that can be referenced in the config-file.
+env: []
+  # - name: GHCR_PASSWORD
+  #   valueFrom:
+  #     secretKeyRef:
+  #       key: ghcr-password
+  #       name: ghcr-credentials
+
 # -- Defines a node selector
 nodeSelector: {}
 

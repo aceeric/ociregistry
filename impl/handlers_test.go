@@ -123,24 +123,29 @@ func TestParseNamespace(t *testing.T) {
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
 
-	remote := parseRemote(ctx, nil)
+	remote := parseRemote(ctx, nil, "")
 	if remote != "" {
 		t.Fail()
 	}
 
+	remote = parseRemote(ctx, nil, "my.default.registry")
+	if remote != "my.default.registry" {
+		t.Fail()
+	}
+
 	namespace := "docker.io"
-	remote = parseRemote(ctx, &namespace)
+	remote = parseRemote(ctx, &namespace, "")
 	if remote != namespace {
 		t.Fail()
 	}
 
 	ctx.Request().Header.Add("X-Registry", "quay.io")
-	remote = parseRemote(ctx, nil)
+	remote = parseRemote(ctx, nil, "")
 	if remote != "quay.io" {
 		t.Fail()
 	}
 
-	remote = parseRemote(ctx, &namespace)
+	remote = parseRemote(ctx, &namespace, "")
 	// header has higher precedence than explicit namespace arg
 	if remote != "quay.io" {
 		t.Fail()

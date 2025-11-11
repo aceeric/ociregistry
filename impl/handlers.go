@@ -17,7 +17,7 @@ import (
 
 // HEAD or GET /v2/.../manifests/ref
 func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string, ref string, verb string, ns *string) error {
-	pr := pullrequest.NewPullRequest(org, image, ref, parseRemote(ctx, ns))
+	pr := pullrequest.NewPullRequest(org, image, ref, parseRemote(ctx, ns, r.defaultNs))
 	if r.airGapped && !cache.IsCached(pr) {
 		log.Debugf("request for un-cached manifest %q in air-gapped mode - returning 404", pr.Url())
 		return ctx.JSON(http.StatusNotFound, "")
@@ -101,11 +101,13 @@ func (r *OciRegistry) handleV2Auth(ctx echo.Context, params models.V2AuthParams)
 // This query param is passed through to the API handlers so they can know which upstream
 // registry to pull from. If neither the header nor the query param are set then the
 // function returns the empty string.
-func parseRemote(ctx echo.Context, namespace *string) string {
+func parseRemote(ctx echo.Context, namespace *string, defaultNs string) string {
 	if hdr, exists := ctx.Request().Header["X-Registry"]; exists && len(hdr) == 1 {
 		return hdr[0]
 	} else if namespace != nil {
 		return *namespace
+	} else if defaultNs != "" {
+		return defaultNs
 	}
 	return ""
 }

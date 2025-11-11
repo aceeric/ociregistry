@@ -82,6 +82,7 @@ type Configuration struct {
 	AlwaysPullLatest bool             `yaml:"alwaysPullLatest"`
 	AirGapped        bool             `yaml:"airGapped"`
 	HelloWorld       bool             `yaml:"helloWorld"`
+	DefaultNs        string           `yaml:"defaultNs"`
 	Registries       []RegistryConfig `yaml:"registries"`
 	PruneConfig      PruneConfig      `yaml:"pruneConfig"`
 	ListConfig       ListConfig       `yaml:"listConfig"`
@@ -108,6 +109,7 @@ type FromCmdLine struct {
 	AlwaysPullLatest bool
 	AirGapped        bool
 	HelloWorld       bool
+	DefaultNs        bool
 	PruneConfig      bool
 	ListConfig       bool
 }
@@ -189,6 +191,10 @@ func SetAirGapped(newVal bool) {
 
 func GetHelloWorld() bool {
 	return config.HelloWorld
+}
+
+func GetDefaultNs() string {
+	return config.DefaultNs
 }
 
 func GetRegistries() []RegistryConfig {

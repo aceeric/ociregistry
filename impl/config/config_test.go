@@ -26,6 +26,7 @@ health: 6543
 alwaysPullLatest: false
 airGapped: false
 helloWorld: false
+defaultNs: testing.123.com
 registries:
   - name: localhost:8080
     description: server running on the desktop
@@ -53,6 +54,7 @@ var expectConfig = Configuration{
 	AlwaysPullLatest: false,
 	AirGapped:        false,
 	HelloWorld:       false,
+	DefaultNs:        "testing.123.com",
 	Registries: []RegistryConfig{
 		{
 			Name:        "localhost:8080",
@@ -165,5 +167,134 @@ func TestPassFromEnv(t *testing.T) {
 	}
 	if opts.Password != expPass {
 		t.Fail()
+	}
+}
+
+// test getters
+func TestGetters(t *testing.T) {
+	ac := authCfg{
+		User:            "a",
+		Password:        "b",
+		PasswordFromEnv: "c",
+	}
+	tc := tlsCfg{
+		Cert:               "d",
+		Key:                "e",
+		CA:                 "f",
+		InsecureSkipVerify: true,
+	}
+	rc := []RegistryConfig{
+		{
+			Name:        "g",
+			Description: "h",
+			Auth:        ac,
+			Tls:         tc,
+			Scheme:      "i",
+		},
+	}
+	pc := PruneConfig{
+		Enabled:  true,
+		Duration: "j",
+		Type:     "k",
+		Freq:     "l",
+		Count:    1,
+		Expr:     "m",
+		DryRun:   true,
+	}
+	lc := ListConfig{
+		Header: true,
+		Expr:   "n",
+	}
+	tLogLevel := ""
+	tLogFile := ""
+	tConfigFile := ""
+	tImagePath := ""
+	tPreloadImages := ""
+	tImageFile := ""
+	tPort := 1
+	tOs := ""
+	tArch := ""
+	tPullTimeout := 1
+	tHealth := 2
+	tAlwaysPullLatest := true
+	tAirGapped := true
+	tHelloWorld := true
+	tDefaultNs := ""
+
+	c := Configuration{
+		LogLevel:         tLogLevel,
+		LogFile:          tLogFile,
+		ConfigFile:       tConfigFile,
+		ImagePath:        tImagePath,
+		PreloadImages:    tPreloadImages,
+		ImageFile:        tImageFile,
+		Port:             tPort,
+		Os:               tOs,
+		Arch:             tArch,
+		PullTimeout:      tPullTimeout,
+		Health:           tHealth,
+		AlwaysPullLatest: tAlwaysPullLatest,
+		AirGapped:        tAirGapped,
+		HelloWorld:       tHelloWorld,
+		DefaultNs:        tDefaultNs,
+		Registries:       rc,
+		PruneConfig:      pc,
+		ListConfig:       lc,
+	}
+	config = c
+
+	if GetLogLevel() != tLogLevel {
+		t.FailNow()
+	}
+	if GetLogFile() != tLogFile {
+		t.FailNow()
+	}
+	if GetConfigFile() != tConfigFile {
+		t.FailNow()
+	}
+	if GetImagePath() != tImagePath {
+		t.FailNow()
+	}
+	if GetPreloadImages() != tPreloadImages {
+		t.FailNow()
+	}
+	if GetImageFile() != tImageFile {
+		t.FailNow()
+	}
+	if GetPort() != tPort {
+		t.FailNow()
+	}
+	if GetOs() != tOs {
+		t.FailNow()
+	}
+	if GetArch() != tArch {
+		t.FailNow()
+	}
+	if GetPullTimeout() != tPullTimeout {
+		t.FailNow()
+	}
+	if GetHealth() != tHealth {
+		t.FailNow()
+	}
+	if GetAlwaysPullLatest() != tAlwaysPullLatest {
+		t.FailNow()
+	}
+	if GetAirGapped() != tAirGapped {
+		t.FailNow()
+	}
+	if GetHelloWorld() != tHelloWorld {
+		t.FailNow()
+	}
+	if GetDefaultNs() != tDefaultNs {
+		t.FailNow()
+	}
+	if GetRegistries()[0] != rc[0] {
+		t.FailNow()
+	}
+	if GetPruneConfig() != pc {
+		t.FailNow()
+	}
+	if GetListConfig() != lc {
+		t.FailNow()
 	}
 }

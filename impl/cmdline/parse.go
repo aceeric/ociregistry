@@ -187,6 +187,16 @@ var cmds = &cli.Command{
 						return nil
 					},
 				},
+				&cli.StringFlag{
+					Name:        "default-ns",
+					Value:       "",
+					Usage:       "A default namespace if none is provided (otherwise pull without namespace is an error)",
+					Destination: &cfg.DefaultNs,
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.DefaultNs = true
+						return nil
+					},
+				},
 			},
 		},
 		{

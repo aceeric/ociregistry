@@ -27,6 +27,8 @@ type OciRegistry struct {
 	alwaysPullLatest bool
 	// if air-gapped, we can't pull so don't try just return 404
 	airGapped bool
+	// supports pull thru like 'docker pull ociregistry:8080/hello-word' (i.e. no namespace so assume docker.io)
+	defaultNs string
 	// allows to shut down the echo server
 	shutdownCh chan bool
 }
@@ -41,6 +43,7 @@ func NewOciRegistry(ch chan bool) *OciRegistry {
 		pullTimeout:      int(config.GetPullTimeout()),
 		alwaysPullLatest: config.GetAlwaysPullLatest(),
 		airGapped:        config.GetAirGapped(),
+		defaultNs:        config.GetDefaultNs(),
 		shutdownCh:       ch,
 	}
 }

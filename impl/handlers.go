@@ -53,7 +53,9 @@ func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org strin
 		log.Errorf("blob not on the file system for org %q, image %q, digest %q", org, image, digest)
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}
-	ctx.Response().Header().Add("Content-Length", strconv.Itoa(int(fi.Size())))
+	if ctx.Request().Header.Get("Range") == "" {
+		ctx.Response().Header().Add("Content-Length", strconv.Itoa(int(fi.Size())))
+	}
 	ctx.Response().Header().Add("Docker-Distribution-Api-Version", "registry/2.0")
 	f, err := os.Open(blob_file)
 	if err != nil {

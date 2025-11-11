@@ -114,7 +114,11 @@ ingress:
 # time. Volumetrics are forthcoming in a future release. If I run the server as a systemd
 # service and inspect it with the "glances" utility, glances reports 11 meg of resident
 # RAM with no images cached, and 14 meg of resident RAM with 60 images cached...
-resources: {}
+resources: 
+  requests:
+    memory: "128Mi"
+  limits:
+    memory: "128Mi"
 
 # -- Use this to mount other volumes.
 volumes: []

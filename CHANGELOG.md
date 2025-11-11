@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.9.7
+
+11-Nov-2025
+
+1. Do not set blob content length header if the client sends the `Range` header in the http request. Fixes problem when containerd is configured for chunking
+1. Go from 1.25.1 to 1.25.4
+1. Remove un-needed `coverage` target in workflow
+1. Support registry password as env var (#21)
+1. When logging is set to `debug`, log HTTP request headers
+1. Misc. documentation improvements
+
 ## 1.9.6
 
 06-Oct-2025

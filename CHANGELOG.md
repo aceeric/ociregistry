@@ -4,11 +4,12 @@
 
 11-Nov-2025
 
-1. Do not set blob content length header if the client sends the `Range` header in the http request. Fixes problem when containerd is configured for chunking
+1. Do not set blob content length header if the client sends the `Range` header in the http request. Fixes problem when containerd is configured for chunking. Delegates chunking to the go `http` package
 1. Go from 1.25.1 to 1.25.4
 1. Remove un-needed `coverage` target in workflow
 1. Support registry password as env var (#21)
-1. When logging is set to `debug`, log HTTP request headers
+1. When logging is set to `--log-level=debug`, log HTTP request headers
+1. Support a default namespace (e.g. `--default-ns=docker.io`) allowing `docker pull ociregistry:8080/hello-world` to pull from `docker.io` (for example)
 1. Misc. documentation improvements
 
 ## 1.9.6

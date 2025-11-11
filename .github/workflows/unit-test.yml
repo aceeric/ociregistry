@@ -20,7 +20,7 @@ jobs:
       - name: Test
         shell: bash
         run: |
-          make test coverage
+          make test
 
       - name: Coverage Badge
         uses: vladopajic/go-test-coverage@v2

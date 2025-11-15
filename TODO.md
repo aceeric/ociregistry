@@ -1,12 +1,13 @@
 # In progress
 
-- chunked transfer in containerd errors
+- Puller.Close()?
 
 # On deck
 
-- default docker.io namespace
-- password as env var (Helm chart)
 - `cmd/` API not closing the connection?
+- Explicit initialization of http client Transport in imgpull?
+- Allow variable buffer size in imgpull for blob pull?
+- Concept of closing the Puller?
 
 # Parked
 

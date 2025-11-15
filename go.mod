@@ -3,14 +3,14 @@ module github.com/aceeric/ociregistry
 go 1.25.4
 
 require (
-	github.com/aceeric/imgpull v1.12.3
+	github.com/aceeric/imgpull v1.12.4
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/oapi-codegen/echo-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/sirupsen/logrus v1.9.3
-	github.com/urfave/cli/v3 v3.4.1
-	go.yaml.in/yaml/v4 v4.0.0-rc.2
+	github.com/urfave/cli/v3 v3.6.0
+	go.yaml.in/yaml/v4 v4.0.0-rc.3
 )
 
 require (
@@ -20,7 +20,7 @@ require (
 
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
-	github.com/go-openapi/jsonpointer v0.22.1 // indirect
+	github.com/go-openapi/jsonpointer v0.22.2 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
@@ -35,9 +35,9 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
-	golang.org/x/crypto v0.42.0 // indirect
-	golang.org/x/net v0.44.0 // indirect
-	golang.org/x/sys v0.36.0 // indirect
-	golang.org/x/text v0.29.0 // indirect
-	golang.org/x/time v0.13.0 // indirect
+	golang.org/x/crypto v0.44.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
+	golang.org/x/time v0.14.0 // indirect
 )

@@ -1,17 +1,13 @@
 # In progress
 
-- Puller.Close()?
 
 # On deck
 
 - `cmd/` API not closing the connection?
-- Explicit initialization of http client Transport in imgpull?
-- Allow variable buffer size in imgpull for blob pull?
-- Concept of closing the Puller?
+- No save option for load testing?
+- Closing the Puller?
 
 # Parked
-
-- HEAD the upstream on latest and don't pull if digest is unchanged.
 
 # TODO
 

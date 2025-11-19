@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+set -e
+
+#
+# This script supports running the sim with enabled instrumentation to observe some of the key simulation
+# performance-related metrics in a Grafana dashboard.
+#
+# Starts a Docker container to run Prometheus, providing it a configuration to scrape the n-body
+# simulation. Then starts a Grafana container, and provisions: 1) a data source referencing
+# the Prometheus Docker instance, and 2) a Dashboard to watch a set of n-body metrics
+# scraped from Prometheus. Once both containers are running, you can access the Grafanaa dashboard
+# using:
+#
+# http://localhost:3000
+#
+# You may have to turn off tracking protection in your browser to make Grafana happy. Also: you have
+# run the sim with the -Dorg.ericace.instrumentation.class=org.ericace.instrumentation.PrometheusInstrumentation JVM
+# property defined to enable collecting and exposing metrics to Prometheus
+#
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Prometheus
+
+docker run -d --rm \
+ -p 9090:9090 \
+ --name=prometheus \
+ --net="host" \
+ --mount "type=bind,source=$script_dir/prometheus.yml,target=/etc/prometheus/prometheus.yml" \
+ --mount "type=bind,source=$script_dir/rules.yml,target=/etc/prometheus/rules.yml" \
+ prom/prometheus
+
+# Grafana
+
+# TODO --mount "type=bind,source=$script_dir/dashboard.yaml,target=/etc/grafana/provisioning/dashboards/dashboard.yaml" \
+docker run -d --rm \
+ -p 3000:3000 \
+ --name=grafana \
+ --net="host" \
+ -e "GF_SECURITY_ADMIN_USER=root" \
+ -e "GF_SECURITY_ADMIN_PASSWORD=secret" \
+ --mount "type=bind,source=$script_dir/datasource.yaml,target=/etc/grafana/provisioning/datasources/prometheus.yml" \
+ --mount "type=bind,source=$script_dir/dashboard.yaml,target=/etc/grafana/provisioning/dashboards/dashboard.yaml" \
+ --mount "type=bind,source=$script_dir/ociregistry-dashboard.json,target=/var/lib/grafana/dashboards/ociregistry-dashboard.json" \
+ grafana/grafana

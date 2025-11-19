@@ -1,0 +1,19 @@
+apiVersion: 1
+
+#
+# Provisions a dashboard located in /var/lib/grafana/dashboards. This path is mounted
+# into the Grafana Docker container by the 'scripts/start-containers' script.
+#
+providers:
+  - name: 'Ociregistry'
+    orgId: 1
+    folder: 'ociregistry'
+    folderUid: ''
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 5
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+

@@ -1,5 +1,6 @@
 # In progress
 
+- Instrumentation
 
 # On deck
 
@@ -15,6 +16,5 @@
 - Config parse
 - Server base url (for ingress)
 - Consider https://github.com/OpenAPITools/openapi-generator
-- Instrumentation
 - Enable swagger UI (https://github.com/go-swagger/go-swagger)?
 - Other (badges) https://github.com/prometheus/prometheus

@@ -16,6 +16,7 @@ import (
 	"github.com/aceeric/ociregistry/impl/cache"
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
+	"github.com/aceeric/ociregistry/impl/metrics"
 	"github.com/aceeric/ociregistry/impl/preload"
 
 	"github.com/labstack/echo/v4"
@@ -112,6 +113,7 @@ func Serve(buildVer string, buildDtm string) error {
 		return errors.New("timed out waiting for Echo listener")
 	}
 	listener = getEchoListener(e)
+	metrics.InitMetrics(2112)
 	log.Info("server is running")
 
 	<-shutdownCh

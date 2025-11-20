@@ -10,6 +10,7 @@ import (
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/helpers"
+	"github.com/aceeric/ociregistry/impl/metrics"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
 	"github.com/aceeric/ociregistry/impl/serialize"
 
@@ -94,6 +95,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 	url := pr.Url()
 	if mh, ch, exists := getManifestOrEnqueue(pr, imagePath, forcePull); exists {
 		log.Infof("serving manifest from cache: %q", url)
+		metrics.RecordMetric(metrics.IncCachedPullsByNs(pr.Remote))
 		return mh, nil
 	} else if ch == nil {
 		log.Infof("pulling manifest from upstream: %q", url)

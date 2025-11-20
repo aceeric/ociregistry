@@ -1,6 +1,7 @@
 # In progress
 
 - Instrumentation
+  - --metrics-enabled
 
 # On deck
 

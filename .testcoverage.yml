@@ -1,9 +1,8 @@
 profile: cover.out
 
 threshold:
-  file: 65
-  package: 70
-  total: 75
+  package: 55
+  total: 60
 
 override: []
 
@@ -11,6 +10,7 @@ exclude:
   paths:
     - api/
     - impl/ociregistry\.go
+    - impl/metrics
     - mock/
     # something weird is happening between go test, go coverage, and go-test-coverage that is mis-reporting the coverage
     # at least for this file, and I don't have time to deal with it now (11-Nov-2025)

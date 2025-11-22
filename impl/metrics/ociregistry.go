@@ -217,7 +217,7 @@ func initAllMetrics() {
 	}
 
 	///
-	manifestBytesOnDiskTotal = promauto.NewGauge(
+	cachedManifestCount = promauto.NewGauge(
 		prometheus.GaugeOpts{
 			Name:      cached_manifest_count,
 			Namespace: "ociregistry",
@@ -230,7 +230,7 @@ func initAllMetrics() {
 	}
 
 	///
-	blobBytesOnDiskTotal = promauto.NewGauge(
+	cachedBlobCount = promauto.NewGauge(
 		prometheus.GaugeOpts{
 			Name:      cached_blob_count,
 			Namespace: "ociregistry",

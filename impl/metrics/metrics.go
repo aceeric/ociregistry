@@ -18,5 +18,5 @@ func InitMetrics(port int) {
 	addGoRuntimeMetrics()
 	addOciregistryMetrics()
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	go http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }

@@ -188,7 +188,7 @@ func Load(imagePath string) error {
 	log.Infof("load in-mem cache from file system")
 	itemcnt := 0
 	var outerErr error
-	serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
+	serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, fi os.FileInfo) error {
 		pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
 		if err != nil {
 			outerErr = err
@@ -196,6 +196,7 @@ func Load(imagePath string) error {
 		}
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
 		if canAdd(mh, imagePath) {
+			metrics.DeltaManifestBytesOnDisk(float64(fi.Size()))
 			addToCache(pr, mh, imagePath)
 			itemcnt++
 		} else {

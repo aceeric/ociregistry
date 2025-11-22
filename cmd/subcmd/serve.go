@@ -81,6 +81,8 @@ func Serve(buildVer string, buildDtm string) error {
 		return fmt.Errorf("error starting the pruner: %s", err)
 	}
 
+	metrics.InitMetrics(config.GetMetrics())
+
 	if err := cache.Load(config.GetImagePath()); err != nil {
 		return fmt.Errorf("error loading the image cache: %s", err)
 	}
@@ -113,7 +115,6 @@ func Serve(buildVer string, buildDtm string) error {
 		return errors.New("timed out waiting for Echo listener")
 	}
 	listener = getEchoListener(e)
-	metrics.InitMetrics(config.GetMetrics())
 	log.Info("server is running")
 
 	<-shutdownCh

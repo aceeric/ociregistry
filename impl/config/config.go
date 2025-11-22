@@ -180,7 +180,7 @@ func GetHealth() int {
 }
 
 func GetMetrics() int {
-	return config.Health
+	return config.Metrics
 }
 
 func GetAlwaysPullLatest() bool {

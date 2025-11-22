@@ -95,12 +95,12 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 	url := pr.Url()
 	if mh, ch, exists := getManifestOrEnqueue(pr, imagePath, forcePull); exists {
 		log.Infof("serving manifest from cache: %q", url)
-		metrics.RecordMetric(metrics.IncCachedPullsByNs(pr.Remote))
+		metrics.IncCachedPullsByNs(pr.Remote)
 		return mh, nil
 	} else if ch == nil {
 		log.Infof("pulling manifest from upstream: %q", url)
 		defer signalWaiters(url)
-		mh, err := DoPull(pr, imagePath)
+		mh, err := doPull(pr, imagePath)
 		if err != nil {
 			log.Errorf("doPull failed for %q: %s", url, err)
 			return emptyManifestHolder, err
@@ -119,6 +119,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 		select {
 		case <-ch:
 			log.Infof("serving manifest from cache (after wait): %q", url)
+			metrics.IncCachedPullsByNs(pr.Remote)
 			mh, exists := getManifestFromCache(pr, imagePath)
 			if !exists {
 				return emptyManifestHolder, fmt.Errorf("manifest not found (after wait) %q", url)
@@ -140,11 +141,12 @@ func GetBlob(digest string) int {
 	return bc.blobs[digest]
 }
 
-// DoPull gets an image list manifest - or image manifest - from an upstream OCI distribution
+// doPull gets an image list manifest - or image manifest - from an upstream OCI distribution
 // server. If an image manifest is pulled, then all the blobs for the image manifest are
 // also pulled. On return, the pulled manifest will have been serialized to the file system by
 // the function (along with blobs, if an image manifest.)
-func DoPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, error) {
+func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, error) {
+	metrics.IncUpstreamPullsByNs(pr.Remote)
 	opts, err := config.ConfigFor(pr.Remote)
 	if err != nil {
 		return emptyManifestHolder, err
@@ -280,7 +282,7 @@ func canAdd(mh imgpull.ManifestHolder, imagePath string) bool {
 	canAdd := true
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)
-		if !serialize.BlobExists(imagePath, digest) {
+		if exists, _ := serialize.BlobExists(imagePath, digest); !exists {
 			canAdd = false
 			// don't break - display all the errors
 			log.Debugf("load: blob %q referenced by manifest %q not found on the filesystem", digest, mh.ImageUrl)
@@ -369,12 +371,15 @@ func replaceInCache(pr pullrequest.PullRequest, mhNew imgpull.ManifestHolder, im
 // by tag and by digest for the same manifest.
 func addManifestToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
 	if pr.IsLatest() {
+		metrics.DeltaCachedManifestCount(2)
 		mc.latest[pr.Url()] = mh
 		// IsLatest means it has tag "latest"
 		mc.latest[pr.UrlWithDigest("sha256:"+mh.Digest)] = mh
 	} else {
+		metrics.DeltaCachedManifestCount(1)
 		mc.manifests[pr.Url()] = mh
 		if pr.PullType == pullrequest.ByTag {
+			metrics.DeltaCachedManifestCount(1)
 			mc.manifests[pr.UrlWithDigest("sha256:"+mh.Digest)] = mh
 		}
 	}
@@ -389,8 +394,11 @@ func addBlobsToCache(mh imgpull.ManifestHolder, imagePath string) error {
 		digest := helpers.GetDigestFrom(layer.Digest)
 		// if not in the map, is added
 		bc.blobs[digest]++
-		if !serialize.BlobExists(imagePath, digest) {
+		if exists, size := serialize.BlobExists(imagePath, digest); !exists {
 			return fmt.Errorf("blob %q referenced by manifest %q not found on the filesystem", digest, mh.ImageUrl)
+		} else if bc.blobs[digest] == 1 {
+			metrics.DeltaBlobBytesOnDisk(float64(size))
+			metrics.DeltaCachedBlobCount(1)
 		}
 	}
 	return nil

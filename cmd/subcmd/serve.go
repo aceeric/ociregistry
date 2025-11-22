@@ -113,7 +113,7 @@ func Serve(buildVer string, buildDtm string) error {
 		return errors.New("timed out waiting for Echo listener")
 	}
 	listener = getEchoListener(e)
-	metrics.InitMetrics(2112)
+	metrics.InitMetrics(config.GetMetrics())
 	log.Info("server is running")
 
 	<-shutdownCh

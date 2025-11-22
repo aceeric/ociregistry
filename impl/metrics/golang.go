@@ -19,7 +19,7 @@ func GetSingleMetricFloat(metricName string) float64 {
 	return getFloat64(sample[0])
 }
 
-// addGoRuntimeMetrics gets all built-in go metrics and adds them
+// addGoRuntimeMetrics retrievs all built-in go runtime metrics and adds them
 // to prometheus.
 func addGoRuntimeMetrics() {
 	metricsMeta := metrics.All()
@@ -79,12 +79,13 @@ func getFloat64(sample metrics.Sample) float64 {
 	case metrics.KindFloat64:
 		floatVal = float64(sample.Value.Float64())
 	case metrics.KindFloat64Histogram:
-		// TODO: implementation needed
-		return -1.0
+		// TEMP - NEED TO FIX THIS
+		return medianBucket(sample.Value.Float64Histogram())
 	case metrics.KindBad:
-		panic("bug in runtime/metrics package!")
+		// TODO LOG
 	default:
-		panic(fmt.Sprintf("%s: unexpected metric Kind: %v\n", sample.Name, sample.Value.Kind()))
+		// TODO LOG
+		// panic(fmt.Sprintf("%s: unsupported metric Kind: %v\n", sample.Name, sample.Value.Kind()))
 	}
 	return floatVal
 }
@@ -100,4 +101,21 @@ func getMetricSubsystemName(metric metrics.Description) string {
 		return subsystem
 	}
 	return ""
+}
+
+func medianBucket(h *metrics.Float64Histogram) float64 {
+	total := uint64(0)
+	for _, count := range h.Counts {
+		total += count
+	}
+	thresh := total / 2
+	total = 0
+	for i, count := range h.Counts {
+		total += count
+		if total >= thresh {
+			return h.Buckets[i]
+		}
+	}
+	// should never happen - TODO log?
+	return 0
 }

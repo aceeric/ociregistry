@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#
+# Ociregistry is configured with config.yaml to pull from the registry
+# on plain http.
+#
+
+set -e
+
+ls -1 *.tar | while read tarfile; do
+  tarfile=${tarfile%.*}
+  image="localhost:8888/ubuntu.me:5000/$tarfile"
+  imgpull $image ~/tmp/imgpull.tar --scheme http
+done

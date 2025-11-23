@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#
+# Repeatedly prunes and pulls the same image until stopped
+#
+
+while true; do
+  imgpull localhost:8888/ubuntu.me:5000/l4yrxuyky4-sb8cpkg9b6:v185.371 ~/tmp/deleteme.tar --scheme http
+  curl -X DELETE "localhost:8888/cmd/prune?type=pattern&expr=l4yrxuyky4-sb8cpkg9b6&dryRun=false"
+done

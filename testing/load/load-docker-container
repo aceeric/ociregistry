@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#
+# ./load-docker-container --start-docker --load-images
+#
+# The script runs docker on http so make sure to add the registry
+# container to /etc/docker/daemon.json. E.g.:
+#
+# cat <<EOF | sudo tee /etc/docker/daemon.json
+# {
+#     "insecure-registries" : [
+#       "ubuntu.me:5000"
+#     ]
+# }
+# EOF
+#
+
+set -e
+
+start_docker=0
+load_images=0
+cleanup=0
+
+for opt in "$@"; do
+  if [[ $opt == "--start-docker" ]]; then
+    start_docker=1
+  fi
+  if [[ $opt == "--load-images" ]]; then
+    load_images=1
+  fi
+  if [[ $opt == "--cleanup" ]]; then
+    cleanup=1
+  fi
+done
+
+if [[ $start_docker -eq 1 ]]; then
+  docker run\
+    --name registry\
+    --detach\
+    --publish 5000:5000\
+    docker.io/registry:3.0.0
+fi
+
+my_docker_registry_container="ubuntu.me:5000"
+if [[ $load_images -eq 1 ]]; then
+  ls -1 *.tar | while read tarfile; do
+    docker load -i $tarfile
+    image=${tarfile%.*}
+    docker tag $image $my_docker_registry_container/$image
+    docker push $my_docker_registry_container/$image
+  done
+fi
+
+if [[ $cleanup -eq 1 ]]; then
+  docker stop registry
+  docker container rm registry
+fi

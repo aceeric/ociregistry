@@ -19,7 +19,7 @@ func GetSingleMetricFloat(metricName string) float64 {
 	return getFloat64(sample[0])
 }
 
-// addGoRuntimeMetrics retrievs all built-in go runtime metrics and adds them
+// addGoRuntimeMetrics retrieves all built-in go runtime metrics and adds them
 // to prometheus.
 func addGoRuntimeMetrics() {
 	metricsMeta := metrics.All()
@@ -103,6 +103,7 @@ func getMetricSubsystemName(metric metrics.Description) string {
 	return ""
 }
 
+// medianBucket is a bit of a hack to handle go runtime metric histograms. Needs cleanup.
 func medianBucket(h *metrics.Float64Histogram) float64 {
 	total := uint64(0)
 	for _, count := range h.Counts {

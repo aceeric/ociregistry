@@ -21,14 +21,6 @@ var DeltaCachedBlobCount delta = func(float64) {}
 var IncV2ApiEndpointHits noLabel = func() {}
 var IncApiErrorResults noLabel = func() {}
 
-// metricAction carries a metric update through the channel to a function that uses the
-// struct values to make calls to the Prometheus library.
-//type metricAction struct {
-//	name     string
-//	value    float64
-//	labelval string
-//}
-
 type withLabel func(string)
 type noLabel func()
 type delta func(float64)
@@ -48,12 +40,7 @@ const (
 	ns_label                     = "ns"
 )
 
-// metricsChan is used by this go file to decouple callers setting metrics from the underlying
-// Prometheus metrics library. The purpose is to reduce synchronization overhead from that
-// library.
-// var metricsChan chan metricAction
-
-// these are the actual Prometheus metrics objects initialized by the 'initAllMetrics' function
+// Prometheus metrics objects
 
 var cachedPullsByNsTotal *prometheus.CounterVec
 var upstreamPullsByNsTotal *prometheus.CounterVec
@@ -66,77 +53,11 @@ var cachedBlobCount prometheus.Gauge
 var v2ApiEndpointHitsTotal prometheus.Counter
 var apiErrorsTotal prometheus.Counter
 
-// addOciregistryMetrics initializes the metrics specific to the ociregistry server.
-func addOciregistryMetrics() {
-	initAllMetrics()
-	//metricsChan = make(chan metricAction, 10000)
-	//go func() {
-	//	for {
-	//		ma, more := <-metricsChan
-	//		if more {
-	//			handleMetric(ma)
-	//		} else {
-	//			// channel closed
-	//			return
-	//		}
-	//	}
-	//}()
-}
-
-// handleMetric maps the metric name in the passed MetricAction to one of the Prometheus
-// metric objects (Counter, CounterVec, Gauge, or GaugeVec) and then invokes the operation
-// (add or set) that is appropriate for the metric.
-//func handleMetric(ma metricAction) {
-//	switch ma.name {
-//	case cached_pulls_by_ns_total:
-//		cachedPullsByNsTotal.With(prometheus.Labels{ns_label: ma.labelval}).Add(ma.value)
-//	case upstream_pulls_by_ns:
-//		uncachedPullsByNsTotal.With(prometheus.Labels{ns_label: ma.labelval}).Add(ma.value)
-//	case manifest_pulls_total:
-//		manifestPullsTotal.Add(ma.value)
-//	case blob_bytes_on_disk_total:
-//		blobBytesOnDiskTotal.Add(ma.value)
-//	case manifest_bytes_on_disk_total:
-//		manifestBytesOnDiskTotal.Add(ma.value)
-//	case cached_manifest_count:
-//		cachedManifestCount.Add(ma.value)
-//	case cached_blob_count:
-//		cachedBlobCount.Add(ma.value)
-//	case v2_api_endpoint_hits_total:
-//		v2ApiEndpointHitsTotal.Add(ma.value)
-//	case api_errors_total:
-//		apiErrorsTotal.Add(ma.value)
-//	default:
-//		log.Errorf("unknown metric: %s", ma.name)
-//	}
-//}
-
-// recordMetric is called to record a metric value. The passed values are simply written to the
-// 'metricsChan' channel and then the function returns. The goal is to minimize synchronization overhead.
-// (The Prometheus library uses the go 'atomic' library in its internals which introduces a tiny bit of
-// additional sycnhronization.) By writing the metric to a channel and then immediately exiting, we
-// minimize synchronization. (TODO test alternate approach without channel.)
-//
-// The risk is that if the imcoming metrics exceed the buffer size then they are discarded. And,
-// of course, go synchronizes channel access so we can't escape some synchronization overhead.
-//func recordMetric(name string, value float64, labelval string) {
-//	select {
-//	case metricsChan <- metricAction{
-//		name:     name,
-//		value:    value,
-//		labelval: labelval,
-//	}:
-//	default:
-//		log.Debugf("ocimetrics channel full, metric discarded: %s", name)
-//	}
-//
-//}
-
-// initAllMetrics creates all the ociregistry metrics and registers them with the
+// addOciregistryMetrics creates all the ociregistry metrics and registers them with the
 // prometheus library. It also assigns a function to actually implement the metric.
-// Unless *this* function is called, all the metric functions exposed by the package will
-// be NOP functions.
-func initAllMetrics() {
+// Unless this function is called, all the metric functions exposed by the package
+// will be NOP functions.
+func addOciregistryMetrics() {
 	cachedPullsByNsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name:      cached_pulls_by_ns_total,
@@ -146,7 +67,6 @@ func initAllMetrics() {
 		[]string{ns_label},
 	)
 	IncCachedPullsByNs = func(ns string) {
-		//recordMetric(cached_pulls_by_ns_total, 1, ns)
 		cachedPullsByNsTotal.With(prometheus.Labels{ns_label: ns}).Add(1)
 	}
 
@@ -160,7 +80,6 @@ func initAllMetrics() {
 		[]string{ns_label},
 	)
 	IncUpstreamPullsByNs = func(ns string) {
-		//recordMetric(upstream_pulls_by_ns, 1, ns)
 		upstreamPullsByNsTotal.With(prometheus.Labels{ns_label: ns}).Add(1)
 	}
 
@@ -173,7 +92,6 @@ func initAllMetrics() {
 		},
 	)
 	IncManifestPulls = func() {
-		//recordMetric(manifest_pulls_total, 1, "")
 		manifestPullsTotal.Add(1)
 	}
 
@@ -186,7 +104,6 @@ func initAllMetrics() {
 		},
 	)
 	IncBlobPulls = func() {
-		//recordMetric(blob_pulls_total, 1, "")
 		blobPullsTotal.Add(1)
 	}
 
@@ -199,7 +116,6 @@ func initAllMetrics() {
 		},
 	)
 	DeltaBlobBytesOnDisk = func(delta float64) {
-		//recordMetric(blob_bytes_on_disk_total, delta, "")
 		blobBytesOnDiskTotal.Add(delta)
 	}
 
@@ -212,7 +128,6 @@ func initAllMetrics() {
 		},
 	)
 	DeltaManifestBytesOnDisk = func(delta float64) {
-		//recordMetric(manifest_bytes_on_disk_total, delta, "")
 		manifestBytesOnDiskTotal.Add(delta)
 	}
 
@@ -225,7 +140,6 @@ func initAllMetrics() {
 		},
 	)
 	DeltaCachedManifestCount = func(delta float64) {
-		//recordMetric(cached_manifest_count, delta, "")
 		cachedManifestCount.Add(delta)
 	}
 
@@ -238,7 +152,6 @@ func initAllMetrics() {
 		},
 	)
 	DeltaCachedBlobCount = func(delta float64) {
-		//recordMetric(cached_blob_count, delta, "")
 		cachedBlobCount.Add(delta)
 	}
 
@@ -251,7 +164,6 @@ func initAllMetrics() {
 		},
 	)
 	IncV2ApiEndpointHits = func() {
-		//recordMetric(v2_api_endpoint_hits_total, 1, "")
 		v2ApiEndpointHitsTotal.Add(1)
 	}
 
@@ -264,7 +176,6 @@ func initAllMetrics() {
 		},
 	)
 	IncApiErrorResults = func() {
-		//recordMetric(api_errors_total, 1, "")
 		apiErrorsTotal.Add(1)
 	}
 }

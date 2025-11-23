@@ -23,7 +23,7 @@ manifest='
    {
       "config": "sha256:CONFIGSHA",
       "repoTags": [
-         "docker.io/IMAGENAME:vTAG"
+         "IMAGENAME:vTAG"
       ],
       "layers": [
          LAYERS
@@ -85,7 +85,7 @@ while [[ $cur -le $image_count ]]; do
 
   # create the tar - it can be loaded into docker, e.g. docker load -i image.n.tar
   pushd $script_dir/image
-  tar -cf ../image.$cur.tar *
+  tar -cf ../$imagename:v$imagetag.tar *
   popd
   ((cur++))
 done

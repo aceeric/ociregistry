@@ -28,6 +28,6 @@ docker run\
  --env "GF_SECURITY_ADMIN_PASSWORD=secret"\
  --mount "type=bind,source=$script_dir/datasource.yaml,target=/etc/grafana/provisioning/datasources/prometheus.yml"\
  --mount "type=bind,source=$script_dir/dashboard.yaml,target=/etc/grafana/provisioning/dashboards/dashboard.yaml"\
+ --mount "type=bind,source=$script_dir/gometrics-dashboard.json,target=/var/lib/grafana/dashboards/gometrics-dashboard.json"\
  --mount "type=bind,source=$script_dir/ociregistry-dashboard.json,target=/var/lib/grafana/dashboards/ociregistry-dashboard.json"\
- TODO OCIREG DASH!
  docker.io/grafana/grafana:12.1

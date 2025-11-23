@@ -1,0 +1,4 @@
+registries:
+  - name: ubuntu.me:5000
+    description: The docker registry container running on my desktop (/etc/hosts has ubuntu.me with my host IP)
+    scheme: http

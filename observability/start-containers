@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+set -e
+
+#
+# TODO
+#
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+docker run\
+ --name=prometheus\
+ --detach\
+ --publish 9090:9090\
+ --net="host"\
+ --mount "type=bind,source=$script_dir/prometheus.yml,target=/etc/prometheus/prometheus.yml"\
+ --mount "type=bind,source=$script_dir/rules.yml,target=/etc/prometheus/rules.yml"\
+ docker.io/prom/prometheus:v3.7.3
+
+docker run\
+ --name=grafana\
+ --detach\
+ --publish 3000:3000\
+ --net="host"\
+ --env "GF_SECURITY_ADMIN_USER=root"\
+ --env "GF_SECURITY_ADMIN_PASSWORD=secret"\
+ --mount "type=bind,source=$script_dir/datasource.yaml,target=/etc/grafana/provisioning/datasources/prometheus.yml"\
+ --mount "type=bind,source=$script_dir/dashboard.yaml,target=/etc/grafana/provisioning/dashboards/dashboard.yaml"\
+ --mount "type=bind,source=$script_dir/gometrics-dashboard.json,target=/var/lib/grafana/dashboards/gometrics-dashboard.json"\
+ --mount "type=bind,source=$script_dir/ociregistry-dashboard.json,target=/var/lib/grafana/dashboards/ociregistry-dashboard.json"\
+ docker.io/grafana/grafana:12.1

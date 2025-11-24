@@ -16,6 +16,7 @@ import (
 	"github.com/aceeric/ociregistry/impl/cache"
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
+	"github.com/aceeric/ociregistry/impl/metrics"
 	"github.com/aceeric/ociregistry/impl/preload"
 
 	"github.com/labstack/echo/v4"
@@ -79,6 +80,8 @@ func Serve(buildVer string, buildDtm string) error {
 	if err := cache.RunPruner(stopPruneCh, pruneStoppedCh); err != nil {
 		return fmt.Errorf("error starting the pruner: %s", err)
 	}
+
+	metrics.InitMetrics(config.GetMetrics())
 
 	if err := cache.Load(config.GetImagePath()); err != nil {
 		return fmt.Errorf("error loading the image cache: %s", err)

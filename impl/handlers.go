@@ -8,6 +8,7 @@ import (
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/cache"
 	"github.com/aceeric/ociregistry/impl/helpers"
+	"github.com/aceeric/ociregistry/impl/metrics"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
 
 	log "github.com/sirupsen/logrus"
@@ -17,15 +18,19 @@ import (
 
 // HEAD or GET /v2/.../manifests/ref
 func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string, ref string, verb string, ns *string) error {
+	metrics.IncV2ApiEndpointHits()
+	metrics.IncManifestPulls()
 	pr := pullrequest.NewPullRequest(org, image, ref, parseRemote(ctx, ns, r.defaultNs))
 	if r.airGapped && !cache.IsCached(pr) {
 		log.Debugf("request for un-cached manifest %q in air-gapped mode - returning 404", pr.Url())
+		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusNotFound, "")
 	}
 	forcePull := r.alwaysPullLatest && pr.Reference == "latest"
 	mh, err := cache.GetManifest(pr, r.imagePath, r.pullTimeout, forcePull)
 	if err != nil {
 		log.Errorf("error getting manifest for %q: %s", pr.Url(), err)
+		metrics.IncApiErrorResults()
 		return ctx.NoContent(http.StatusInternalServerError)
 	}
 	ctx.Response().Header().Add("Content-Length", strconv.Itoa(len(mh.Bytes)))
@@ -42,15 +47,19 @@ func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org s
 
 // GET /v2/org/image/blobs/digest
 func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
+	metrics.IncV2ApiEndpointHits()
+	metrics.IncBlobPulls()
 	digest = helpers.GetDigestFrom(digest)
 	if refCnt := cache.GetBlob(digest); refCnt <= 0 {
 		log.Errorf("blob not in cache for org %q, image %q, digest %q", org, image, digest)
+		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusNotFound, "")
 	}
 	blob_file := helpers.GetBlobPath(r.imagePath, digest)
 	fi, err := os.Stat(blob_file)
 	if err != nil {
 		log.Errorf("blob not on the file system for org %q, image %q, digest %q", org, image, digest)
+		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}
 	if ctx.Request().Header.Get("Range") == "" {
@@ -66,12 +75,14 @@ func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org strin
 
 // GET /v2/
 func (r *OciRegistry) handleV2Default(ctx echo.Context) error {
+	metrics.IncV2ApiEndpointHits()
 	log.Info("get /v2/")
 	return ctx.JSON(http.StatusOK, "true")
 }
 
 // HEAD /v2/
 func (r *OciRegistry) handleV2HeadDefault(ctx echo.Context) error {
+	metrics.IncV2ApiEndpointHits()
 	log.Info("head /v2/")
 	return ctx.JSON(http.StatusOK, "true")
 }
@@ -79,6 +90,7 @@ func (r *OciRegistry) handleV2HeadDefault(ctx echo.Context) error {
 // GET /v2/auth. The server doesn't do anything with tokens but if the client wants a token
 // it gets one.
 func (r *OciRegistry) handleV2Auth(ctx echo.Context, params models.V2AuthParams) error {
+	metrics.IncV2ApiEndpointHits()
 	log.Infof("get auth scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization)
 	body := struct {
 		Token string `json:"token"`

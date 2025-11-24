@@ -8,6 +8,7 @@ import (
 
 	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/helpers"
+	"github.com/aceeric/ociregistry/impl/metrics"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"
@@ -43,21 +44,25 @@ func MhFromFilesystem(digest string, isLatest bool, imagePath string) (imgpull.M
 }
 
 // MhToFilesystem writes the passed ManifestHolder to the file system if the 'replace'
-// arg is true. If the 'replace' is false then the function checks the file system first
+// arg is true. If the 'replace' arg is false then the function checks the file system first
 // and if the manifest already exists, nothing is done. The manifests aren't compared.
 // Its a simple "file exists" check. If the manifest does not exist it is written.
 func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) error {
+	existingMfstBytes := 0
 	isLatest, err := mh.IsLatest()
 	if err != nil {
 		return err
 	}
 	subDir := subDirs[isLatest]
 	fname := filepath.Join(imagePath, subDir, mh.Digest)
-	if !replace {
-		if _, err := os.Stat(fname); err == nil {
+	fi, err := os.Stat(fname)
+	if err == nil {
+		// already exists
+		if !replace {
 			log.Infof("manifest already in cache %q", fname)
 			return nil
 		}
+		existingMfstBytes = int(fi.Size())
 	}
 	if err := os.MkdirAll(filepath.Dir(fname), 0755); err != nil {
 		log.Errorf("unable to create directory %s, error: %s", filepath.Dir(fname), err)
@@ -72,6 +77,7 @@ func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) e
 		log.Errorf("error serializing manifest for %q, error: %q", mh.ImageUrl, err)
 		return err
 	}
+	metrics.DeltaManifestBytesOnDisk(float64(len(mb) - existingMfstBytes))
 	return nil
 }
 
@@ -113,19 +119,21 @@ func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 // no error is returned.
 func RmBlob(imagePath string, digest string) error {
 	blobPath := filepath.Join(imagePath, globals.BlobPath, digest)
-	if _, err := os.Stat(blobPath); err == nil {
+	if fi, err := os.Stat(blobPath); err == nil {
+		metrics.DeltaBlobBytesOnDisk(float64(fi.Size() * -1))
+		metrics.DeltaCachedBlobCount(-1)
 		return os.Remove(blobPath)
 	}
 	return nil
 }
 
 // BlobExists returns true if the passed blob is on the file system, else false.
-func BlobExists(imagePath string, digest string) bool {
+func BlobExists(imagePath string, digest string) (bool, int) {
 	blobPath := filepath.Join(imagePath, globals.BlobPath, digest)
-	if _, err := os.Stat(blobPath); err == nil {
-		return true
+	if fi, err := os.Stat(blobPath); err == nil {
+		return true, int(fi.Size())
 	}
-	return false
+	return false, 0
 }
 
 // RmManifest removes the passed manifest from the fle system. If the manifest file does not exist,
@@ -137,8 +145,11 @@ func RmManifest(imagePath string, mh imgpull.ManifestHolder) error {
 	}
 	subDir := subDirs[isLatest]
 	mPath := filepath.Join(imagePath, subDir, mh.Digest)
-	if _, err := os.Stat(mPath); err == nil {
-		return os.Remove(mPath)
+	if fi, err := os.Stat(mPath); err == nil {
+		if err := os.Remove(mPath); err != nil {
+			return err
+		}
+		metrics.DeltaManifestBytesOnDisk(float64(0 - fi.Size()))
 	}
 	return nil
 }

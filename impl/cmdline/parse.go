@@ -157,6 +157,15 @@ var cmds = &cli.Command{
 						return nil
 					},
 				},
+				&cli.IntFlag{
+					Name:        "metrics",
+					Usage:       "Enables metrics exposition on the specified port",
+					Destination: &cfg.Metrics,
+					Action: func(ctx context.Context, cmd *cli.Command, _ int) error {
+						fromCmdline.Metrics = true
+						return nil
+					},
+				},
 				&cli.BoolFlag{
 					Name:        "always-pull-latest",
 					Value:       false,

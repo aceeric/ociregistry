@@ -23,6 +23,7 @@ os: linux
 arch: amd64
 pullTimeout: 60000
 health: 6543
+metrics: 2222
 alwaysPullLatest: false
 airGapped: false
 helloWorld: false
@@ -51,6 +52,7 @@ var expectConfig = Configuration{
 	Arch:             "amd64",
 	PullTimeout:      60000,
 	Health:           6543,
+	Metrics:          2222,
 	AlwaysPullLatest: false,
 	AirGapped:        false,
 	HelloWorld:       false,

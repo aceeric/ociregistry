@@ -12,6 +12,7 @@ import (
 
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/helpers"
+	"github.com/aceeric/ociregistry/impl/metrics"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
 	"github.com/aceeric/ociregistry/impl/serialize"
 
@@ -275,12 +276,15 @@ func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
 // the manifest is tagged "latest" or not.
 func (mc *manifestCache) delete(pr pullrequest.PullRequest, digest string) {
 	if pr.IsLatest() {
+		metrics.DeltaCachedManifestCount(-2)
 		delete(mc.latest, pr.Url())
 		// IsLatest means the manifest has tag "latest"
 		delete(mc.latest, pr.UrlWithDigest("sha256:"+digest))
 	} else {
+		metrics.DeltaCachedManifestCount(-1)
 		delete(mc.manifests, pr.Url())
 		if pr.PullType == pullrequest.ByTag {
+			metrics.DeltaCachedManifestCount(-1)
 			delete(mc.manifests, pr.UrlWithDigest("sha256:"+digest))
 		}
 	}

@@ -1,0 +1,6 @@
+groups:
+  - name: derived_metrics
+    interval: 1s
+    rules:
+      - record: memory_classes_total_usage_bytes
+        expr:  memory_classes_total_bytes - memory_classes_heap_released_bytes

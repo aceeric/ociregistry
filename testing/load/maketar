@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+#
+# maketar is a helper script to make docker image tarballs that can be loaded into a
+# local docker registry that the ociregistry can then pull through from. This enables
+# to perform volume testing without having to pull from actual registries like quay
+# or dockerhub. These images can't be used for anything except load and volume testing
+# the ociregistry server.
+# 
+# The images are named (tagged) with two random 10-position alphanum name parts, then a
+# 4-digit segment suffix, then a major:minor tag consisting of random numbers. E.g.:
+# 
+# wu0dnetv4s-597p54o2q8-0001:v494.843
+#
+
+set -e
+
+if [[ "$#" -ne 3 ]]; then
+  echo "usage: maketar <tar count> <segment count> <dest dir>, e.g.: ./maketar 1000 5 ~/tmp/testfiles"
+  exit 1
+fi
+
+config='{"architecture":"amd64","config":{"Env":["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],"Cmd":["/hello"],"WorkingDir":"/"},"created":"2025-08-08T19:05:17Z","history":[{"created":"2025-08-08T19:05:17Z","created_by":"COPY hello / # buildkit","comment":"buildkit.dockerfile.v0"},{"created":"2025-08-08T19:05:17Z","created_by":"CMD [\"/hello\"]","comment":"buildkit.dockerfile.v0","empty_layer":true}],"os":"linux","rootfs":{"type":"layers","diff_ids":[LAYERDIFFIDS]}}'
+
+manifest='
+[
+   {
+      "config": "sha256:CONFIGSHA",
+      "repoTags": [
+         "IMAGENAME:vTAG"
+      ],
+      "layers": [
+         LAYERS
+      ]
+   }
+]'
+
+image_count=$1
+segment_count=$2
+target_dir=$3
+layer_count=5
+segment_boundary=$((image_count / segment_count))
+
+if [[ $segment_count -gt 9999 ]]; then
+  echo "max value for segment count is 9999"
+  exit 1
+fi
+
+mkdir -p $target_dir/image
+
+cur_segment=1
+cur_image=1
+while [[ $cur_image -le $image_count ]]; do
+  rm -f $target_dir/image/*
+
+  # create image name and tag
+  part1=$(head /dev/urandom | tr -dc a-z0-9 | head -c 10)
+  part2=$(head /dev/urandom | tr -dc a-z0-9 | head -c 10)
+  segment_val=$(printf '%04d' $cur_segment)
+  imagename="$part1-$part2-$segment_val"
+  imagetag="${RANDOM:1:3}.${RANDOM:1:3}"
+
+  # create layers (hardcoded layer count)
+  layer=1
+  while [[ $layer -le $layer_count ]]; do
+    layer_content=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 20)
+    echo $layer_content >| $target_dir/layer_content
+    pushd $target_dir
+    tar -cf $target_dir/image/TEMP.tar layer_content
+    popd
+    layersha=$(sha256sum $target_dir/image/TEMP.tar | awk '{print $1}')
+    mv $target_dir/image/TEMP.tar $target_dir/image/$layersha.tar
+    ((++layer))
+  done
+
+  # create layer and diff id content to interpolate into manifest.json and
+  # the config layer
+  diff_ids=""
+  layers=""
+  diffsep=""
+  layersep=""
+
+  while IFS= read layer; do
+    layer=$(basename $layer)
+    diff_ids="${diff_ids}${diffsep}\"sha256:${layer%.*}\""
+    layers="${layers}${layersep}\"$layer\""
+    diffsep=", "
+    layersep=",\n         "
+  done < <(ls $target_dir/image/*.tar)
+
+  # generate the config layer
+  echo "$config" | sed -e "s/LAYERDIFFIDS/$diff_ids/" > $target_dir/image/TEMP
+  configsha=$(sha256sum $target_dir/image/TEMP | awk '{print $1}')
+  mv $target_dir/image/TEMP $target_dir/image/sha256:$configsha
+
+  # generate manifest.json
+  echo "$manifest" | sed\
+    -e "s/LAYERS/$layers/"\
+    -e "s/CONFIGSHA/$configsha/"\
+    -e "s/IMAGENAME/$imagename/"\
+    -e "s/TAG/$imagetag/"\
+    > $target_dir/image/manifest.json
+
+  # create the tar - it can be loaded into docker, e.g. docker load -i wu0dnetv4s-597p54o2q8-0001:v494.843.tar
+  pushd $target_dir/image
+  tar -cf ../$imagename:v$imagetag.tar *
+  popd
+  ((++cur_image))
+
+  # increment segment
+  mod=$((cur_image % segment_boundary))
+  if [[ $mod -eq 0 ]]; then
+    ((++cur_segment))
+  fi
+done

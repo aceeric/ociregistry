@@ -42,6 +42,9 @@ func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 	if fromCmdline.Health || config.Health == 0 {
 		config.Health = cfg.Health
 	}
+	if fromCmdline.Metrics || config.Metrics == 0 {
+		config.Metrics = cfg.Metrics
+	}
 	if fromCmdline.AlwaysPullLatest || !config.AlwaysPullLatest {
 		config.AlwaysPullLatest = cfg.AlwaysPullLatest
 	}

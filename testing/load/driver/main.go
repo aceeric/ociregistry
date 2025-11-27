@@ -47,32 +47,20 @@ func main() {
 	}
 
 	// get all images from the upstream registry
-	images, err := getImages(config.registryURL, re)
+	config.images, err = getImages(config.registryURL, re)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error getting images from registry: %s\n", err)
 		os.Exit(1)
 	}
 
+	// create log files if specified
 	if err := createFiles(config.metricsFile, config.logFile); err != nil {
 		fmt.Fprintf(os.Stderr, "error creating logging files: %s\n", err)
 		os.Exit(1)
 	}
 
-	// TODO JUST PASS THE CONFIG STRUCT WITH IMAGES AS A SECOND ARG?
-	// run tests
-	if runTests(testRun{
-		patterns:         config.patterns,
-		images:           images,
-		registryURL:      config.registryURL,
-		pullthroughURL:   config.pullthroughURL,
-		iterationSeconds: config.iterationSeconds,
-		tallySeconds:     config.tallySeconds,
-		metricsFile:      config.metricsFile,
-		logFile:          config.logFile,
-		prune:            config.prune,
-		dryRun:           config.dryRun,
-		shuffle:          config.shuffle,
-	}) != nil {
+	// run the test driver
+	if runTests(config) != nil {
 		fmt.Printf("Error running tests: %s\n", err)
 	}
 }

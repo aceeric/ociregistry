@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-// Config holds the parsed command line arguments
+// Config holds the parsed command line arguments except for the images member which isn't
+// parsed on the command line but is populated by the main function.
 type Config struct {
 	prune            bool
 	dryRun           bool
@@ -21,11 +22,12 @@ type Config struct {
 	registryURL      string
 	pullthroughURL   string
 	filter           string
+	images           []imageInfo
 }
 
 // ParseArgs parses command line arguments supporting both --arg=value and --arg value formats
-func ParseArgs(args []string) (*Config, error) {
-	config := &Config{
+func ParseArgs(args []string) (Config, error) {
+	config := Config{
 		iterationSeconds: 60,
 		tallySeconds:     15,
 	}
@@ -39,8 +41,8 @@ func ParseArgs(args []string) (*Config, error) {
 			key := parts[0]
 			value := parts[1]
 
-			if err := setConfigValue(config, key, value); err != nil {
-				return nil, err
+			if err := setConfigValue(&config, key, value); err != nil {
+				return Config{}, err
 			}
 			continue
 		}
@@ -58,29 +60,29 @@ func ParseArgs(args []string) (*Config, error) {
 
 		case "--iteration-seconds":
 			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--iteration-seconds requires a value")
+				return Config{}, fmt.Errorf("--iteration-seconds requires a value")
 			}
 			i++
 			seconds, err := strconv.Atoi(args[i])
 			if err != nil {
-				return nil, fmt.Errorf("--iteration-seconds must be a number: %w", err)
+				return Config{}, fmt.Errorf("--iteration-seconds must be a number: %w", err)
 			}
 			config.iterationSeconds = seconds
 
 		case "--tally-seconds":
 			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--tally-seconds requires a value")
+				return Config{}, fmt.Errorf("--tally-seconds requires a value")
 			}
 			i++
 			seconds, err := strconv.Atoi(args[i])
 			if err != nil {
-				return nil, fmt.Errorf("--tally-seconds must be a number: %w", err)
+				return Config{}, fmt.Errorf("--tally-seconds must be a number: %w", err)
 			}
 			config.tallySeconds = seconds
 
 		case "--patterns":
 			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--patterns requires a value")
+				return Config{}, fmt.Errorf("--patterns requires a value")
 			}
 			i++
 			// Support comma-separated patterns
@@ -93,41 +95,41 @@ func ParseArgs(args []string) (*Config, error) {
 
 		case "--metrics-file":
 			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--metrics-file requires a value")
+				return Config{}, fmt.Errorf("--metrics-file requires a value")
 			}
 			i++
 			config.metricsFile = args[i]
 
 		case "--log-file":
 			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--log-file requires a value")
+				return Config{}, fmt.Errorf("--log-file requires a value")
 			}
 			i++
 			config.logFile = args[i]
 
 		case "--registry-url":
 			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--registry-url requires a value")
+				return Config{}, fmt.Errorf("--registry-url requires a value")
 			}
 			i++
 			config.registryURL = args[i]
 
 		case "--pullthrough-url":
 			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--pullthrough-url requires a value")
+				return Config{}, fmt.Errorf("--pullthrough-url requires a value")
 			}
 			i++
 			config.pullthroughURL = args[i]
 
 		case "--filter":
 			if i+1 >= len(args) {
-				return nil, fmt.Errorf("--filter requires a value")
+				return Config{}, fmt.Errorf("--filter requires a value")
 			}
 			i++
 			config.filter = args[i]
 
 		default:
-			return nil, fmt.Errorf("unknown argument: %s", arg)
+			return Config{}, fmt.Errorf("unknown argument: %s", arg)
 		}
 	}
 

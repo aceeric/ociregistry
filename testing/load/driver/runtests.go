@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"runtime"
@@ -11,67 +13,55 @@ import (
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )
 
-// testRun has all the test params. Including the filters and list of images. The filters
-// are used to create concurrency. For example, an image list with 1000 images, and a way
-// to filter those into 10 sets will allow the test to run 10 concurrent goroutines, each
-// pulling 100 images continuously. So - the filters drive the concurrency.
-type testRun struct {
-	patterns         []string
-	images           []imageInfo
-	registryURL      string
-	pullthroughURL   string
-	iterationSeconds int
-	tallySeconds     int
-	metricsFile      string
-	logFile          string
-	prune            bool
-	dryRun           bool
-	shuffle          bool
-}
-
 // runTests runs the test. Using the filters, the driver gradually increases the number of
 // goroutines pulling images until all sets of images by filter are being pulled concurrently,
 // each set in its own goroutine. Then the goroutines are scaled down and the test is stopped.
-func runTests(tr testRun) error {
-	logFile, err := openOutputFile(tr.logFile)
+func runTests(config Config) error {
+	logFile, err := openOutputFile(config.logFile)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(logFile, "%s\ttest driver begin\n", time.Now().Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(logFile, "%s\ttest driver begin\n", now())
 
-	counters := make([]atomic.Uint64, len(tr.patterns))
-	stopCh := initStopChans(len(tr.patterns))
+	counters := make([]atomic.Uint64, len(config.patterns))
+	stopCh := initStopChans(len(config.patterns))
 	tallyCh := make(chan bool, 1)
 	logCh := make(chan string, 1000)
-	duration := time.Duration(tr.iterationSeconds) * time.Second
+	duration := time.Duration(config.iterationSeconds) * time.Second
 
-	metricsFile, err := openOutputFile(tr.metricsFile)
+	metricsFile, err := openOutputFile(config.metricsFile)
 	if err != nil {
 		return err
 	}
-	go tallyStats(metricsFile, tallyCh, &counters, tr.tallySeconds)
+	// start the metrics calculator
+	go tallyStats(metricsFile, tallyCh, &counters, config.tallySeconds)
 
-	go logTestGoroutines(logCh, logFile)
+	// allows puller goroutines to log concurrently
+	go logPullers(logCh, logFile)
 
 	// scale up
-	for i := 0; i < len(tr.patterns); i++ {
-		fmt.Fprintf(logFile, "%s\ttest driver start test #%d with filter %s\n", time.Now().Format("2006-01-02 15:04:05"), i, tr.patterns[i])
-		go doTest(i, stopCh[i], logCh, tr, &counters[i], tr.patterns[i])
+	for i := 0; i < len(config.patterns); i++ {
+		fmt.Fprintf(logFile, "%s\ttest driver start test #%d with filter %s\n", now(), i, config.patterns[i])
+		go pullOnePattern(i, stopCh[i], logCh, config, &counters[i], config.patterns[i])
 		time.Sleep(duration)
 	}
 	// scale down
-	for i := len(tr.patterns) - 1; i >= 0; i-- {
-		fmt.Fprintf(logFile, "%s\ttest driver stop test #%d\n", time.Now().Format("2006-01-02 15:04:05"), i)
+	for i := len(config.patterns) - 1; i >= 0; i-- {
+		fmt.Fprintf(logFile, "%s\ttest driver stop test #%d\n", now(), i)
 		signalBoolChan(stopCh[i])
-		if i != 0 {
+		if i == 0 {
 			// no need to wait after stopping the last goroutine
-			time.Sleep(duration)
+			break
 		}
+		time.Sleep(duration)
 	}
-	// shut down the tally channel and the log channel
+	// shut down the tally goroutine
 	signalBoolChan(tallyCh)
+
+	// shut down the puller logger goroutine
 	signalStrChan(logCh)
-	fmt.Fprintf(logFile, "%s\ttest driver exit\n", time.Now().Format("2006-01-02 15:04:05"))
+
+	fmt.Fprintf(logFile, "%s\ttest driver exit\n", now())
 	return nil
 }
 
@@ -99,14 +89,14 @@ func signalStrChan(ch chan string) bool {
 	}
 }
 
-// doTest uses the passed pattern to filter the images in the testRun struct. It then pulls (and
-// optionally prunes) those images until signalled on the passed channel. It increments a count of
-// images pulled in the passed atomic counter which is used by this goroutine AND the tallyStats
-// goroutine.
-func doTest(testNum int, stopChan chan bool, logCh chan string, tr testRun, counter *atomic.Uint64, pattern string) {
-	logCh <- fmt.Sprintf("%s\ttest goroutine #%d starting\n", time.Now().Format("2006-01-02 15:04:05"), testNum)
+// pullOnePattern uses the passed pattern to filter the images in the config struct. It then pulls (and
+// optionally prunes) those images repeatedly until signalled on the passed channel. It increments a
+// count of images pulled in the passed atomic counter which is also accessed by the tallyStats
+// function (in a goroutine.)
+func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config Config, counter *atomic.Uint64, pattern string) {
+	logCh <- fmt.Sprintf("%s\ttest goroutine #%d starting\n", now(), testNum)
 	tmpTarfile := ""
-	if !tr.dryRun {
+	if !config.dryRun {
 		td, _ := os.MkdirTemp("", "")
 		defer os.RemoveAll(td)
 		tmpTarfile = fmt.Sprintf("%s/tarfile.tar", td)
@@ -115,17 +105,17 @@ func doTest(testNum int, stopChan chan bool, logCh chan string, tr testRun, coun
 	re, _ := regexp.Compile(pattern)
 
 	// make a copy of the image pull list so this goroutine can shuffle it between passes
-	images := tr.images
+	images := config.images
 	for {
 		for i := 0; i < len(images); i++ {
 			select {
 			case <-stopChan:
-				logCh <- fmt.Sprintf("%s\ttest goroutine #%d stopping\n", time.Now().Format("2006-01-02 15:04:05"), testNum)
+				logCh <- fmt.Sprintf("%s\ttest goroutine #%d stopping\n", now(), testNum)
 				return
 			default:
-				fullImage := fmt.Sprintf("%s/%s/%s:%s", tr.pullthroughURL, tr.registryURL, tr.images[i].Repository, tr.images[i].Tags[0])
+				fullImage := fmt.Sprintf("%s/%s/%s:%s", config.pullthroughURL, config.registryURL, config.images[i].Repository, config.images[i].Tags[0])
 				if re.MatchString(fullImage) {
-					if !tr.dryRun {
+					if !config.dryRun {
 						opts := imgpull.PullerOpts{
 							Url:      fullImage,
 							Scheme:   "http",
@@ -134,10 +124,10 @@ func doTest(testNum int, stopChan chan bool, logCh chan string, tr testRun, coun
 						}
 						puller, err := imgpull.NewPullerWith(opts)
 						if err != nil {
-							logCh <- fmt.Sprintf("%s\tgoroutine #%d error pulling %s, the error was: %s\n", time.Now().Format("2006-01-02 15:04:05"), testNum, fullImage, err)
+							logCh <- fmt.Sprintf("%s\tgoroutine #%d error pulling %s, the error was: %s\n", now(), testNum, fullImage, err)
 							return
 						} else if err := puller.PullTar(tmpTarfile); err != nil {
-							logCh <- fmt.Sprintf("%s\tgoroutine #%d error pulling %s, the error was: %s\n", time.Now().Format("2006-01-02 15:04:05"), testNum, fullImage, err)
+							logCh <- fmt.Sprintf("%s\tgoroutine #%d error pulling %s, the error was: %s\n", now(), testNum, fullImage, err)
 							return
 						}
 					} else {
@@ -148,18 +138,61 @@ func doTest(testNum int, stopChan chan bool, logCh chan string, tr testRun, coun
 				}
 			}
 		}
-		if tr.shuffle {
+		if config.shuffle {
 			shuffleInPlace(images)
 		}
-		// TODO IF PRUNE
-		//   PRUNE
+		if config.prune && !config.dryRun {
+			if err := doPrune(config.pullthroughURL, pattern); err != nil {
+				logCh <- fmt.Sprintf("%s\tgoroutine #%d error pruning pattern %s, the error was: %s\n", now(), testNum, pattern, err)
+				return
+			}
+		}
 	}
 }
 
-// logTestGoroutines listens on the passed channel for log events by the
+// now makes the logging functions a bit more concise by returning the current
+// time in YYYY-MM-DD HH:MM:SS format.
+func now() string {
+	return time.Now().Format("2006-01-02 15:04:05")
+}
+
+// doPrune prunes images from the Ociregistry under test matching the passed pattern. This forces the next
+// cycle of pulling any matching images to again go to the upstream registry which supports load testing
+// pull through (vs pull cached.)
+func doPrune(pullthroughURL string, pattern string) error {
+	// Build URL with query parameters
+	baseURL := fmt.Sprintf("http://%s/cmd/prune", pullthroughURL)
+	params := url.Values{}
+	params.Add("type", "pattern")
+	params.Add("expr", pattern)
+	params.Add("dryRun", "false")
+	params.Add("count", "-1")
+
+	fullURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+	req, err := http.NewRequest(http.MethodDelete, fullURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("received non-success status code: %d", resp.StatusCode)
+	}
+	// debug
+	//body, _ := io.ReadAll(resp.Body)
+	//fmt.Printf("Received request body: %s\n", string(body))
+
+	return nil
+}
+
+// logPullers listens on the passed channel for log events by the
 // puller goroutines so that all the puller goroutines can log to the same
 // logfile concurrently.
-func logTestGoroutines(ch chan string, logFile *os.File) {
+func logPullers(ch chan string, logFile *os.File) {
 	for {
 		select {
 		case logMsg := <-ch:

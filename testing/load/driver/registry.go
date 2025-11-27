@@ -201,7 +201,7 @@ func filter(images []imageInfo, re *regexp.Regexp) []imageInfo {
 	return filteredImages
 }
 
-// TODO scheme is hard-coded to HTTP for now
+// scheme is hard-coded to HTTP for now
 func getImages(registryUrl string, re *regexp.Regexp) ([]imageInfo, error) {
 	config := registryConfig{
 		URL:      registryUrl,

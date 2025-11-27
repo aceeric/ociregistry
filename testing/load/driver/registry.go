@@ -1,4 +1,4 @@
-// this file interacts with the docker registry and pulls
+// file registry.go interacts with the upstream docker registry
 package main
 
 import (
@@ -23,22 +23,23 @@ type TagsResponse struct {
 	Tags []string `json:"tags"`
 }
 
-// ImageInfo holds repository and its tags
-type ImageInfo struct {
+// imageInfo holds repository and its tags
+type imageInfo struct {
 	Repository string
 	Tags       []string
 }
 
-// RegistryConfig holds configuration for connecting to a registry
-type RegistryConfig struct {
+// registryConfig holds configuration for connecting to a registry
+type registryConfig struct {
 	URL      string
+	Scheme   string
 	Username string
 	Password string
 	Insecure bool // Set to true to skip TLS verification
 }
 
-// ListAllImages queries a Docker registry and returns all repositories with their tags
-func ListAllImages(config RegistryConfig) ([]ImageInfo, error) {
+// listAllImages queries a Docker registry and returns all repositories with their tags
+func listAllImages(config registryConfig) ([]imageInfo, error) {
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
@@ -50,14 +51,14 @@ func ListAllImages(config RegistryConfig) ([]ImageInfo, error) {
 	}
 
 	// Get tags for each repository
-	var images []ImageInfo
+	var images []imageInfo
 	for _, repo := range repositories {
 		tags, err := getTagsPaginated(client, config, repo)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get tags for %s: %w", repo, err)
 		}
 
-		images = append(images, ImageInfo{
+		images = append(images, imageInfo{
 			Repository: repo,
 			Tags:       tags,
 		})
@@ -67,9 +68,9 @@ func ListAllImages(config RegistryConfig) ([]ImageInfo, error) {
 }
 
 // getCatalogPaginated retrieves all repositories from the registry using pagination
-func getCatalogPaginated(client *http.Client, config RegistryConfig) ([]string, error) {
+func getCatalogPaginated(client *http.Client, config registryConfig) ([]string, error) {
 	var allRepos []string
-	nextURL := fmt.Sprintf("%s/v2/_catalog?n=100", config.URL)
+	nextURL := fmt.Sprintf("%s://%s/v2/_catalog?n=100", config.Scheme, config.URL)
 
 	for nextURL != "" {
 		req, err := http.NewRequest("GET", nextURL, nil)
@@ -102,16 +103,16 @@ func getCatalogPaginated(client *http.Client, config RegistryConfig) ([]string, 
 		allRepos = append(allRepos, catalog.Repositories...)
 
 		// Check for next page in Link header
-		nextURL = getNextPageURL(resp.Header.Get("Link"), config.URL)
+		nextURL = getNextPageURL(resp.Header.Get("Link"), config.Scheme, config.URL)
 	}
 
 	return allRepos, nil
 }
 
 // getTagsPaginated retrieves all tags for a specific repository using pagination
-func getTagsPaginated(client *http.Client, config RegistryConfig, repo string) ([]string, error) {
+func getTagsPaginated(client *http.Client, config registryConfig, repo string) ([]string, error) {
 	var allTags []string
-	nextURL := fmt.Sprintf("%s/v2/%s/tags/list?n=100", config.URL, repo)
+	nextURL := fmt.Sprintf("%s://%s/v2/%s/tags/list?n=100", config.Scheme, config.URL, repo)
 
 	for nextURL != "" {
 		req, err := http.NewRequest("GET", nextURL, nil)
@@ -144,7 +145,7 @@ func getTagsPaginated(client *http.Client, config RegistryConfig, repo string) (
 		allTags = append(allTags, tagsResp.Tags...)
 
 		// Check for next page in Link header
-		nextURL = getNextPageURL(resp.Header.Get("Link"), config.URL)
+		nextURL = getNextPageURL(resp.Header.Get("Link"), config.Scheme, config.URL)
 	}
 
 	return allTags, nil
@@ -152,7 +153,7 @@ func getTagsPaginated(client *http.Client, config RegistryConfig, repo string) (
 
 // getNextPageURL parses the Link header to extract the next page URL
 // Link header format: </v2/_catalog?n=100&last=repo99>; rel="next"
-func getNextPageURL(linkHeader, baseURL string) string {
+func getNextPageURL(linkHeader, scheme string, baseURL string) string {
 	if linkHeader == "" {
 		return ""
 	}
@@ -176,7 +177,7 @@ func getNextPageURL(linkHeader, baseURL string) string {
 	}
 
 	// If relative, construct full URL
-	parsedBase, err := url.Parse(baseURL)
+	parsedBase, err := url.Parse(fmt.Sprintf("%s://%s", scheme, baseURL))
 	if err != nil {
 		return ""
 	}
@@ -189,8 +190,8 @@ func getNextPageURL(linkHeader, baseURL string) string {
 	return fmt.Sprintf("%s%s", baseURL, urlPart)
 }
 
-func filter(images []ImageInfo, re *regexp.Regexp) []ImageInfo {
-	filteredImages := []ImageInfo{}
+func filter(images []imageInfo, re *regexp.Regexp) []imageInfo {
+	filteredImages := []imageInfo{}
 	for _, image := range images {
 		fullImage := fmt.Sprintf("%s:%s\n", image.Repository, image.Tags[0])
 		if re.MatchString(fullImage) {
@@ -200,18 +201,20 @@ func filter(images []ImageInfo, re *regexp.Regexp) []ImageInfo {
 	return filteredImages
 }
 
-func getImages(registryUrl string, re *regexp.Regexp) []ImageInfo {
-	config := RegistryConfig{
+// TODO scheme is hard-coded to HTTP for now
+func getImages(registryUrl string, re *regexp.Regexp) ([]imageInfo, error) {
+	config := registryConfig{
 		URL:      registryUrl,
+		Scheme:   "http",
 		Username: "",
 		Password: "",
 	}
 
-	images, err := ListAllImages(config)
+	images, err := listAllImages(config)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
-		return []ImageInfo{}
+		return []imageInfo{}, err
 	}
+
 	if re != nil {
 		images = filter(images, re)
 	}
@@ -221,5 +224,5 @@ func getImages(registryUrl string, re *regexp.Regexp) []ImageInfo {
 	//for _, img := range images {
 	//	fmt.Printf("Repository: %s:%s\n", img.Repository, img.Tags[0])
 	//}
-	return images
+	return images, nil
 }

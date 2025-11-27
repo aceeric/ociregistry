@@ -3,25 +3,31 @@ package main
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
 
 // Config holds the parsed command line arguments
 type Config struct {
-	Prune            bool
-	IterationSeconds int
-	Patterns         []string
-	MetricsFile      string
-	LogFile          string
-	RegistryURL      string
-	Filter           string
+	prune            bool
+	dryRun           bool
+	shuffle          bool
+	iterationSeconds int
+	tallySeconds     int
+	patterns         []string
+	metricsFile      string
+	logFile          string
+	registryURL      string
+	pullthroughURL   string
+	filter           string
 }
 
 // ParseArgs parses command line arguments supporting both --arg=value and --arg value formats
 func ParseArgs(args []string) (*Config, error) {
 	config := &Config{
-		IterationSeconds: 60, // default value
+		iterationSeconds: 60,
+		tallySeconds:     15,
 	}
 
 	for i := 0; i < len(args); i++ {
@@ -42,7 +48,13 @@ func ParseArgs(args []string) (*Config, error) {
 		// Handle --arg value format (or boolean flags)
 		switch arg {
 		case "--prune":
-			config.Prune = true
+			config.prune = true
+
+		case "--dry-run":
+			config.dryRun = true
+
+		case "--shuffle":
+			config.shuffle = true
 
 		case "--iteration-seconds":
 			if i+1 >= len(args) {
@@ -53,7 +65,18 @@ func ParseArgs(args []string) (*Config, error) {
 			if err != nil {
 				return nil, fmt.Errorf("--iteration-seconds must be a number: %w", err)
 			}
-			config.IterationSeconds = seconds
+			config.iterationSeconds = seconds
+
+		case "--tally-seconds":
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("--tally-seconds requires a value")
+			}
+			i++
+			seconds, err := strconv.Atoi(args[i])
+			if err != nil {
+				return nil, fmt.Errorf("--tally-seconds must be a number: %w", err)
+			}
+			config.tallySeconds = seconds
 
 		case "--patterns":
 			if i+1 >= len(args) {
@@ -64,7 +87,7 @@ func ParseArgs(args []string) (*Config, error) {
 			patterns := strings.Split(args[i], ",")
 			for _, p := range patterns {
 				if trimmed := strings.TrimSpace(p); trimmed != "" {
-					config.Patterns = append(config.Patterns, trimmed)
+					config.patterns = append(config.patterns, trimmed)
 				}
 			}
 
@@ -73,28 +96,35 @@ func ParseArgs(args []string) (*Config, error) {
 				return nil, fmt.Errorf("--metrics-file requires a value")
 			}
 			i++
-			config.MetricsFile = args[i]
+			config.metricsFile = args[i]
 
 		case "--log-file":
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("--log-file requires a value")
 			}
 			i++
-			config.LogFile = args[i]
+			config.logFile = args[i]
 
 		case "--registry-url":
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("--registry-url requires a value")
 			}
 			i++
-			config.RegistryURL = args[i]
+			config.registryURL = args[i]
+
+		case "--pullthrough-url":
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("--pullthrough-url requires a value")
+			}
+			i++
+			config.pullthroughURL = args[i]
 
 		case "--filter":
 			if i+1 >= len(args) {
 				return nil, fmt.Errorf("--filter requires a value")
 			}
 			i++
-			config.Filter = args[i]
+			config.filter = args[i]
 
 		default:
 			return nil, fmt.Errorf("unknown argument: %s", arg)
@@ -108,35 +138,51 @@ func ParseArgs(args []string) (*Config, error) {
 func setConfigValue(config *Config, key, value string) error {
 	switch key {
 	case "--prune":
-		config.Prune = true
+		config.prune = true
+
+	case "--dry-run":
+		config.dryRun = true
+
+	case "--shuffle":
+		config.shuffle = true
 
 	case "--iteration-seconds":
 		seconds, err := strconv.Atoi(value)
 		if err != nil {
 			return fmt.Errorf("--iteration-seconds must be a number: %w", err)
 		}
-		config.IterationSeconds = seconds
+		config.iterationSeconds = seconds
+
+	case "--tally-seconds":
+		seconds, err := strconv.Atoi(value)
+		if err != nil {
+			return fmt.Errorf("--tally-seconds must be a number: %w", err)
+		}
+		config.tallySeconds = seconds
 
 	case "--patterns":
 		// Support comma-separated patterns
 		patterns := strings.Split(value, ",")
 		for _, p := range patterns {
 			if trimmed := strings.TrimSpace(p); trimmed != "" {
-				config.Patterns = append(config.Patterns, trimmed)
+				config.patterns = append(config.patterns, trimmed)
 			}
 		}
 
 	case "--metrics-file":
-		config.MetricsFile = value
+		config.metricsFile = value
 
 	case "--log-file":
-		config.LogFile = value
+		config.logFile = value
 
 	case "--registry-url":
-		config.RegistryURL = value
+		config.registryURL = value
+
+	case "--pullthrough-url":
+		config.pullthroughURL = value
 
 	case "--filter":
-		config.Filter = value
+		config.filter = value
 
 	default:
 		return fmt.Errorf("unknown argument: %s", key)
@@ -147,20 +193,26 @@ func setConfigValue(config *Config, key, value string) error {
 
 // Validate checks if required arguments are provided
 func (c *Config) Validate() error {
-	if c.RegistryURL == "" {
+	if c.registryURL == "" {
 		return fmt.Errorf("--registry-url is required")
 	}
-	if c.IterationSeconds == 0 {
+	if c.pullthroughURL == "" {
+		return fmt.Errorf("--pullthrough-url is required")
+	}
+	if c.iterationSeconds == 0 {
 		return fmt.Errorf("--iteration-seconds must be greater than 0")
 	}
-	if c.Patterns == nil {
+	if c.tallySeconds == 0 {
+		return fmt.Errorf("--tally-seconds must be greater than 0")
+	}
+	if c.patterns == nil {
 		return fmt.Errorf("--patterns is required")
 	}
-	if c.MetricsFile == "" {
-		return fmt.Errorf("--metrics-file is required")
-	}
-	if c.LogFile == "" {
-		return fmt.Errorf("--log-file is required")
+	for _, pat := range c.patterns {
+		if _, err := regexp.Compile(pat); err != nil {
+			return fmt.Errorf("pattern %s not a valid regex. error: %s", pat, err)
+
+		}
 	}
 	return nil
 }
@@ -170,13 +222,17 @@ func PrintUsage() {
 	usage := `Usage: program [OPTIONS]
 
 Options:
-  --prune                    Enable pruning mode (boolean flag - default false)
+  --prune                    Enable pruning (boolean - default false)
   --iteration-seconds VALUE  Seconds between iterations (default: 60)
+  --tally-seconds VALUE      Interval for tallying pull rate (default: 15)
   --patterns VALUE           Comma-separated batching patterns, can specify multiple (at least one required)
-  --metrics-file VALUE       Path to metrics output file (required)
-  --log-file VALUE           Path to log file (required)
-  --registry-url VALUE       Docker registry URL (required)
-  --filter VALUE             Repo filter (optional)
+  --metrics-file VALUE       Path to metrics output file (stdout if omitted)
+  --log-file VALUE           Path to log file (stdout if omitted)
+  --registry-url VALUE       Upstream registry URL (required)
+  --pullthrough-url VALUE    Pull through (ociregistry server) URL (required)
+  --filter VALUE             Repo filter (optional to create a smaller test set)
+  --dry-run                  Does everything except actually pull from the registry (boolean - default false)
+  --shuffle                  If specified, then shuffles the image list between pull passes (boolean - default false)
 
 Format:
   Arguments can be specified in two ways:
@@ -184,9 +240,9 @@ Format:
     --arg value
 
 Examples:
-  program --registry-url=https://registry.example.com --prune
-  program --registry-url https://registry.example.com --iteration-seconds 30
-  program --registry-url=https://registry.example.com --patterns ".*app.*,.*service.*"
+  program --registry-url=https://registry.example.com --pullthrough-url=http://localhost:8080 --prune
+  program --registry-url https://registry.example.com --pullthrough-url http://localhost:8080 --iteration-seconds 30
+  program --registry-url=https://registry.example.com --pullthrough-url=http://localhost:8080 --patterns ".*app.*,.*service.*"
 `
 	fmt.Fprint(os.Stderr, usage)
 }

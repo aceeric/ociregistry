@@ -14,6 +14,9 @@ nav:
   - Airgap Considerations: airgap-considerations.md
   - Administrative REST API: rest-api.md
   - Running as a systemd Service: systemd.md
+  - Observability: observability.md
+  - Load Testing: load-testing.md
+  - Test Driver: test-driver.md
 
 theme:
   logo: assets/white-logo-no-background.svg

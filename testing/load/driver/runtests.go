@@ -116,17 +116,7 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 				fullImage := fmt.Sprintf("%s/%s/%s:%s", config.pullthroughURL, config.registryURL, config.images[i].Repository, config.images[i].Tags[0])
 				if re.MatchString(fullImage) {
 					if !config.dryRun {
-						opts := imgpull.PullerOpts{
-							Url:      fullImage,
-							Scheme:   "http",
-							OStype:   runtime.GOOS,
-							ArchType: runtime.GOARCH,
-						}
-						puller, err := imgpull.NewPullerWith(opts)
-						if err != nil {
-							logCh <- fmt.Sprintf("%s\tgoroutine #%d error pulling %s, the error was: %s\n", now(), testNum, fullImage, err)
-							return
-						} else if err := puller.PullTar(tmpTarfile); err != nil {
+						if err := doPull(fullImage, tmpTarfile); err != nil {
 							logCh <- fmt.Sprintf("%s\tgoroutine #%d error pulling %s, the error was: %s\n", now(), testNum, fullImage, err)
 							return
 						}
@@ -148,6 +138,21 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 			}
 		}
 	}
+}
+
+func doPull(fullImage, tmpTarfile string) error {
+	opts := imgpull.PullerOpts{
+		Url:      fullImage,
+		Scheme:   "http",
+		OStype:   runtime.GOOS,
+		ArchType: runtime.GOARCH,
+	}
+	puller, err := imgpull.NewPullerWith(opts)
+	defer puller.Close()
+	if err != nil {
+		return err
+	}
+	return puller.PullTar(tmpTarfile)
 }
 
 // now makes the logging functions a bit more concise by returning the current

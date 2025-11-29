@@ -210,13 +210,16 @@ func getImages(registryUrl string, re *regexp.Regexp) ([]imageInfo, error) {
 		Password: "",
 	}
 
+	fmt.Println("Begin list images from upstream")
 	images, err := listAllImages(config)
 	if err != nil {
 		return []imageInfo{}, err
 	}
+	fmt.Printf("Got %d images/n", len(images))
 
 	if re != nil {
 		images = filter(images, re)
+		fmt.Printf("Have %d images after filter/n", len(images))
 	}
 
 	// debug

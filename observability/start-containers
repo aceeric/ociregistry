@@ -8,7 +8,7 @@ set -e
 # on http://localhost:9090 and Grafana is reachable on http://localhost:3000.
 # Prometheus is configured (in prometheus.yml) to scrape the Ociregistry server on
 # 2112 (you can change that.) So: ociregistry serve --metrics 2112. (Metrics are
-# off by default in the server unless the metrics arg or config setting is
+# disabled by default in the server unless the metrics arg or config setting is
 # specified.)
 #
 

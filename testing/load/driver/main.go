@@ -19,7 +19,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Validate required arguments
 	if err := config.Validate(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n\n", err)
 		PrintUsage()
@@ -41,25 +40,22 @@ func main() {
 
 	if config.filter != "" {
 		if re, err = regexp.Compile(config.filter); err != nil {
-			fmt.Fprintf(os.Stderr, "filter is not a valid regex to go: %s\n", config.filter)
+			fmt.Fprintf(os.Stderr, "filter is not a valid go regex: %s\n", config.filter)
 			os.Exit(1)
 		}
 	}
 
-	// get all images from the upstream registry
 	config.images, err = getImages(config.registryURL, re)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error getting images from registry: %s\n", err)
 		os.Exit(1)
 	}
 
-	// create log files if specified
 	if err := createFiles(config.metricsFile, config.logFile); err != nil {
 		fmt.Fprintf(os.Stderr, "error creating logging files: %s\n", err)
 		os.Exit(1)
 	}
 
-	// run the test driver
 	if runTests(config) != nil {
 		fmt.Printf("Error running tests: %s\n", err)
 	}

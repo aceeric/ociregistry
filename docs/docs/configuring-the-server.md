@@ -44,6 +44,7 @@ airGapped: false
 helloWorld: false
 defaultNs:
 health:
+metrics:
 registries: []
 pruneConfig:
   enabled: false

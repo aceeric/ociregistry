@@ -201,7 +201,8 @@ func filter(images []imageInfo, re *regexp.Regexp) []imageInfo {
 	return filteredImages
 }
 
-// scheme is hard-coded to HTTP for now
+// getImages gets all the images directly from the upstream that the ociregistry server will
+// be pulling from. This comprieses the test set. Scheme is hard-coded to HTTP for now.
 func getImages(registryUrl string, re *regexp.Regexp) ([]imageInfo, error) {
 	config := registryConfig{
 		URL:      registryUrl,

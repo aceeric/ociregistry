@@ -124,7 +124,7 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 						// just so we don't peg the processor
 						time.Sleep(time.Millisecond * 100)
 					}
-					counter.Store(counter.Add(1))
+					counter.Add(1)
 				}
 			}
 		}
@@ -148,10 +148,10 @@ func doPull(fullImage, tmpTarfile string) error {
 		ArchType: runtime.GOARCH,
 	}
 	puller, err := imgpull.NewPullerWith(opts)
-	defer puller.Close()
 	if err != nil {
 		return err
 	}
+	defer puller.Close()
 	return puller.PullTar(tmpTarfile)
 }
 
@@ -227,9 +227,9 @@ func tallyStats(logFile *os.File, ch chan bool, counters *[]atomic.Uint64, tally
 			return
 		case t := <-ticker.C:
 			curVals := getCounters(counters)
-			elapsed := t.Sub(lastTime).Seconds()
+			elapsed := time.Since(lastTime).Seconds()
 			totVals := int64(0)
-			for i := 0; i < len(curVals); i++ {
+			for i := range curVals {
 				totVals += curVals[i] - lastVals[i]
 			}
 			rate := float64(totVals) / elapsed

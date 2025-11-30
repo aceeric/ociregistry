@@ -1,6 +1,11 @@
 # Test Driver
 
-The test driver supports load testing. It pulls _through_ an _Ociregistry_ server under test _from_ an upstream registry and tallies the pull rate over time. It also supports only cached images the same way. It supports gradually scaling up and then scaling down the number of concurrent goroutines pulling through the server.
+The test driver CLI supports load testing. It tests:
+
+1. Pulling _through_ an _Ociregistry_ server _from_ an upstream registry
+2. Pulling only cached images from an _Ociregistry_ server 
+
+The CLI supports gradually scaling up and then scaling down the number of concurrent goroutines pulling from the server, and tallies the pull rate over time logging either to stdout or to a file.
 
 Running with no args will display help. The following options are supported. Details are provided below the summary table:
 

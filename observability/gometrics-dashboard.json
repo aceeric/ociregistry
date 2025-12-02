@@ -985,13 +985,6 @@
       "pluginVersion": "12.1.4",
       "targets": [
         {
-          "editorMode": "builder",
-          "expr": "process_virtual_memory_bytes",
-          "legendFormat": "Virtual Mem",
-          "range": true,
-          "refId": "A"
-        },
-        {
           "datasource": {
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
@@ -1024,5 +1017,5 @@
   "timezone": "browser",
   "title": "Go runtime metrics",
   "uid": "bed9cbe3-6883-4c65-8156-6fca041d55b0",
-  "version": 1
+  "version": 2
 }

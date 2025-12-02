@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -92,14 +93,21 @@ func signalStrChan(ch chan string) bool {
 // pullOnePattern uses the passed pattern to filter the images in the config struct. It then pulls (and
 // optionally prunes) those images repeatedly until signalled on the passed channel. It increments a
 // count of images pulled in the passed atomic counter which is also accessed by the tallyStats
-// function (in a goroutine.)
+// function in another goroutine.
 func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config Config, counter *atomic.Uint64, pattern string) {
 	logCh <- fmt.Sprintf("%s\ttest goroutine #%d starting\n", now(), testNum)
+
+	var pruneClient *http.Client
+	var puller imgpull.Puller
+	firstPull := true
 	tmpTarfile := ""
 	if !config.dryRun {
 		td, _ := os.MkdirTemp("", "")
 		defer os.RemoveAll(td)
 		tmpTarfile = fmt.Sprintf("%s/tarfile.tar", td)
+		if config.prune {
+			pruneClient = makePruneClient()
+		}
 	}
 	// arg parsing validated this so ignore the error
 	re, _ := regexp.Compile(pattern)
@@ -116,7 +124,19 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 				fullImage := fmt.Sprintf("%s/%s/%s:%s", config.pullthroughURL, config.registryURL, config.images[i].Repository, config.images[i].Tags[0])
 				if re.MatchString(fullImage) {
 					if !config.dryRun {
-						if err := doPull(fullImage, tmpTarfile); err != nil {
+						if firstPull {
+							p, err := makePuller(fullImage)
+							logCh <- fmt.Sprintf("%s\tgoroutine #%d error making puller for %s, the error was: %s\n", now(), testNum, fullImage, err)
+							if err != nil {
+								return
+							}
+							puller = p
+							defer puller.Close()
+							firstPull = false
+						} else {
+							puller.SetUrl(fullImage)
+						}
+						if err := puller.PullTar(tmpTarfile); err != nil {
 							logCh <- fmt.Sprintf("%s\tgoroutine #%d error pulling %s, the error was: %s\n", now(), testNum, fullImage, err)
 							return
 						}
@@ -132,7 +152,7 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 			shuffleInPlace(images)
 		}
 		if config.prune && !config.dryRun {
-			if err := doPrune(config.pullthroughURL, pattern); err != nil {
+			if err := doPrune(pruneClient, config.pullthroughURL, pattern); err != nil {
 				logCh <- fmt.Sprintf("%s\tgoroutine #%d error pruning pattern %s, the error was: %s\n", now(), testNum, pattern, err)
 				return
 			}
@@ -140,19 +160,15 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 	}
 }
 
-func doPull(fullImage, tmpTarfile string) error {
+// makePuller makes a puller and returns it
+func makePuller(fullImage string) (imgpull.Puller, error) {
 	opts := imgpull.PullerOpts{
 		Url:      fullImage,
 		Scheme:   "http",
 		OStype:   runtime.GOOS,
 		ArchType: runtime.GOARCH,
 	}
-	puller, err := imgpull.NewPullerWith(opts)
-	if err != nil {
-		return err
-	}
-	defer puller.Close()
-	return puller.PullTar(tmpTarfile)
+	return imgpull.NewPullerWith(opts)
 }
 
 // now makes the logging functions a bit more concise by returning the current
@@ -161,10 +177,22 @@ func now() string {
 	return time.Now().Format("2006-01-02 15:04:05")
 }
 
+// makePruneClient makes an http.Client for pruning
+func makePruneClient() *http.Client {
+	t := http.DefaultTransport.(*http.Transport).Clone()
+	t.MaxIdleConns = 100
+	t.MaxConnsPerHost = 100
+	t.MaxIdleConnsPerHost = 100
+	return &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: t,
+	}
+}
+
 // doPrune prunes images from the Ociregistry under test matching the passed pattern. This forces the next
 // cycle of pulling any matching images to again go to the upstream registry which supports load testing
 // pull through (vs pull cached.)
-func doPrune(pullthroughURL string, pattern string) error {
+func doPrune(client *http.Client, pullthroughURL string, pattern string) error {
 	// Build URL with query parameters
 	baseURL := fmt.Sprintf("http://%s/cmd/prune", pullthroughURL)
 	params := url.Values{}
@@ -178,7 +206,6 @@ func doPrune(pullthroughURL string, pattern string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
-	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("request failed: %w", err)
@@ -272,5 +299,13 @@ func openOutputFile(logPath string) (*os.File, error) {
 		return nil, err
 	} else {
 		return f, nil
+	}
+}
+
+// shuffleInPlace randomizes the order of the passed iterable in place
+func shuffleInPlace[T any](input []T) {
+	for i := len(input) - 1; i > 0; i-- {
+		j := rand.Intn(i + 1)
+		input[i], input[j] = input[j], input[i]
 	}
 }

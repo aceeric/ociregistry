@@ -52,7 +52,7 @@ Because of this design, having many clients pull the same exact image concurrent
 
 To support this the test driver supports two modes. If the `--prune` arg is specified then each goroutine will prune the images it pulled on each pass. On the next pass through for that goroutine, the _Ociregistry_ will have to re-pull from the upstream again.  If the `--prune` arg is **not** specified then each goroutine will simply be pulling from cache which will measure a different behavior in the server.
 
-Note that since pruning itself introduces locking and load on the server it distorts the pull-through test somewhat but there's no other way to test a large volume of concurrent pulls without loading the upstream with hundreds of thousands of images.
+Note that since pruning itself introduces locking and load on the server it distorts the pull-through test somewhat but there's no other way to test a large volume of concurrent pulls without loading the upstream with a significant number of images.
 
 ## Test Preparation
 
@@ -70,14 +70,14 @@ The preparation steps are:
     1. To test pull **through**, specify the `--prune` arg.
     2. To test **cached** pulls, omit the `--prune` arg.
 
-    Example:
+    Example (cached pull test):
     ```
     go run .\
       --pullthrough-url=ubuntu.me:8888\
       --registry-url=ubuntu.me:5000\
-      --patterns=-0001,-0002,-0003,-0004,-0005\
-      --iteration-seconds=90\
-      --tally-seconds=5
+      --patterns=-0001,-0002,-0003\
+      --iteration-seconds=30\
+      --tally-seconds=15
     ```
 
 2. The test driver first scales up the goroutines with each goroutine pulling one unique batch (if configured that way).
@@ -88,7 +88,7 @@ The preparation steps are:
 
 ## Results
 
-The two sections below capture the results of the load test. As described above the docker registry was loaded with 1,500 images in batches of 150 each. Each result section stacks the following charts:
+The two sections below capture the results of the load test. As described above the docker registry was loaded with 1,500 images in batches of 150 each. Each result section below stacks the following charts:
 
 |Where|Metric|Note|
 |-|-|-|

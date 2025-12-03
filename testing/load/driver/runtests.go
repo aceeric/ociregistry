@@ -139,8 +139,8 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 					if !config.dryRun {
 						if firstPull {
 							p, err := makePuller(fullImage)
-							logCh <- fmt.Sprintf("%s\tgoroutine #%d error making puller for %s, the error was: %s\n", now(), testNum, fullImage, err)
 							if err != nil {
+								logCh <- fmt.Sprintf("%s\tgoroutine #%d error making puller for %s, the error was: %s\n", now(), testNum, fullImage, err)
 								return
 							}
 							puller = p

@@ -20,7 +20,7 @@ The following project components implement load testing:
 
 ![Test topology](assets/test-software.jpg){ width="100%" }
 
-> Some of the shell scripts use a tool called [imgpull](https://github.com/aceeric/imgpull) which is both a CLI and a library. It's the component that the _Ociregistry_ embeds as a package to pull from upstreams.
+> Some of the shell scripts shown use a tool called [imgpull](https://github.com/aceeric/imgpull) which is both a CLI and a library. It's the component that the _Ociregistry_ embeds as a package to pull from upstreams.
 
 ### Prepare
 
@@ -32,7 +32,7 @@ The following project components implement load testing:
 ### Execute
 
 1. The `testing/load/driver` directory actually runs the tests. See the [Test Driver](test-driver.md) section details.
-2. When the test driver starts, it first queries the Registry container for all images.
+2. When the test driver starts, it first queries the Registry container for all images (that were loaded by the `load-docker-container` script.)
 3. The test driver then pulls from _Ociregistry_ and records the pull rate for the duration of the test.
 2. And of course the _Ociregistry_ server under test is run on the server, to pull through on `:8080`, and exposing metrics on `:2112/metrics`. Both ports are configurable. The `/metrics` path is not.
 
@@ -42,21 +42,23 @@ The test driver scales up - and then down - a number of goroutines to pull from 
 
 ![Test topology](assets/test-approach.jpg){ width="100%" }
 
-At some point in the test, the throughput of the server will hit a maximum and then the pull rate will flatline.
+At some point in the test, the throughput of the server will hit a maximum.
 
 ### Patterns and batching
 
 When testing pull-**through**, the test driver supports running each goroutine with an exclusive set of images using a pattern. The idea of patterns is to chunk the image list into disjoint sets and thereby force a high level of concurrency for pull-through. To elaborate further: if 100 clients were to pull exactly the same image at exactly the same instant from _Ociregistry_, then only one client will actually pull and the other 99 will be parked by the server and then pull from cache when the first client finishes pulling from the upstream and adds the image to cache.
 
-Having many clients pull the same exact image concurrently doesn't really test pull-through concurrency. (It does test cached pull concurrency.) Having many clients pull disjoint images concurrently actually tests pull-through concurrency (and load.)
+Because of this design, having many clients pull the same exact image concurrently doesn't really test pull-through concurrency. (It does test cached pull concurrency.) Having many clients pull disjoint images concurrently actually tests pull-through concurrency (and load.)
 
 To support this the test driver supports two modes. If the `--prune` arg is specified then each goroutine will prune the images it pulled on each pass. On the next pass through for that goroutine, the _Ociregistry_ will have to re-pull from the upstream again.  If the `--prune` arg is **not** specified then each goroutine will simply be pulling from cache which will measure a different behavior in the server.
+
+Note that since pruning itself introduces locking and load on the server it distorts the pull-through test somewhat but there's no other way to test a large volume of concurrent pulls without loading the upstream with hundreds of thousands of images.
 
 ## Test Preparation
 
 The preparation steps are:
 
-1. Run the `maketar` script to generate a set of images. I test with 1,000 images. These are small images that test concurrency. Each image has five small blobs. So this isn't about testing large blob pulls, network latency, etc. It's purely a concurrency test. The `maketar` script has logic to generate a defined number of batches. For example: 1000 images in batches of 100 with the batching pattern in the image ref like `-0001`, `-0002` and so on.
+1. Run the `maketar` script to generate a set of images. These are small images that test concurrency. Each image has five small blobs. So this isn't about testing large blob pulls, network latency, etc. It's purely a concurrency test. The `maketar` script has logic to generate a defined number of batches. For example: 1000 images in batches of 100 with the batching pattern in the image ref like `-0001`, `-0002` and so on.
 2. Start the Docker Registry container on port 5000.
 3. Run the `load-docker-container` script to move the image tarballs into the Docker Registry container.
 4. Start _Ociregistry_ server on port 8080, exposing metrics on port 2112, on the `/metrics` path.
@@ -67,6 +69,17 @@ The preparation steps are:
 1. Start the test driver with args that support the batching strategy employed when the `maketar` script was run.
     1. To test pull **through**, specify the `--prune` arg.
     2. To test **cached** pulls, omit the `--prune` arg.
+
+    Example:
+    ```
+    go run .\
+      --pullthrough-url=ubuntu.me:8888\
+      --registry-url=ubuntu.me:5000\
+      --patterns=-0001,-0002,-0003,-0004,-0005\
+      --iteration-seconds=90\
+      --tally-seconds=5
+    ```
+
 2. The test driver first scales up the goroutines with each goroutine pulling one unique batch (if configured that way).
 3. The test driver then scales the goroutines down to zero, which ends the test.
 4. The test driver generates pull rate metrics either to a file or to the console depending on command line args.
@@ -75,12 +88,32 @@ The preparation steps are:
 
 ## Results
 
+The two sections below capture the results of the load test. As described above the docker registry was loaded with 1,500 images in batches of 150 each. Each result section stacks the following charts:
+
+|Where|Metric|Note|
+|-|-|-|
+|Test driver|Image pulls per second|These are full downloads of an image tar to the file system.|
+|Test driver|Goroutines||
+|Ociregistry server|Detailed memory statistics||
+|Ociregistry server|Goroutines and go threads||
+|Ociregistry server|Heap Bytes||
+|Ociregistry server|Heap Objects||
+|Ociregistry server|Garbage collection cycles||
+|Ociregistry server|Mutex wait|Since the server synchronizes shared cache access with a mutex this is a good measure of the impact of that.|
+|Ociregistry server|Network send/receive bytes||
+|Ociregistry server|Topline resident memory||
+|Ociregistry server|Manifest pull rate|Usually each image pull will consist of at least one image list manifest pull and one image manifest pull.|
+|Ociregistry server|Blob pull rate|The test arbitrarily sets up 5 small blobs per image|
+|Ociregistry server|Cached pull rate by namespace||
+|Ociregistry server|Upstream pull rate by namespace||
+|Ociregistry server|API Error rate||
+
+### Pull-through results
+
 TODO
 
-### Pull-Through
+### Cached pull results
 
 TODO
 
-### From Cache
-
-TODO
+## Summary

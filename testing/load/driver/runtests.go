@@ -14,20 +14,29 @@ import (
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )
 
-// runTests runs the test. Using the filters, the driver gradually increases the number of
+// runTest runs the test. Using the filters, the driver gradually increases the number of
 // goroutines pulling images until all sets of images by filter are being pulled concurrently,
 // each set in its own goroutine. Then the goroutines are scaled down and the test is stopped.
-func runTests(config Config) error {
+func runTest(config Config) error {
 	logFile, err := openOutputFile(config.logFile)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(logFile, "%s\ttest driver begin\n", now())
 
+	// each goroutine has its own counter
 	counters := make([]atomic.Uint64, len(config.patterns))
+
 	stopCh := initStopChans(len(config.patterns))
+
+	// to stop the metrics tabulation goroutine
 	tallyCh := make(chan bool, 1)
+
+	// so the test goroutines can log concurrently
 	logCh := make(chan string, 1000)
+
+	// duration is how long each goroutine runs before the next goroutine is
+	// started (scale up) or stopped (scale down)
 	duration := time.Duration(config.iterationSeconds) * time.Second
 
 	metricsFile, err := openOutputFile(config.metricsFile)
@@ -90,15 +99,19 @@ func signalStrChan(ch chan string) bool {
 	}
 }
 
-// pullOnePattern uses the passed pattern to filter the images in the config struct. It then pulls (and
+// pullOnePattern uses the pattern in config to filter the images in the config. It then pulls (and
 // optionally prunes) those images repeatedly until signalled on the passed channel. It increments a
 // count of images pulled in the passed atomic counter which is also accessed by the tallyStats
 // function in another goroutine.
 func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config Config, counter *atomic.Uint64, pattern string) {
 	logCh <- fmt.Sprintf("%s\ttest goroutine #%d starting\n", now(), testNum)
 
+	// pruneClient is used by this goroutine to prune the ociregistry server
 	var pruneClient *http.Client
+
+	// puller is used to pull from the upstream
 	var puller imgpull.Puller
+
 	firstPull := true
 	tmpTarfile := ""
 	if !config.dryRun {
@@ -109,13 +122,13 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 			pruneClient = makePruneClient()
 		}
 	}
-	// arg parsing validated this so ignore the error
+	// arg parsing validated this regex so ignore the error
 	re, _ := regexp.Compile(pattern)
 
 	// make a copy of the image pull list so this goroutine can shuffle it between passes
 	images := config.images
 	for {
-		for i := 0; i < len(images); i++ {
+		for i := range images {
 			select {
 			case <-stopChan:
 				logCh <- fmt.Sprintf("%s\ttest goroutine #%d stopping\n", now(), testNum)

@@ -11,7 +11,7 @@ Go runtime metrics make use of the Go [runtime/metrics](https://pkg.go.dev/runti
 1. [Monitor Your Go Process Internal Metrics in Minutes](https://docs.dynatrace.com/docs/ingest-from/technology-support/application-software/go/configuration-and-analysis/analyze-go-metrics) by Gil Adda, CyberArk Engineering
 2. [Go memory metrics demystified](https://www.datadoghq.com/blog/go-memory-metrics/) by [Datadog](https://www.datadoghq.com)
 
-The Go runtime metrics package consists of a large set of measurements. All the metrics are exposed to Prometheus, but only the ones that seemed relevant to the server are presented in the project's Go runtime metrics dashboard.
+The Go runtime metrics package consists of a large set of measurements. All the metrics are exposed to Prometheus, but only the subset that seemed relevant to the server are presented in the project's Go runtime metrics dashboard.
 
 ### _Ociregistry_ Metrics
 

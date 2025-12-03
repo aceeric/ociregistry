@@ -38,6 +38,7 @@ func main() {
 		fmt.Printf("%-20s%s\n", "  Filter:", config.filter)
 	}
 
+	// validate the filter to reduce the test set to a smaller set
 	if config.filter != "" {
 		if re, err = regexp.Compile(config.filter); err != nil {
 			fmt.Fprintf(os.Stderr, "filter is not a valid go regex: %s\n", config.filter)
@@ -45,18 +46,21 @@ func main() {
 		}
 	}
 
+	// get all images from the upstream with the filter applied
 	config.images, err = getImages(config.registryURL, re)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error getting images from registry: %s\n", err)
 		os.Exit(1)
 	}
 
+	// create log files
 	if err := createFiles(config.metricsFile, config.logFile); err != nil {
 		fmt.Fprintf(os.Stderr, "error creating logging files: %s\n", err)
 		os.Exit(1)
 	}
 
-	if runTests(config) != nil {
+	// run the load test
+	if runTest(config) != nil {
 		fmt.Printf("Error running tests: %s\n", err)
 	}
 }

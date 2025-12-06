@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 1.9.8
+
+05-Dec-2025
+
+1. Support a default namespace, e.g. `pull localhost:8080/hello-world:latest` from Dockerhub.
+2. Clone the default transport to avoid leaking goroutines (#22).
+3. Implement observability using Prometheus/Grafana.
+4. Implement and document a load test (#23).
+
 ## 1.9.7
 
 11-Nov-2025

@@ -2,7 +2,7 @@
 
 The _Ociregistry_ server implements [Prometheus](https://prometheus.io/) metrics exposition. Metrics are implemented in the [metrics](https://github.com/aceeric/ociregistry/tree/main/impl/metrics) package of the server. Two types of Metrics are provided in two [Grafana](https://grafana.com/) dashboards, discussed in the following sections.
 
-## Metrics types
+## Metrics Dashboards
 
 ### Go Runtime Metrics
 
@@ -11,11 +11,11 @@ Go runtime metrics make use of the Go [runtime/metrics](https://pkg.go.dev/runti
 1. [Monitor Your Go Process Internal Metrics in Minutes](https://docs.dynatrace.com/docs/ingest-from/technology-support/application-software/go/configuration-and-analysis/analyze-go-metrics) by Gil Adda, CyberArk Engineering
 2. [Go memory metrics demystified](https://www.datadoghq.com/blog/go-memory-metrics/) by [Datadog](https://www.datadoghq.com)
 
-The Go runtime metrics package consists of a large set of measurements. All the metrics are exposed to Prometheus, but only the subset that seemed relevant to the server are presented in the project's Go runtime metrics dashboard.
+The Go runtime metrics package consists of a large set of measurements. All the metrics are exposed to Prometheus, but only the subset that seemed most relevant to the server are presented in the project's Go runtime metrics dashboard.
 
 ### _Ociregistry_ Metrics
 
-The _Ociregistry_ metrics are a much more narrow set than the Go Runtime metrics, reflecting the simple nature of the server:
+The _Ociregistry_ metrics are a narrower set than the Go Runtime metrics, reflecting the simple nature of the server:
 
 | Metric | Description |
 |-|-|
@@ -32,7 +32,7 @@ The _Ociregistry_ metrics are a much more narrow set than the Go Runtime metrics
 
 ##  How to use
 
-Metrics are disabled in the server by default, and can be enabled with either the `--metrics` command-line arg, or the `metrics:` key in the config file. E.g.: `ociregistry serve --metrics 2112`.
+Metrics are disabled in the server by default, and can be enabled for the `serve` sub-command with either the `--metrics` command-line arg, or the `metrics:` key in the config file. E.g.: `ociregistry serve --metrics 2112`.
 
 Or: `ociregistry --config-file mycfg.yaml serve`, if `mycfg.yaml` has:
 ```
@@ -45,7 +45,7 @@ Metrics can be exposed on any port, but take note that the [observability](https
 
 As discussed above, the **observability** directory of the project has the items needed to access the metrics. The main entry point there is the [`start-containers`](https://github.com/aceeric/ociregistry/blob/main/observability/start-containers) Bash script.
 
-This script starts Prometheus, scraping on port 2112 on localhost and then starts Grafana, pulling from Prometheus on localhost:9090. At the present moment, the metrics are only available when running the _Ociregistry_ server locally. Primarily I use them for load testing.
+This script starts Prometheus, scraping on port 2112 on localhost and then starts Grafana, pulling from Prometheus on localhost:9090. At the present moment, the metrics are only available when running the _Ociregistry_ server locally. Primarily they support load testing.
 
 ## Dashboards
 
@@ -55,7 +55,7 @@ This script starts Prometheus, scraping on port 2112 on localhost and then start
 
 From top left to right, and then down, the dashboard shows:
 
-| Row | Left | Right |
+| Row | Left Panel | Right Panel |
 |-|-|-|
 | 1 | Memory | Goroutines and threads |
 | 2 | Heap bytes | Heap objects |
@@ -70,7 +70,7 @@ From top left to right, and then down, the dashboard shows:
 
 From top left to right, and then down, the dashboard shows:
 
-| Row | Left | Right |
+| Row | Left Panel | Right Panel |
 |-|-|-|
 | 1 | Manifest pulls | Blob pulls |
 | 2 | Cached pulls  | Upstream (un-cached) pulls |

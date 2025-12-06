@@ -10,9 +10,9 @@ The following diagram shows the physical processors used in the tests documented
 
 ![Test topology](assets/test-hw.jpg)
 
-1. The test driver is a Ubuntu laptop with 32 gigs of memory and 16 dual-core processors. It runs the test driver CLI.
-2. The server is a Ubuntu workstation with 64 gigs of memory and 12 dual-core processors. It runs the _Ociregistry_ server as a stand-alone executable, and Docker [Registry](https://hub.docker.com/_/registry) in a container running in the Docker daemon.
-3. Both test driver and server machines are on the same network segment. The goal here is to balance network latency with CPU utilization.
+1. The test driver is a Ubuntu laptop with 32 gigs of memory and Intel Core i7-8700SH x16 processors. It runs the test driver CLI.
+2. The server is a Ubuntu workstation with 64 gigs of memory and Intel Core i7-8700 x12 processors. It runs the _Ociregistry_ server as a stand-alone executable, and Docker [Registry](https://hub.docker.com/_/registry) in a container run by Docker daemon (containerd.)
+3. Both test driver and server machines are on the same network segment.
 
 ## Software Components
 
@@ -38,13 +38,11 @@ The following project components implement load testing:
 
 ## Test Driver
 
-The test driver scales up - and then down - a number of goroutines to pull from the _Ociregistry_ server concurrently and records the client-side **image** pull rate. The observability stack records server behavior during the test, and then the results are evaluated. The test driver records the client's area of concern: _how many **images** can I pull per second?_ Fundamentally, this is what `containerd` will care about.
+The test driver scales up - and then down - a number of goroutines to pull from the _Ociregistry_ server concurrently and records the client-side **image** pull rate. This includes pulling the image and blobs and creating a tarball. (There's some overhead here, granted.) The observability stack records server behavior during the test, and then the results are evaluated. The test driver records the client's area of concern: _how many **images** can be pulled per second?_ Fundamentally, this is what `containerd` will care about.
 
 ![Test topology](assets/test-approach.jpg){ width="100%" }
 
-At some point in the test, the throughput of the server will hit a maximum.
-
-### Patterns and batching
+### Patterns and Batching
 
 When testing pull-**through**, the test driver supports running each goroutine with an exclusive set of images using a pattern. The idea of patterns is to chunk the image list into disjoint sets and thereby force a high level of concurrency for pull-through. To elaborate further: if 100 clients were to pull exactly the same image at exactly the same instant from _Ociregistry_, then only one client will actually pull and the other 99 will be parked by the server and then pull from cache when the first client finishes pulling from the upstream and adds the image to cache.
 
@@ -88,32 +86,138 @@ The preparation steps are:
 
 ## Results
 
-The two sections below capture the results of the load test. As described above the docker registry was loaded with 1,500 images in batches of 150 each. Each result section below stacks the following charts:
+The test results documented below capture a test run with the following parameters:
+
+1. Docker Registry populated with 1,500 images each with 5 small blobs.
+2. Ten batches of 150 images each, enabling 10 client puller goroutines to pull disjoint sets.
+3. Test driver scales from 1 to 10 puller goroutines and then back down to 1, then stops the test.
+4. Test driver runs for 60 seconds between adding / stopping puller goroutines resulting in a 20 minute test.
+
+Each result section below stacks the charts listed in the table below. Since client side metrics were calculated using go (not prometheus) and imported into Excel, the first chart looks different than the Grafana dashboard panels. The reader is directed to the `impl/metrics` package for details on the go runtime metrics.
 
 |Where|Metric|Note|
 |-|-|-|
-|Test driver|Image pulls per second|These are full downloads of an image tar to the file system.|
-|Test driver|Goroutines||
+|Client side test driver|Image pulls per second and puller Goroutines|These are full downloads of an image tar to the file system.|
 |Ociregistry server|Detailed memory statistics||
 |Ociregistry server|Goroutines and go threads||
 |Ociregistry server|Heap Bytes||
 |Ociregistry server|Heap Objects||
 |Ociregistry server|Garbage collection cycles||
-|Ociregistry server|Mutex wait|Since the server synchronizes shared cache access with a mutex this is a good measure of the impact of that.|
+|Ociregistry server|Mutex wait|The server synchronizes shared cache access with a mutex.|
 |Ociregistry server|Network send/receive bytes||
 |Ociregistry server|Topline resident memory||
 |Ociregistry server|Manifest pull rate|Usually each image pull will consist of at least one image list manifest pull and one image manifest pull.|
 |Ociregistry server|Blob pull rate|The test arbitrarily sets up 5 small blobs per image|
-|Ociregistry server|Cached pull rate by namespace||
-|Ociregistry server|Upstream pull rate by namespace||
+|Ociregistry server|Cached or Upstream pull rate by namespace||
 |Ociregistry server|API Error rate||
 
-### Pull-through results
+### Pull-Through Results
 
-TODO
+The pull-through test pulled through the _Ociregistry_ server to the Docker registry. After each pass through the pull list, the puller goroutine pruned the images it just pulled, foring the _Ociregistry_ to re-pull them the next time. The prune operation - while  fast - _does_ lock the in-mem cache briefly which certainly impacts performance and therefore taints the test. However, without having the ability to load an upstream registry with literally hundreds of thousands of images, the selected approach was the only feasible way to test pull-through concurrency.
 
-### Cached pull results
+Topline summary: with 10 client goroutines, the client-side pull rate topped out at about 320 images per second. The rate never peaked so its possible that with more goroutines, a higher pull rate could be acheived. Some aspect of latency is attributable to the "upstream" Docker Registry container but that was not specifically tested.
 
-TODO
+![Client Side](assets/load-test/pullthru-client-side.png)
+Test driver: Puller goroutines scaling up from 1 to 10 then back down.
+---
+![Mem Stats](assets/load-test/pullthru-runtime-mem.png)
+Go runtime detailed mem stats. The Green line is memory classes total usage bytes. Yellow (top) is memory classes total bytes (sum of all). The green line is the most relevant
+---
+![Goroutines](assets/load-test/pullthru-runtime-goroutines.png)
+Go runtime. Yellow is go threads, green is goroutines.
+---
+![Heap Bytes](assets/load-test/pullthru-runtime-heap-bytes.png)
+Go runtime. Yellow is heap released bytes, green is heap alloc bytes.
+---
+![Heap Objects](assets/load-test/pullthru-runtime-heap-obj.png)
+Go runtime heap objects. When the server starts this spikes is associated with loading the in-memory cache on startup.
+---
+![Garbage Coll](assets/load-test/pullthru-runtime-gc.png)
+Go runtime garbage collection cycles.
+---
+![Mutex wait](assets/load-test/pullthru-runtime-mutex.png)
+Go runtime mutex wait time/sec.
+---
+![Network](assets/load-test/pullthru-runtime-net.png)
+Go runtime network bytes. Yellow is send. Green is receive.
+---
+![Process Mem](assets/load-test/pullthru-runtime-process-mem.png)
+Go runtime process memory.
+---
+![Manifest Pull](assets/load-test/pullthru-manifests.png)
+Ociregistry manifest pull rate (includes image list manifests and image manifests.)
+---
+![Blob Pull](assets/load-test/pullthru-blobs.png)
+Ociregistry blob pulls: 5 blobs and a config blob for each image pulled.
+---
+![Cache Pull Rate](assets/load-test/pullthru-rate.png)
+Ociregistry: cached manifest pull.
+---
+![API Err](assets/load-test/pullthru-api-errors.png)
+Ociregistry: no API errors.
+
+### Cached Pull Results
+
+The cached pull simply pulls from cache (without pruning.)
+
+Topline summary: with 10 client goroutines, the client-side pull rate topped out at about 1,800 images per second. Interestingly as the pull load hit 10 puller goroutines, the server suffered some performance degradation. I attribute this to the high mutex wait which is a side-effect of the simple concurrency design which forces all pulls through a mutex so that each pull can update the pull date/time stamp to support pruning by pull recency.
+
+![Client Side](assets/load-test/cache-pull-client-side.png)
+Test driver: Puller goroutines scaling up from 1 to 10 then back down.
+---
+![Mem Stats](assets/load-test/cache-pull-runtime-mem.png)
+Go runtime detailed mem stats. The Green line is memory classes total usage bytes. Yellow (top) is memory classes total bytes (sum of all). The green line is the most relevant
+---
+![Goroutines](assets/load-test/cache-pull-runtime-goroutines.png)
+Go runtime. Yellow is go threads, green is goroutines.
+---
+![Heap Bytes](assets/load-test/cache-pull-runtime-heap-bytes.png)
+Go runtime. Yellow is heap released bytes, green is heap alloc bytes.
+---
+![Heap Objects](assets/load-test/cache-pull-runtime-heap-obj.png)
+Go runtime heap objects. When the server starts there is a spike in heap objects associated with loading the in-memory cache on startup.
+---
+![Garbage Coll](assets/load-test/cache-pull-runtime-gc.png)
+Go runtime garbage collection cycles.
+---
+![Mutex wait](assets/load-test/cache-pull-runtime-mutex.png)
+Go runtime mutex wait time/sec.
+---
+![Network](assets/load-test/cache-pull-runtime-net.png)
+Go runtime network bytes. Yellow is send. Green is receive.
+---
+![Process Mem](assets/load-test/cache-pull-runtime-process-mem.png)
+Go runtime process memory.
+---
+![Manifest Pull](assets/load-test/cache-pull-manifests.png)
+Ociregistry manifest pull rate (includes image list manifests and image manifests.)
+---
+![Blob Pull](assets/load-test/cache-pull-blobs.png)
+Ociregistry blob pulls: 5 blobs and a config blob for each image pulled.
+---
+![Cache Pull Rate](assets/load-test/cache-pull-rate.png)
+Ociregistry: cached manifest pull.
+---
+![API Err](assets/load-test/cache-pull-api-errors.png)
+Ociregistry: no API errors.
 
 ## Summary
+
+The load test is an artificial effort to max out concurrency. The test set is a 1,500 small images. Pulling any one of these images produces a roughly 9K tarball that can be pulled from cache in 7.5 milliseconds:
+
+```
+$ imgpull localhost:8888/ubuntu.me:5000/a3xuzdp7kd-pmwvzztrob-0010:v339.283 deleteme.tar --scheme http
+image "localhost:8888/a3xuzdp7kd-pmwvzztrob-0010:v339.283" saved to "deleteme.tar" in 7.487947ms
+```
+
+Then:
+```
+$ ls -l deleteme.tar
+-rw-rw-r-- 1 foo foo 9216 Dec  5 21:10 deleteme.tar
+```
+
+Given the huge variance in image sizes, network latency, etc. in the real world, I venture to say a real world load test would be hard to devise. But from the current load test, the project draws the small number of conclusions. (It is worth re-stating the design goals of the server: to be simple, reliable, and performant.)
+
+1. The server is reliable. Every image tarball requested by the test driver was returned. The server doesn't appear to leak memory or goroutines.
+2. The server is performant in its role as an edge distribution sever. Even with 1,500 manifests in the in-mem cache, the memory footprint (< 40Mb) doesn't seem extreme.
+3. The server is reasonably simple in its operational footprint and design. One clear downside of the simple concurrency design is the dip in throughput under the heaviest load. However, it seems unlikely that the server would ever be loaded in the wild as heavily as it was loaded by the test. Therefore, there seems no compelling reason (other than curiosity) for pursuing design optimizations.

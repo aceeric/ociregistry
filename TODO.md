@@ -1,7 +1,5 @@
 # In progress
 
-- Instrumentation
-
 # On deck
 
 - `cmd/` API not closing the connection?

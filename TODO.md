@@ -1,7 +1,5 @@
 # In progress
 
-- Fix `scripts/rev-version` to match exact version string
-
 # On deck
 
 - `cmd/` API not closing the connection?

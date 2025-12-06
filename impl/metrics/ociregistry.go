@@ -6,9 +6,9 @@ import (
 )
 
 // These are the metrics functions exposed by the package. By default they are all
-// NOP functions to minimize overhead when metrics are not enabled. The 'initAllMetrics'
-// function initializes these with functions having implementations if metrics are
-// enabled.
+// NOP functions to minimize overhead when metrics are not enabled. If metrics are
+// enabled, the 'initAllMetrics' function initializes these with functions having
+// implementations.
 
 var IncCachedPullsByNs withLabel = func(string) {}
 var IncUpstreamPullsByNs withLabel = func(string) {}

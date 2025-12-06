@@ -1,13 +1,8 @@
 # In progress
 
-- Instrumentation
-  - --metrics-enabled
-
 # On deck
 
 - `cmd/` API not closing the connection?
-- No save option for load testing?
-- Closing the Puller?
 
 # Parked
 

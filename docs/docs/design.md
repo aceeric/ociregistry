@@ -6,7 +6,7 @@ This is the design of the _Ociregistry_ server:
 
 Narrative:
 
-1. A client (in this case - `containerd`) initiates an image pull. The image pull consists of a series of REST API calls. The API calls are handled by the server REST API, which implements a portion of the [OCI Distribution Spec](https://github.com/opencontainers/distribution-spec).
+1. A client (in this case - `containerd`) initiates an image pull. The image pull consists of a series of REST API calls. The API calls are handled by the server's implementation of a subset of the [OCI Distribution Spec](https://github.com/opencontainers/distribution-spec).
 1. The API is just a veneer that delegates to the server implementation.
 1. The server checks the local cache and if the image is in cache it is immediately returned from cache.
 1. If the image is not in cache, the server calls the embedded [ImgPull](https://github.com/aceeric/imgpull) library to pull the image from the upstream registry. The server knows which upstream to pull from because `containerd` appends a query parameter (e.g. `?ns=registry.k8s.io`) to each API call.
@@ -33,8 +33,6 @@ sequenceDiagram
 
 To support this, the server caches both the image list manifest and the image manifest.
 
->  **Be aware**: If you cache an image list manifest by digest only and later run a workload in an air-gapped environment that attempts to get the same manifest by tag, the registry will not know the tag and so will not be able to provide that image from cache.
-
 ## Code Structure
 
 The source code is organized as shown:
@@ -52,6 +50,7 @@ project root
 │   ├── config
 │   ├── globals
 │   ├── helpers
+│   ├── metrics
 │   ├── preload
 │   ├── pullrequest
 │   ├── serialize
@@ -73,6 +72,7 @@ project root
 | `impl/config` | Has system configuration. |
 | `impl/globals` | Globals. |
 | `impl/helpers` | Helpers. |
+| `impl/metrics` | The Observability implementation. |
 | `impl/preload` | Implements the load and pre-load from an image list file. |
 | `impl/pullrequest` | Abstracts the URL parts of an image pull. |
 | `impl/serialize` | Reads/writes from/to the file system. |
@@ -82,7 +82,7 @@ project root
 
 ## REST API Implementation
 
-As stated above, the _Ociregistry_ server implements **a portion** of the OCI Distribution Spec consisting of only the endpoints in the spec needed to meet its goal of being a pull-only OCI Distribution Server. It does this by running a web service that handles endpoints defined in the spec.
+As stated above, the _Ociregistry_ server implements **a portion** of the OCI Distribution Spec consisting of only the endpoints in the spec needed to meet its goal of being a pull-only OCI Distribution Server. It does this by running an http server that handles REST endpoints defined in the spec.
 
 The _Ociregistry_ server REST API is built by first creating an Open API spec: see [ociregistry.yaml](https://github.com/aceeric/ociregistry/blob/main/api/ociregistry.yaml) in the `api` directory of the project. Then the [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen) tool is used to generate the API code and the Model code using configuration in the `api` directory of the project. This approach was modeled after the OAPI-Codegen [Petstore](https://github.com/oapi-codegen/oapi-codegen/tree/main/examples/petstore-expanded) example.
 

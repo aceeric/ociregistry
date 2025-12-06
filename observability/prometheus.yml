@@ -1,6 +1,8 @@
 ---
 #
-# A Prometheus scrape config
+# A Prometheus scrape config. The 2112 port in targets must
+# match what is configured on the command line or the Ociregistry
+# config file for the metrics configuration. E.g. --metrics=2112
 #
 global:
   # default scrape interval if not overridden
@@ -9,7 +11,7 @@ global:
 
 scrape_configs:
   - job_name: 'ociregistry'
-    scrape_interval: 1s
+    # TESTscrape_interval: 15s
     static_configs:
       - targets:
         - 'localhost:2112'

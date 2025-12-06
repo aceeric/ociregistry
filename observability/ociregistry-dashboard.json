@@ -406,7 +406,7 @@
         {
           "disableTextWrap": false,
           "editorMode": "builder",
-          "expr": "rate(ociregistry_upstream_pulls_by_ns[5s])",
+          "expr": "rate(ociregistry_upstream_pulls_by_ns[$__rate_interval])",
           "fullMetaSearch": false,
           "includeNullMetadata": true,
           "legendFormat": "__auto",
@@ -908,5 +908,5 @@
   "timezone": "browser",
   "title": "Ociregistry metrics",
   "uid": "91806e0b-b8ea-45f2-a2a1-a16c228936a3",
-  "version": 1
+  "version": 2
 }

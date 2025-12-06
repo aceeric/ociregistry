@@ -13,7 +13,8 @@
 # and so on.
 #
 # Ociregistry must be configured with config.yaml to pull from the ubuntu.me registry
-# on plain http.
+# on plain http. This script can also help fully load the Ociregistry to prepare for the
+# cached pull load test.
 #
 
 set -e

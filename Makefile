@@ -31,6 +31,11 @@ test:
 coverage:
 	go tool cover -html=$(ROOT)/cover.out
 
+.PHONY: update-modules
+update-modules:
+	go get -u ./...
+	go mod tidy
+
 .PHONY: coverage-rpt
 coverage-rpt: # requires go install github.com/vladopajic/go-test-coverage/v2@latest
 	go-test-coverage --config=$(ROOT)/.testcoverage.yml
@@ -111,6 +116,8 @@ gocyclo           Runs gocyclo.
 
 coverage          Runs 'go tool cover' to show coverage of the most recent test run in a browser
                   window. (Does not run the unit tests.)
+
+update-modules    Runs 'go get -u' and 'go  mod tidy'
 
 coverage-rpt      Creates a coverage report of the most recent test run. (Does not run the unit tests.)
                   Requires 'go install github.com/vladopajic/go-test-coverage/v2@latest'

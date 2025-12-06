@@ -11,16 +11,20 @@
 # scripts/rev-version 1.9.1 1.9.2-prerelease
 #
 
+from=$1
+to=$2
+from=${from//\./\\\.}
+
 if [[ "$#" -eq 2 ]]; then
-  sed -e "s/$1/$2/g" ./Makefile
-  sed -e "s/$1/$2/g" ./README.md
-  sed -e "s/$1/$2/g" ./charts/ociregistry/Chart.yaml
-  sed -e "s/$1/$2/g" ./charts/ociregistry/values.yaml
+  sed -e "s/$from/$to/g" ./Makefile
+  sed -e "s/$from/$to/g" ./README.md
+  sed -e "s/$from/$to/g" ./charts/ociregistry/Chart.yaml
+  sed -e "s/$from/$to/g" ./charts/ociregistry/values.yaml
 elif [[ "$#" -eq 3 ]] && [[ "$3" == "--update" ]]; then
-  sed -i"" -e "s/$1/$2/g" ./Makefile
-  sed -i"" -e "s/$1/$2/g" ./README.md
-  sed -i"" -e "s/$1/$2/g" ./charts/ociregistry/Chart.yaml
-  sed -i"" -e "s/$1/$2/g" ./charts/ociregistry/values.yaml
+  sed -i"" -e "s/$from/$to/g" ./Makefile
+  sed -i"" -e "s/$from/$to/g" ./README.md
+  sed -i"" -e "s/$from/$to/g" ./charts/ociregistry/Chart.yaml
+  sed -i"" -e "s/$from/$to/g" ./charts/ociregistry/values.yaml
 else
   echo "can't parse args: $@"
   exit 1

@@ -77,9 +77,9 @@ func (r *OciRegistry) V2GetS1BlobsDigest(ctx echo.Context, s1 string, digest str
 	return r.handleV2GetOrgImageBlobsDigest(ctx, "", s1, digest)
 }
 
-// GET /v2/{org}/{image}/blobs/{digest}
-func (r *OciRegistry) V2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
-	return r.handleV2GetOrgImageBlobsDigest(ctx, org, image, digest)
+// GET /v2/{s1}/{s2}/blobs/{digest}
+func (r *OciRegistry) V2GetS1S2BlobsDigest(ctx echo.Context, s1 string, s2 string, digest string) error {
+	return r.handleV2GetOrgImageBlobsDigest(ctx, s1, s2, digest)
 }
 
 // GET /v2/{ns}/{org}/{image}/blobs/{digest}
@@ -135,7 +135,7 @@ func (r *OciRegistry) V2HeadNsOrgImageBlobsDigest(ctx echo.Context, ns string, o
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2HeadOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
+func (r *OciRegistry) V2HeadS1S2BlobsDigest(ctx echo.Context, s1 string, s2 string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -179,7 +179,7 @@ func (r *OciRegistry) V2DeleteNsOrgImageBlobsDigest(ctx echo.Context, ns string,
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
+func (r *OciRegistry) V2DeleteS1S2BlobsDigest(ctx echo.Context, s1 string, s2 string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 

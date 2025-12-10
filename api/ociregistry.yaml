@@ -197,20 +197,20 @@ paths:
           description: ""
         '405':
           description: ""
-  /v2/{org}/{image}/blobs/{digest}:
+  /v2/{s1}/{s2}/blobs/{digest}:
     get:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-get-org-image-blobs-digest
+      operationId: v2-get-s1-s2-blobs-digest
       parameters:
-      - name: org
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s2
         in: path
         description: ""
         required: true
@@ -232,15 +232,15 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-head-org-image-blobs-digest
+      operationId: v2-head-s1-s2-blobs-digest
       parameters:
-      - name: org
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s2
         in: path
         description: ""
         required: true
@@ -262,15 +262,15 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-delete-org-image-blobs-digest
+      operationId: v2-delete-s1-s2-blobs-digest
       parameters:
-      - name: org
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s2
         in: path
         description: ""
         required: true

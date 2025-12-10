@@ -2,12 +2,16 @@
 
 # On deck
 
-- `cmd/` API not closing the connection?
+- additional path segments
+  - change impl/handlers.go LAST
+- /home/eace/projects/ociregistry/impl/pullrequest/pullrequest.go - `type PullRequest struct {` has dangling comment?
+- impl/cache/cache.go has fmt.Printf
 
 # Parked
 
 # TODO
 
+- `cmd/` API not closing the connection?
 - Document every command option with an example
 - Config parse
 - Server base url (for ingress)

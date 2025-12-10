@@ -49,15 +49,6 @@ type ServerInterface interface {
 	// (GET /v2/auth)
 	V2Auth(ctx echo.Context, params V2AuthParams) error
 
-	// (DELETE /v2/{image}/blobs/{digest})
-	V2DeleteImageBlobsDigest(ctx echo.Context, image string, digest string) error
-
-	// (GET /v2/{image}/blobs/{digest})
-	V2GetImageBlobsDigest(ctx echo.Context, image string, digest string) error
-
-	// (HEAD /v2/{image}/blobs/{digest})
-	V2HeadImageBlobsDigest(ctx echo.Context, image string, digest string) error
-
 	// (DELETE /v2/{image}/manifests/{reference})
 	V2DeleteImageManifestsReference(ctx echo.Context, image string, reference string) error
 
@@ -129,6 +120,15 @@ type ServerInterface interface {
 
 	// (PUT /v2/{org}/{image}/manifests/{reference})
 	V2PutOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error
+
+	// (DELETE /v2/{s1}/blobs/{digest})
+	V2DeleteS1BlobsDigest(ctx echo.Context, s1 string, digest string) error
+
+	// (GET /v2/{s1}/blobs/{digest})
+	V2GetS1BlobsDigest(ctx echo.Context, s1 string, digest string) error
+
+	// (HEAD /v2/{s1}/blobs/{digest})
+	V2HeadS1BlobsDigest(ctx echo.Context, s1 string, digest string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -341,78 +341,6 @@ func (w *ServerInterfaceWrapper) V2Auth(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.V2Auth(ctx, params)
-	return err
-}
-
-// V2DeleteImageBlobsDigest converts echo context to params.
-func (w *ServerInterfaceWrapper) V2DeleteImageBlobsDigest(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "image" -------------
-	var image string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "image", ctx.Param("image"), &image, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter image: %s", err))
-	}
-
-	// ------------- Path parameter "digest" -------------
-	var digest string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "digest", ctx.Param("digest"), &digest, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digest: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2DeleteImageBlobsDigest(ctx, image, digest)
-	return err
-}
-
-// V2GetImageBlobsDigest converts echo context to params.
-func (w *ServerInterfaceWrapper) V2GetImageBlobsDigest(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "image" -------------
-	var image string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "image", ctx.Param("image"), &image, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter image: %s", err))
-	}
-
-	// ------------- Path parameter "digest" -------------
-	var digest string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "digest", ctx.Param("digest"), &digest, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digest: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2GetImageBlobsDigest(ctx, image, digest)
-	return err
-}
-
-// V2HeadImageBlobsDigest converts echo context to params.
-func (w *ServerInterfaceWrapper) V2HeadImageBlobsDigest(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "image" -------------
-	var image string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "image", ctx.Param("image"), &image, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter image: %s", err))
-	}
-
-	// ------------- Path parameter "digest" -------------
-	var digest string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "digest", ctx.Param("digest"), &digest, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digest: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2HeadImageBlobsDigest(ctx, image, digest)
 	return err
 }
 
@@ -1237,6 +1165,78 @@ func (w *ServerInterfaceWrapper) V2PutOrgImageManifestsReference(ctx echo.Contex
 	return err
 }
 
+// V2DeleteS1BlobsDigest converts echo context to params.
+func (w *ServerInterfaceWrapper) V2DeleteS1BlobsDigest(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "s1" -------------
+	var s1 string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "s1", ctx.Param("s1"), &s1, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter s1: %s", err))
+	}
+
+	// ------------- Path parameter "digest" -------------
+	var digest string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "digest", ctx.Param("digest"), &digest, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digest: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.V2DeleteS1BlobsDigest(ctx, s1, digest)
+	return err
+}
+
+// V2GetS1BlobsDigest converts echo context to params.
+func (w *ServerInterfaceWrapper) V2GetS1BlobsDigest(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "s1" -------------
+	var s1 string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "s1", ctx.Param("s1"), &s1, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter s1: %s", err))
+	}
+
+	// ------------- Path parameter "digest" -------------
+	var digest string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "digest", ctx.Param("digest"), &digest, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digest: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.V2GetS1BlobsDigest(ctx, s1, digest)
+	return err
+}
+
+// V2HeadS1BlobsDigest converts echo context to params.
+func (w *ServerInterfaceWrapper) V2HeadS1BlobsDigest(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "s1" -------------
+	var s1 string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "s1", ctx.Param("s1"), &s1, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter s1: %s", err))
+	}
+
+	// ------------- Path parameter "digest" -------------
+	var digest string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "digest", ctx.Param("digest"), &digest, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digest: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.V2HeadS1BlobsDigest(ctx, s1, digest)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -1274,9 +1274,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/v2/", wrapper.V2Default)
 	router.HEAD(baseURL+"/v2/", wrapper.V2HeadDefault)
 	router.GET(baseURL+"/v2/auth", wrapper.V2Auth)
-	router.DELETE(baseURL+"/v2/:image/blobs/:digest", wrapper.V2DeleteImageBlobsDigest)
-	router.GET(baseURL+"/v2/:image/blobs/:digest", wrapper.V2GetImageBlobsDigest)
-	router.HEAD(baseURL+"/v2/:image/blobs/:digest", wrapper.V2HeadImageBlobsDigest)
 	router.DELETE(baseURL+"/v2/:image/manifests/:reference", wrapper.V2DeleteImageManifestsReference)
 	router.GET(baseURL+"/v2/:image/manifests/:reference", wrapper.V2GetImageManifestsReference)
 	router.HEAD(baseURL+"/v2/:image/manifests/:reference", wrapper.V2HeadImageManifestsReference)
@@ -1301,30 +1298,34 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/v2/:org/:image/manifests/:reference", wrapper.V2GetOrgImageManifestsReference)
 	router.HEAD(baseURL+"/v2/:org/:image/manifests/:reference", wrapper.V2HeadOrgImageManifestsReference)
 	router.PUT(baseURL+"/v2/:org/:image/manifests/:reference", wrapper.V2PutOrgImageManifestsReference)
+	router.DELETE(baseURL+"/v2/:s1/blobs/:digest", wrapper.V2DeleteS1BlobsDigest)
+	router.GET(baseURL+"/v2/:s1/blobs/:digest", wrapper.V2GetS1BlobsDigest)
+	router.HEAD(baseURL+"/v2/:s1/blobs/:digest", wrapper.V2HeadS1BlobsDigest)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"AA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

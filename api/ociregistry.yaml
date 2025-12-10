@@ -290,14 +290,14 @@ paths:
           description: ""
         '405':
           description: ""
-  /v2/{image}/blobs/{digest}:
+  /v2/{s1}/blobs/{digest}:
     get:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-get-image-blobs-digest
+      operationId: v2-get-s1-blobs-digest
       parameters:
-      - name: image
+      - name: s1
         in: path
         description: ""
         required: true
@@ -319,9 +319,9 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-head-image-blobs-digest
+      operationId: v2-head-s1-blobs-digest
       parameters:
-      - name: image
+      - name: s1
         in: path
         description: ""
         required: true
@@ -343,9 +343,9 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-delete-image-blobs-digest
+      operationId: v2-delete-s1-blobs-digest
       parameters:
-      - name: image
+      - name: s1
         in: path
         description: ""
         required: true

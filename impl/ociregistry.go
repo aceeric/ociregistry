@@ -72,9 +72,9 @@ func (r *OciRegistry) V2HeadDefault(ctx echo.Context) error {
 // since the blob is content addressable storage the only thing that is needed is the digest. The other
 // segments are just in the API because clients will expect those endpoints
 
-// GET /v2/{image}/blobs/{digest}
-func (r *OciRegistry) V2GetImageBlobsDigest(ctx echo.Context, image string, digest string) error {
-	return r.handleV2GetOrgImageBlobsDigest(ctx, "", image, digest)
+// GET /v2/{s1}/blobs/{digest}
+func (r *OciRegistry) V2GetS1BlobsDigest(ctx echo.Context, s1 string, digest string) error {
+	return r.handleV2GetOrgImageBlobsDigest(ctx, "", s1, digest)
 }
 
 // GET /v2/{org}/{image}/blobs/{digest}
@@ -139,7 +139,7 @@ func (r *OciRegistry) V2HeadOrgImageBlobsDigest(ctx echo.Context, org string, im
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2HeadImageBlobsDigest(ctx echo.Context, image string, digest string) error {
+func (r *OciRegistry) V2HeadS1BlobsDigest(ctx echo.Context, s1 string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -183,7 +183,7 @@ func (r *OciRegistry) V2DeleteOrgImageBlobsDigest(ctx echo.Context, org string, 
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteImageBlobsDigest(ctx echo.Context, image string, digest string) error {
+func (r *OciRegistry) V2DeleteS1BlobsDigest(ctx echo.Context, s1 string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 

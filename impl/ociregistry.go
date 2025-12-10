@@ -92,14 +92,14 @@ func (r *OciRegistry) V2HeadS1ManifestsReference(ctx echo.Context, s1 string, re
 	return r.handleV2OrgImageManifestsReference(ctx, "", s1, reference, http.MethodHead, params.Ns)
 }
 
-// HEAD /v2/{org}/{image}/manifests/{reference}
-func (r *OciRegistry) V2HeadOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params models.V2HeadOrgImageManifestsReferenceParams) error {
-	if strings.Contains(org, ".") {
+// HEAD /v2/{s1}/{s2}/manifests/{reference}
+func (r *OciRegistry) V2HeadS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string, params models.V2HeadS1S2ManifestsReferenceParams) error {
+	if strings.Contains(s1, ".") {
 		// if /v2/docker.io/hello-world/manifests/latest then org is a namespace
-		ns := org
-		return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodHead, &ns)
+		ns := s1
+		return r.handleV2OrgImageManifestsReference(ctx, "", s2, reference, http.MethodHead, &ns)
 	}
-	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodHead, params.Ns)
+	return r.handleV2OrgImageManifestsReference(ctx, s1, s2, reference, http.MethodHead, params.Ns)
 }
 
 // HEAD /v2/{ns}/{org}/{image}/manifests/{reference}
@@ -113,14 +113,14 @@ func (r *OciRegistry) V2GetS1ManifestsReference(ctx echo.Context, s1 string, ref
 	return r.handleV2OrgImageManifestsReference(ctx, "", s1, reference, http.MethodGet, params.Ns)
 }
 
-// GET /v2/{org}/{image}/manifests/{reference}
-func (r *OciRegistry) V2GetOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string, params models.V2GetOrgImageManifestsReferenceParams) error {
-	if strings.Contains(org, ".") {
+// GET /v2/{s1}/{s2}/manifests/{reference}
+func (r *OciRegistry) V2GetS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string, params models.V2GetS1S2ManifestsReferenceParams) error {
+	if strings.Contains(s1, ".") {
 		// if /v2/docker.io/hello-world/manifests/latest then org is a namespace
-		ns := org
-		return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodGet, &ns)
+		ns := s1
+		return r.handleV2OrgImageManifestsReference(ctx, "", s2, reference, http.MethodGet, &ns)
 	}
-	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodGet, params.Ns)
+	return r.handleV2OrgImageManifestsReference(ctx, s1, s2, reference, http.MethodGet, params.Ns)
 }
 
 // GET /v2/{ns}/{org}/{image}/manifests/{reference}
@@ -163,7 +163,7 @@ func (r *OciRegistry) V2PutNsOrgImageManifestsReference(ctx echo.Context, ns str
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
+func (r *OciRegistry) V2PutS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -191,7 +191,7 @@ func (r *OciRegistry) V2DeleteNsOrgImageManifestsReference(ctx echo.Context, ns 
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteOrgImageManifestsReference(ctx echo.Context, org string, image string, reference string) error {
+func (r *OciRegistry) V2DeleteS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 

@@ -61,16 +61,6 @@ type V2GetNameTagsListParams struct {
 	Last *string `form:"last,omitempty" json:"last,omitempty"`
 }
 
-// V2GetOrgImageManifestsReferenceParams defines parameters for V2GetOrgImageManifestsReference.
-type V2GetOrgImageManifestsReferenceParams struct {
-	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
-}
-
-// V2HeadOrgImageManifestsReferenceParams defines parameters for V2HeadOrgImageManifestsReference.
-type V2HeadOrgImageManifestsReferenceParams struct {
-	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
-}
-
 // V2GetS1ManifestsReferenceParams defines parameters for V2GetS1ManifestsReference.
 type V2GetS1ManifestsReferenceParams struct {
 	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
@@ -78,5 +68,15 @@ type V2GetS1ManifestsReferenceParams struct {
 
 // V2HeadS1ManifestsReferenceParams defines parameters for V2HeadS1ManifestsReference.
 type V2HeadS1ManifestsReferenceParams struct {
+	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
+}
+
+// V2GetS1S2ManifestsReferenceParams defines parameters for V2GetS1S2ManifestsReference.
+type V2GetS1S2ManifestsReferenceParams struct {
+	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
+}
+
+// V2HeadS1S2ManifestsReferenceParams defines parameters for V2HeadS1S2ManifestsReference.
+type V2HeadS1S2ManifestsReferenceParams struct {
 	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
 }

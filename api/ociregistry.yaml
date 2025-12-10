@@ -639,20 +639,20 @@ paths:
           description: ""
         '405':
           description: ""
-  /v2/{org}/{image}/manifests/{reference}:
+  /v2/{s1}/{s2}/manifests/{reference}:
     get:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-get-org-image-manifests-reference
+      operationId: v2-get-s1-s2-manifests-reference
       parameters:
-      - name: org
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s2
         in: path
         description: ""
         required: true
@@ -680,15 +680,15 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-head-org-image-manifests-reference
+      operationId: v2-head-s1-s2-manifests-reference
       parameters:
-      - name: org
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s2
         in: path
         description: ""
         required: true
@@ -716,15 +716,15 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-put-org-image-manifests-reference
+      operationId: v2-put-s1-s2-manifests-reference
       parameters:
-      - name: org
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s2
         in: path
         description: ""
         required: true
@@ -746,15 +746,15 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-delete-org-image-manifests-reference
+      operationId: v2-delete-s1-s2-manifests-reference
       parameters:
-      - name: org
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s2
         in: path
         description: ""
         required: true

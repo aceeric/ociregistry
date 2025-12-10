@@ -38,16 +38,6 @@ type V2AuthParams struct {
 	Authorization string  `json:"authorization"`
 }
 
-// V2GetImageManifestsReferenceParams defines parameters for V2GetImageManifestsReference.
-type V2GetImageManifestsReferenceParams struct {
-	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
-}
-
-// V2HeadImageManifestsReferenceParams defines parameters for V2HeadImageManifestsReference.
-type V2HeadImageManifestsReferenceParams struct {
-	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
-}
-
 // V2PostNameBlobsUploadsParams defines parameters for V2PostNameBlobsUploads.
 type V2PostNameBlobsUploadsParams struct {
 	Digest *string `form:"digest,omitempty" json:"digest,omitempty"`
@@ -78,5 +68,15 @@ type V2GetOrgImageManifestsReferenceParams struct {
 
 // V2HeadOrgImageManifestsReferenceParams defines parameters for V2HeadOrgImageManifestsReference.
 type V2HeadOrgImageManifestsReferenceParams struct {
+	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
+}
+
+// V2GetS1ManifestsReferenceParams defines parameters for V2GetS1ManifestsReference.
+type V2GetS1ManifestsReferenceParams struct {
+	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
+}
+
+// V2HeadS1ManifestsReferenceParams defines parameters for V2HeadS1ManifestsReference.
+type V2HeadS1ManifestsReferenceParams struct {
 	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
 }

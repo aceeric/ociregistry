@@ -49,18 +49,6 @@ type ServerInterface interface {
 	// (GET /v2/auth)
 	V2Auth(ctx echo.Context, params V2AuthParams) error
 
-	// (DELETE /v2/{image}/manifests/{reference})
-	V2DeleteImageManifestsReference(ctx echo.Context, image string, reference string) error
-
-	// (GET /v2/{image}/manifests/{reference})
-	V2GetImageManifestsReference(ctx echo.Context, image string, reference string, params V2GetImageManifestsReferenceParams) error
-
-	// (HEAD /v2/{image}/manifests/{reference})
-	V2HeadImageManifestsReference(ctx echo.Context, image string, reference string, params V2HeadImageManifestsReferenceParams) error
-
-	// (PUT /v2/{image}/manifests/{reference})
-	V2PutImageManifestsReference(ctx echo.Context, image string, reference string) error
-
 	// (POST /v2/{name}/blobs/uploads)
 	V2PostNameBlobsUploads(ctx echo.Context, name string, params V2PostNameBlobsUploadsParams) error
 
@@ -129,6 +117,18 @@ type ServerInterface interface {
 
 	// (HEAD /v2/{s1}/blobs/{digest})
 	V2HeadS1BlobsDigest(ctx echo.Context, s1 string, digest string) error
+
+	// (DELETE /v2/{s1}/manifests/{reference})
+	V2DeleteS1ManifestsReference(ctx echo.Context, s1 string, reference string) error
+
+	// (GET /v2/{s1}/manifests/{reference})
+	V2GetS1ManifestsReference(ctx echo.Context, s1 string, reference string, params V2GetS1ManifestsReferenceParams) error
+
+	// (HEAD /v2/{s1}/manifests/{reference})
+	V2HeadS1ManifestsReference(ctx echo.Context, s1 string, reference string, params V2HeadS1ManifestsReferenceParams) error
+
+	// (PUT /v2/{s1}/manifests/{reference})
+	V2PutS1ManifestsReference(ctx echo.Context, s1 string, reference string) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -341,120 +341,6 @@ func (w *ServerInterfaceWrapper) V2Auth(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.V2Auth(ctx, params)
-	return err
-}
-
-// V2DeleteImageManifestsReference converts echo context to params.
-func (w *ServerInterfaceWrapper) V2DeleteImageManifestsReference(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "image" -------------
-	var image string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "image", ctx.Param("image"), &image, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter image: %s", err))
-	}
-
-	// ------------- Path parameter "reference" -------------
-	var reference string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "reference", ctx.Param("reference"), &reference, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2DeleteImageManifestsReference(ctx, image, reference)
-	return err
-}
-
-// V2GetImageManifestsReference converts echo context to params.
-func (w *ServerInterfaceWrapper) V2GetImageManifestsReference(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "image" -------------
-	var image string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "image", ctx.Param("image"), &image, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter image: %s", err))
-	}
-
-	// ------------- Path parameter "reference" -------------
-	var reference string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "reference", ctx.Param("reference"), &reference, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params V2GetImageManifestsReferenceParams
-	// ------------- Optional query parameter "ns" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "ns", ctx.QueryParams(), &params.Ns)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2GetImageManifestsReference(ctx, image, reference, params)
-	return err
-}
-
-// V2HeadImageManifestsReference converts echo context to params.
-func (w *ServerInterfaceWrapper) V2HeadImageManifestsReference(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "image" -------------
-	var image string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "image", ctx.Param("image"), &image, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter image: %s", err))
-	}
-
-	// ------------- Path parameter "reference" -------------
-	var reference string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "reference", ctx.Param("reference"), &reference, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
-	}
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params V2HeadImageManifestsReferenceParams
-	// ------------- Optional query parameter "ns" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "ns", ctx.QueryParams(), &params.Ns)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2HeadImageManifestsReference(ctx, image, reference, params)
-	return err
-}
-
-// V2PutImageManifestsReference converts echo context to params.
-func (w *ServerInterfaceWrapper) V2PutImageManifestsReference(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "image" -------------
-	var image string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "image", ctx.Param("image"), &image, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter image: %s", err))
-	}
-
-	// ------------- Path parameter "reference" -------------
-	var reference string
-
-	err = runtime.BindStyledParameterWithOptions("simple", "reference", ctx.Param("reference"), &reference, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2PutImageManifestsReference(ctx, image, reference)
 	return err
 }
 
@@ -1237,6 +1123,120 @@ func (w *ServerInterfaceWrapper) V2HeadS1BlobsDigest(ctx echo.Context) error {
 	return err
 }
 
+// V2DeleteS1ManifestsReference converts echo context to params.
+func (w *ServerInterfaceWrapper) V2DeleteS1ManifestsReference(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "s1" -------------
+	var s1 string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "s1", ctx.Param("s1"), &s1, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter s1: %s", err))
+	}
+
+	// ------------- Path parameter "reference" -------------
+	var reference string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "reference", ctx.Param("reference"), &reference, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.V2DeleteS1ManifestsReference(ctx, s1, reference)
+	return err
+}
+
+// V2GetS1ManifestsReference converts echo context to params.
+func (w *ServerInterfaceWrapper) V2GetS1ManifestsReference(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "s1" -------------
+	var s1 string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "s1", ctx.Param("s1"), &s1, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter s1: %s", err))
+	}
+
+	// ------------- Path parameter "reference" -------------
+	var reference string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "reference", ctx.Param("reference"), &reference, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params V2GetS1ManifestsReferenceParams
+	// ------------- Optional query parameter "ns" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "ns", ctx.QueryParams(), &params.Ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.V2GetS1ManifestsReference(ctx, s1, reference, params)
+	return err
+}
+
+// V2HeadS1ManifestsReference converts echo context to params.
+func (w *ServerInterfaceWrapper) V2HeadS1ManifestsReference(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "s1" -------------
+	var s1 string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "s1", ctx.Param("s1"), &s1, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter s1: %s", err))
+	}
+
+	// ------------- Path parameter "reference" -------------
+	var reference string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "reference", ctx.Param("reference"), &reference, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params V2HeadS1ManifestsReferenceParams
+	// ------------- Optional query parameter "ns" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "ns", ctx.QueryParams(), &params.Ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.V2HeadS1ManifestsReference(ctx, s1, reference, params)
+	return err
+}
+
+// V2PutS1ManifestsReference converts echo context to params.
+func (w *ServerInterfaceWrapper) V2PutS1ManifestsReference(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "s1" -------------
+	var s1 string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "s1", ctx.Param("s1"), &s1, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter s1: %s", err))
+	}
+
+	// ------------- Path parameter "reference" -------------
+	var reference string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "reference", ctx.Param("reference"), &reference, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.V2PutS1ManifestsReference(ctx, s1, reference)
+	return err
+}
+
 // This is a simple interface which specifies echo.Route addition functions which
 // are present on both echo.Echo and echo.Group, since we want to allow using
 // either of them for path registration
@@ -1274,10 +1274,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/v2/", wrapper.V2Default)
 	router.HEAD(baseURL+"/v2/", wrapper.V2HeadDefault)
 	router.GET(baseURL+"/v2/auth", wrapper.V2Auth)
-	router.DELETE(baseURL+"/v2/:image/manifests/:reference", wrapper.V2DeleteImageManifestsReference)
-	router.GET(baseURL+"/v2/:image/manifests/:reference", wrapper.V2GetImageManifestsReference)
-	router.HEAD(baseURL+"/v2/:image/manifests/:reference", wrapper.V2HeadImageManifestsReference)
-	router.PUT(baseURL+"/v2/:image/manifests/:reference", wrapper.V2PutImageManifestsReference)
 	router.POST(baseURL+"/v2/:name/blobs/uploads", wrapper.V2PostNameBlobsUploads)
 	router.GET(baseURL+"/v2/:name/blobs/uploads/:reference", wrapper.V2GetNameBlobsUploadsReference)
 	router.PATCH(baseURL+"/v2/:name/blobs/uploads/:reference", wrapper.V2PatchNameBlobsUploadsReference)
@@ -1301,31 +1297,34 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/v2/:s1/blobs/:digest", wrapper.V2DeleteS1BlobsDigest)
 	router.GET(baseURL+"/v2/:s1/blobs/:digest", wrapper.V2GetS1BlobsDigest)
 	router.HEAD(baseURL+"/v2/:s1/blobs/:digest", wrapper.V2HeadS1BlobsDigest)
+	router.DELETE(baseURL+"/v2/:s1/manifests/:reference", wrapper.V2DeleteS1ManifestsReference)
+	router.GET(baseURL+"/v2/:s1/manifests/:reference", wrapper.V2GetS1ManifestsReference)
+	router.HEAD(baseURL+"/v2/:s1/manifests/:reference", wrapper.V2HeadS1ManifestsReference)
+	router.PUT(baseURL+"/v2/:s1/manifests/:reference", wrapper.V2PutS1ManifestsReference)
 
 }
 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xZX1PbRhD/Kpp7amcUywbaBz81hUziGQIM0L50+nA+raWbke4ud3s0jkffvbOyTRKw",
-	"hCXLCQa9gOFuV7u/3/6VFww+I1jFszMtHBsvWAxOWGlQasXG7L3ED34aOO2tgEDoGFjIvM3YmKWIxo2j",
-	"KJGY+ulA6DziAsBKEWkhLSTSoZ2zImRSzTSpFlohF0gfIeeSlHBjvsyT+R/GatRqkAPd/96EK59lb7TK",
-	"5oGhT5ha7ZM0EFykUiXB5ekkOKNHyaknieAG7B1YFrJMClAO6HGK58DG7OPkNjhf/jf4JdexnEmIf33k",
-	"keX/DZZeeQeWrAaFVQ5GFmYuSoHHLsq5VNH55PTdxc07cgTB5u5yRhZJQQZcaEUAosSM/iTbr1d6gjfB",
-	"pQH19moSHA+GLGR3YN0SgdFgOBiSPm1AcSPZmB0PhoNjFjLDMS1pi+hHAiW42oDlhMUkZmN2rTWykFlw",
-	"RisH5e2j4fAx16woiiJkkcjjaJrpaZRJh5VqT/P4z0xPyztkh+U5IFjHxv8smCR9nzzYOQvX4Ds/dUi8",
-	"OJFCzkkjzk15glaqhBVFuFlSaK9wk6BUCAlYVhT/budgyE6qD07qIZE5T+BJTCZ0a3tQDEdKvzaoxDIB",
-	"h4eLZ86VnIHDJyH9uLr4Q1B9HtgY6xUsr2SAsBGWq/LOVniULpDVn7y0ELMxWg9tQs63yl/4bFrJxXZ+",
-	"7Q+YRYfa1AX2DZ03qcx3R9Vl/u+jM5hxn21b62sdG222IWTU5zY9+wPweP/PX2HAPaY1OLyl4815QeaX",
-	"s8EqTkiTtvJLKd5Fhjihy1RrLriaEepEG4RsPYCLspcV9yXYRQsLM7CgBBR1ZYeCjE7KLreuy+56LVuB",
-	"Og0pXz0tn90K6+/12G+eur2uxxgedZP2dPBbVdpUROp7wMNFsiKQlesqhk/aFKEez+Z4Gr8xOq88vqQ8",
-	"H7Xo4lQryYyiXIhc5E2meVwqNNptRk07vOA50HLk/lrd3wav8lcXQ1rrvSCvmpqeEpxZnbNO2OisHNfy",
-	"97DdVZfnh0w2S4HWlO4nA06aVwaOIt0Y5XTwosA5atrtR783r6cHjFj7atOgFO+W46VjFqyLFkuztkju",
-	"67XM2dqRH8bDPXQ7k8AtyhkXeDs3nW0Qu1GBPHH1L3buGbjliTuX+4b+4VTVps1lvHGkt0bRFdFC26S4",
-	"39WWDezbwH5qSbtwlzYpJ7iy5DQJcNdBeGubdKClqymyRbJ10CPabIQ9bV3T1u2G2fPzs/mpLpKtX2h9",
-	"JbXltvsCuX0ZL9h6ZvfH7L4Ka8/Uz2eqZonteXp2Lyl3XBXaTjT9jN+uKfV476mH9MDuPFV3M1Dv2CL6",
-	"SXh/RecVU/I8v7PuiXmWX373tHQ4oLpRm7n0ZtS0kbvRqxokDxmgbovoa0KiKIr/AwAA//9+47S5uTEA",
-	"AA==",
+	"H4sIAAAAAAAC/+xYTW/jNhD9KwJPLaC1ZCftwaduk8WugWwS2GkvRQ80NZYISCR3SKbrNfTfC8r2NltL",
+	"iiXLSZzokjghOZx5bz4evSLw1QAKml5Kpsl4RSLQDLkyXAoyJh+5+WTnnpYWGXhMRkB8YjElY5IYo/Q4",
+	"CGJuEjsfMJkFlAEgZ4FkHCHm2uCS5D7hYiGdaSaFocy4j5BR7oxQpb4t4+VvCqWRYpCB2/+jC7c2Td9J",
+	"kS495T6ZBKWNE49RlnARezcXE+/SXcXn1p3wZoD3gMQnKWcgNLjrBM2AjMnnyZ13tf6v91MmI77gEP28",
+	"ExHSfwbrqKwGdF6DMFUBBggLHSRAIx1klIvganLx4Xr2wQViADN9s3AeceYcuJbCAWi4Sd2fzvfpxo73",
+	"zrtRIN7fTryzQUh8cg+o1wgMB+EgdPakAkEVJ2NyNggHZ8QnipqkoC1wP2IowJUKkDosJhEZk6mUhvgE",
+	"QSspNBS7R2G4yzXJ8zz3ScCyKJinch6kXJtKsxdZ9Hsq58Ue5wfSDAygJuO/VoQ7e18s4JL4W/C1nWvj",
+	"eNEsgYw6i2apihWDXMQkz/3yk0xaYcoOcmEgBiR5/vd+AfrkvHrhvB4SntEYHsVk4nbtD4qixpVfG1Qi",
+	"HoM2p4tnRgVfgDaPQvp5s/FJUH0Z2Ci0AtZbUjBQCsttsWcvPIoQnNdfLEeIyNighTYpZ1vVL3xVrc5F",
+	"uJzaE2ZRG6nqEnvm1pt05vtRdZv/c3QJC2rTfXt9bWDDch984uZc2d2fgEbHv3+DAbUmqcHhvVsurwvn",
+	"fqENNnniLEnk34rjXVSIZrIoteYHNxqh7miDlK0HcOUuzYshrwOrUkmjwqCSuhTRW6nNNc3ADXz9x2Z/",
+	"OcJOkPwXVfGri8bTetZlVZ3gsYMLlFlDNoblbIzCUZedpYK/YIWwAATBIK8pjo+ww+R0e+64lP5oBh9c",
+	"ur+tXczPGyJYSGaWlGa5W3hV4IwageOT8+GvlajZ8s5gTzmd2nebvYv/0BovAkNAHazWbu1R3NPtmctt",
+	"IE/Gw3foDiaBouELyszdUnU2FQ+jwtBY1z9WvjNwR2N9xY8N/f8Qa6WUU9o401ujqPNgJTHOg1Xxlt4O",
+	"sIeJXfXecerWrVzrG4yLN3bRcpokuO4gvSXGHVgpon+eYutgRoS/VM2ImproaeuYtrCx7ql7uvX8PDc/",
+	"1U1y+z3ZjsLfv1duv0Frqs1eH7dHV9bh07bTntmumT1WY+2Zen6mah6xPU9H42nYchQe+FRoq2h6jd9u",
+	"KPV4H2mG9MAerKq7EdQHjoheCR+v6bxhSqq+DdTkJTStnphnIKZa5/a0dChQ9bCNLp0Nmw5yPXxTQvKU",
+	"Aeq2ib4lJB4WVWuFNhu2bGyd4PY6JNUpYvgyNVCPZDei5XVUdWOVkef/BgAA//99Q30rnjEAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

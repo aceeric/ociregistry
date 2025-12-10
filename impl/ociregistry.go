@@ -87,9 +87,9 @@ func (r *OciRegistry) V2GetNsOrgImageBlobsDigest(ctx echo.Context, ns string, or
 	return r.handleV2GetOrgImageBlobsDigest(ctx, org, image, digest)
 }
 
-// HEAD /v2/{image}/manifests/{reference}
-func (r *OciRegistry) V2HeadImageManifestsReference(ctx echo.Context, image string, reference string, params models.V2HeadImageManifestsReferenceParams) error {
-	return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodHead, params.Ns)
+// HEAD /v2/{s1}/manifests/{reference}
+func (r *OciRegistry) V2HeadS1ManifestsReference(ctx echo.Context, s1 string, reference string, params models.V2HeadS1ManifestsReferenceParams) error {
+	return r.handleV2OrgImageManifestsReference(ctx, "", s1, reference, http.MethodHead, params.Ns)
 }
 
 // HEAD /v2/{org}/{image}/manifests/{reference}
@@ -108,9 +108,9 @@ func (r *OciRegistry) V2HeadNsOrgImageManifestsReference(ctx echo.Context, ns st
 	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodHead, &_ns)
 }
 
-// GET /v2/{image}/manifests/{reference}
-func (r *OciRegistry) V2GetImageManifestsReference(ctx echo.Context, image string, reference string, params models.V2GetImageManifestsReferenceParams) error {
-	return r.handleV2OrgImageManifestsReference(ctx, "", image, reference, http.MethodGet, params.Ns)
+// GET /v2/{s1}/manifests/{reference}
+func (r *OciRegistry) V2GetS1ManifestsReference(ctx echo.Context, s1 string, reference string, params models.V2GetS1ManifestsReferenceParams) error {
+	return r.handleV2OrgImageManifestsReference(ctx, "", s1, reference, http.MethodGet, params.Ns)
 }
 
 // GET /v2/{org}/{image}/manifests/{reference}
@@ -195,10 +195,10 @@ func (r *OciRegistry) V2DeleteOrgImageManifestsReference(ctx echo.Context, org s
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteImageManifestsReference(ctx echo.Context, image string, reference string) error {
+func (r *OciRegistry) V2DeleteS1ManifestsReference(ctx echo.Context, s1 string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutImageManifestsReference(ctx echo.Context, image string, reference string) error {
+func (r *OciRegistry) V2PutS1ManifestsReference(ctx echo.Context, s1 string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }

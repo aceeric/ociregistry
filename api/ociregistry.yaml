@@ -776,14 +776,14 @@ paths:
           description: ""
         '405':
           description: ""
-  /v2/{image}/manifests/{reference}:
+  /v2/{s1}/manifests/{reference}:
     get:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-get-image-manifests-reference
+      operationId: v2-get-s1-manifests-reference
       parameters:
-      - name: image
+      - name: s1
         in: path
         description: ""
         required: true
@@ -811,9 +811,9 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-head-image-manifests-reference
+      operationId: v2-head-s1-manifests-reference
       parameters:
-      - name: image
+      - name: s1
         in: path
         description: ""
         required: true
@@ -841,9 +841,9 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-put-image-manifests-reference
+      operationId: v2-put-s1-manifests-reference
       parameters:
-      - name: image
+      - name: s1
         in: path
         description: ""
         required: true
@@ -865,9 +865,9 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-delete-image-manifests-reference
+      operationId: v2-delete-s1-manifests-reference
       parameters:
-      - name: image
+      - name: s1
         in: path
         description: ""
         required: true

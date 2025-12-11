@@ -31,6 +31,9 @@ type PullRequest struct {
 	Image string
 	// Reference is the tag or digest. E.g. if initialized with quay.io/argoproj/argocd:v2.11.11
 	// the this field has value 'v2.11.11'
+	Repository string
+	// Reference is the tag or digest. E.g. if initialized with quay.io/argoproj/argocd:v2.11.11
+	// the this field has value 'v2.11.11'
 	Reference string
 	// Remote is the remote host. E.g. if initialized with quay.io/argoproj/argocd:v2.11.11
 	// the this field has value 'quay.io'
@@ -49,6 +52,33 @@ func NewPullRequest(org, image, reference, remote string) PullRequest {
 		Reference: strings.ToLower(reference),
 		Remote:    strings.ToLower(remote),
 	}
+}
+
+func NewPullRequest2(regHdr string, ns *string, defaultNs string, reference string, segments ...string) (PullRequest, error) {
+	pr := PullRequest{
+		PullType:  typeFromRef(reference),
+		Reference: strings.ToLower(reference),
+	}
+	frst := 0
+	switch {
+	case regHdr != "":
+		pr.Remote = regHdr
+	case ns != nil:
+		pr.Remote = *ns
+	case strings.Contains(segments[0], "."):
+		pr.Remote = segments[0]
+		frst = 1
+	case defaultNs != "":
+		pr.Remote = defaultNs
+	default:
+		return pr, fmt.Errorf("unable to extract remote from segments: %v", segments)
+	}
+	if strings.Contains(segments[frst], ".") {
+		return pr, fmt.Errorf("two namespaces: %s and %s", pr.Remote, segments[frst])
+
+	}
+	pr.Repository = strings.Join((segments[frst:]), "/")
+	return pr, nil
 }
 
 // NewPullRequestFromUrl parses the passed image url (e.g. docker.io/hello-world:latest,

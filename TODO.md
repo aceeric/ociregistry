@@ -4,6 +4,7 @@
 
 - additional path segments
   - change impl/handlers.go LAST
+  - handleV2GetOrgImageBlobsDigest should only accept digest if truly ignores all other params
 - /home/eace/projects/ociregistry/impl/pullrequest/pullrequest.go - `type PullRequest struct {` has dangling comment?
 - impl/cache/cache.go has fmt.Printf
 

@@ -82,9 +82,9 @@ func (r *OciRegistry) V2GetS1S2BlobsDigest(ctx echo.Context, s1 string, s2 strin
 	return r.handleV2GetOrgImageBlobsDigest(ctx, s1, s2, digest)
 }
 
-// GET /v2/{ns}/{org}/{image}/blobs/{digest}
-func (r *OciRegistry) V2GetNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error {
-	return r.handleV2GetOrgImageBlobsDigest(ctx, org, image, digest)
+// GET /v2/{s1}/{s2}/{s3}/blobs/{digest}
+func (r *OciRegistry) V2GetS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, digest string) error {
+	return r.handleV2GetOrgImageBlobsDigest(ctx, s2, s3, digest)
 }
 
 // HEAD /v2/{s1}/manifests/{reference}
@@ -102,10 +102,10 @@ func (r *OciRegistry) V2HeadS1S2ManifestsReference(ctx echo.Context, s1 string, 
 	return r.handleV2OrgImageManifestsReference(ctx, s1, s2, reference, http.MethodHead, params.Ns)
 }
 
-// HEAD /v2/{ns}/{org}/{image}/manifests/{reference}
-func (r *OciRegistry) V2HeadNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
-	_ns := ns
-	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodHead, &_ns)
+// HEAD /v2/{s1}/{s2}/{s3}/manifests/{reference}
+func (r *OciRegistry) V2HeadS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error {
+	_ns := s1
+	return r.handleV2OrgImageManifestsReference(ctx, s2, s3, reference, http.MethodHead, &_ns)
 }
 
 // GET /v2/{s1}/manifests/{reference}
@@ -123,15 +123,15 @@ func (r *OciRegistry) V2GetS1S2ManifestsReference(ctx echo.Context, s1 string, s
 	return r.handleV2OrgImageManifestsReference(ctx, s1, s2, reference, http.MethodGet, params.Ns)
 }
 
-// GET /v2/{ns}/{org}/{image}/manifests/{reference}
-func (r *OciRegistry) V2GetNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
-	_ns := ns
-	return r.handleV2OrgImageManifestsReference(ctx, org, image, reference, http.MethodGet, &_ns)
+// GET /v2/{s1}/{s2}/{s3}/manifests/{reference}
+func (r *OciRegistry) V2GetS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error {
+	_ns := s1
+	return r.handleV2OrgImageManifestsReference(ctx, s2, s3, reference, http.MethodGet, &_ns)
 }
 
 // unimplemented methods of the OCI distribution spec
 
-func (r *OciRegistry) V2HeadNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error {
+func (r *OciRegistry) V2HeadS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -159,7 +159,7 @@ func (r *OciRegistry) V2PutNameBlobsUploadsReference(ctx echo.Context, name stri
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
+func (r *OciRegistry) V2PutS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -175,7 +175,7 @@ func (r *OciRegistry) V2GetNameTagsList(ctx echo.Context, name string, params mo
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteNsOrgImageBlobsDigest(ctx echo.Context, ns string, org string, image string, digest string) error {
+func (r *OciRegistry) V2DeleteS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
@@ -187,7 +187,7 @@ func (r *OciRegistry) V2DeleteS1BlobsDigest(ctx echo.Context, s1 string, digest 
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteNsOrgImageManifestsReference(ctx echo.Context, ns string, org string, image string, reference string) error {
+func (r *OciRegistry) V2DeleteS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 

@@ -86,26 +86,26 @@ paths:
           content: {}
         '401':
           description: ""
-  /v2/{ns}/{org}/{image}/blobs/{digest}:
+  /v2/{s1}/{s2}/{s3}/blobs/{digest}:
     get:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-get-ns-org-image-blobs-digest
+      operationId: v2-get-s1-s2-s3-blobs-digest
       parameters:
-      - name: ns
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: org
+      - name: s2
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s3
         in: path
         description: ""
         required: true
@@ -127,21 +127,21 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-head-ns-org-image-blobs-digest
+      operationId: v2-head-s1-s2-s3-blobs-digest
       parameters:
-      - name: ns
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: org
+      - name: s2
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s3
         in: path
         description: ""
         required: true
@@ -163,21 +163,21 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-delete-ns-org-image-blobs-digest
+      operationId: v2-delete-s1-s2-s3-blobs-digest
       parameters:
-      - name: ns
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: org
+      - name: s2
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s3
         in: path
         description: ""
         required: true
@@ -490,26 +490,26 @@ paths:
           content: {}
         '404':
           description: ""
-  /v2/{ns}/{org}/{image}/manifests/{reference}:
+  /v2/{s1}/{s2}/{s3}/manifests/{reference}:
     get:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-get-ns-org-image-manifests-reference
+      operationId: v2-get-s1-s2-s3-manifests-reference
       parameters:
-      - name: ns
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: org
+      - name: s2
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s3
         in: path
         description: ""
         required: true
@@ -531,21 +531,21 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-head-ns-org-image-manifests-reference
+      operationId: v2-head-s1-s2-s3-manifests-reference
       parameters:
-      - name: ns
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: org
+      - name: s2
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s3
         in: path
         description: ""
         required: true
@@ -567,21 +567,21 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-put-ns-org-image-manifests-reference
+      operationId: v2-put-s1-s2-s3-manifests-reference
       parameters:
-      - name: ns
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: org
+      - name: s2
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s3
         in: path
         description: ""
         required: true
@@ -603,21 +603,21 @@ paths:
       tags: []
       summary: ""
       description: ""
-      operationId: v2-delete-ns-org-image-manifests-reference
+      operationId: v2-delete-s1-s2-s3-manifests-reference
       parameters:
-      - name: ns
+      - name: s1
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: org
+      - name: s2
         in: path
         description: ""
         required: true
         schema:
           type: string
-      - name: image
+      - name: s3
         in: path
         description: ""
         required: true

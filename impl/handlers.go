@@ -77,14 +77,12 @@ func (r *OciRegistry) handleV2BlobsDigest(ctx echo.Context, repository string, d
 // GET /v2/
 func (r *OciRegistry) handleV2Default(ctx echo.Context) error {
 	metrics.IncV2ApiEndpointHits()
-	log.Info("get /v2/")
 	return ctx.JSON(http.StatusOK, "true")
 }
 
 // HEAD /v2/
 func (r *OciRegistry) handleV2HeadDefault(ctx echo.Context) error {
 	metrics.IncV2ApiEndpointHits()
-	log.Info("head /v2/")
 	return ctx.JSON(http.StatusOK, "true")
 }
 
@@ -92,7 +90,6 @@ func (r *OciRegistry) handleV2HeadDefault(ctx echo.Context) error {
 // it gets one.
 func (r *OciRegistry) handleV2Auth(ctx echo.Context, params models.V2AuthParams) error {
 	metrics.IncV2ApiEndpointHits()
-	log.Infof("get auth scope: %s, service: %s, auth: %s", *params.Scope, *params.Service, params.Authorization)
 	body := struct {
 		Token string `json:"token"`
 	}{

@@ -10,6 +10,7 @@ import (
 
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/pullrequest"
 
 	_ "crypto/sha256"
 	_ "crypto/sha512"
@@ -68,65 +69,73 @@ func (r *OciRegistry) V2HeadDefault(ctx echo.Context) error {
 	return r.handleV2HeadDefault(ctx)
 }
 
-// note regarding these blob getters: in the handler everything except the digest is ignored because
-// since the blob is content addressable storage the only thing that is needed is the digest. The other
-// segments are just in the API because clients will expect those endpoints
-
 // GET /v2/{s1}/blobs/{digest}
 func (r *OciRegistry) V2GetS1BlobsDigest(ctx echo.Context, s1 string, digest string) error {
-	return r.handleV2GetOrgImageBlobsDigest(ctx, "", s1, digest)
+	return r.handleV2BlobsDigest(ctx, s1, digest)
 }
 
 // GET /v2/{s1}/{s2}/blobs/{digest}
 func (r *OciRegistry) V2GetS1S2BlobsDigest(ctx echo.Context, s1 string, s2 string, digest string) error {
-	return r.handleV2GetOrgImageBlobsDigest(ctx, s1, s2, digest)
+	return r.handleV2BlobsDigest(ctx, strings.Join([]string{s1, s2}, "/"), digest)
 }
 
 // GET /v2/{s1}/{s2}/{s3}/blobs/{digest}
 func (r *OciRegistry) V2GetS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, digest string) error {
-	return r.handleV2GetOrgImageBlobsDigest(ctx, s2, s3, digest)
+	return r.handleV2BlobsDigest(ctx, strings.Join([]string{s1, s2, s3}, "/"), digest)
 }
 
 // HEAD /v2/{s1}/manifests/{reference}
 func (r *OciRegistry) V2HeadS1ManifestsReference(ctx echo.Context, s1 string, reference string, params models.V2HeadS1ManifestsReferenceParams) error {
-	return r.handleV2OrgImageManifestsReference(ctx, "", s1, reference, http.MethodHead, params.Ns)
+	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1); err == nil {
+		return r.handleV2ManifestsReference(ctx, pr, http.MethodHead)
+	} else {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
 }
 
 // HEAD /v2/{s1}/{s2}/manifests/{reference}
 func (r *OciRegistry) V2HeadS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string, params models.V2HeadS1S2ManifestsReferenceParams) error {
-	if strings.Contains(s1, ".") {
-		// if /v2/docker.io/hello-world/manifests/latest then org is a namespace
-		ns := s1
-		return r.handleV2OrgImageManifestsReference(ctx, "", s2, reference, http.MethodHead, &ns)
+	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2); err == nil {
+		return r.handleV2ManifestsReference(ctx, pr, http.MethodHead)
+	} else {
+		return ctx.JSON(http.StatusBadRequest, err)
 	}
-	return r.handleV2OrgImageManifestsReference(ctx, s1, s2, reference, http.MethodHead, params.Ns)
 }
 
 // HEAD /v2/{s1}/{s2}/{s3}/manifests/{reference}
-func (r *OciRegistry) V2HeadS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error {
-	_ns := s1
-	return r.handleV2OrgImageManifestsReference(ctx, s2, s3, reference, http.MethodHead, &_ns)
+func (r *OciRegistry) V2HeadS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string, params models.V2HeadS1S2S3ManifestsReferenceParams) error {
+	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2, s3); err == nil {
+		return r.handleV2ManifestsReference(ctx, pr, http.MethodHead)
+	} else {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
 }
 
 // GET /v2/{s1}/manifests/{reference}
 func (r *OciRegistry) V2GetS1ManifestsReference(ctx echo.Context, s1 string, reference string, params models.V2GetS1ManifestsReferenceParams) error {
-	return r.handleV2OrgImageManifestsReference(ctx, "", s1, reference, http.MethodGet, params.Ns)
+	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1); err == nil {
+		return r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
+	} else {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
 }
 
 // GET /v2/{s1}/{s2}/manifests/{reference}
 func (r *OciRegistry) V2GetS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string, params models.V2GetS1S2ManifestsReferenceParams) error {
-	if strings.Contains(s1, ".") {
-		// if /v2/docker.io/hello-world/manifests/latest then org is a namespace
-		ns := s1
-		return r.handleV2OrgImageManifestsReference(ctx, "", s2, reference, http.MethodGet, &ns)
+	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2); err == nil {
+		return r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
+	} else {
+		return ctx.JSON(http.StatusBadRequest, err)
 	}
-	return r.handleV2OrgImageManifestsReference(ctx, s1, s2, reference, http.MethodGet, params.Ns)
 }
 
 // GET /v2/{s1}/{s2}/{s3}/manifests/{reference}
-func (r *OciRegistry) V2GetS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error {
-	_ns := s1
-	return r.handleV2OrgImageManifestsReference(ctx, s2, s3, reference, http.MethodGet, &_ns)
+func (r *OciRegistry) V2GetS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string, params models.V2GetS1S2S3ManifestsReferenceParams) error {
+	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2, s3); err == nil {
+		return r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
+	} else {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
 }
 
 // unimplemented methods of the OCI distribution spec

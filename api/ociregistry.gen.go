@@ -122,10 +122,10 @@ type ServerInterface interface {
 	V2DeleteS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error
 
 	// (GET /v2/{s1}/{s2}/{s3}/manifests/{reference})
-	V2GetS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error
+	V2GetS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string, params V2GetS1S2S3ManifestsReferenceParams) error
 
 	// (HEAD /v2/{s1}/{s2}/{s3}/manifests/{reference})
-	V2HeadS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error
+	V2HeadS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string, params V2HeadS1S2S3ManifestsReferenceParams) error
 
 	// (PUT /v2/{s1}/{s2}/{s3}/manifests/{reference})
 	V2PutS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error
@@ -1152,8 +1152,17 @@ func (w *ServerInterfaceWrapper) V2GetS1S2S3ManifestsReference(ctx echo.Context)
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params V2GetS1S2S3ManifestsReferenceParams
+	// ------------- Optional query parameter "ns" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "ns", ctx.QueryParams(), &params.Ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2GetS1S2S3ManifestsReference(ctx, s1, s2, s3, reference)
+	err = w.Handler.V2GetS1S2S3ManifestsReference(ctx, s1, s2, s3, reference, params)
 	return err
 }
 
@@ -1192,8 +1201,17 @@ func (w *ServerInterfaceWrapper) V2HeadS1S2S3ManifestsReference(ctx echo.Context
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reference: %s", err))
 	}
 
+	// Parameter object where we will unmarshal all parameters from the context
+	var params V2HeadS1S2S3ManifestsReferenceParams
+	// ------------- Optional query parameter "ns" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "ns", ctx.QueryParams(), &params.Ns)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter ns: %s", err))
+	}
+
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.V2HeadS1S2S3ManifestsReference(ctx, s1, s2, s3, reference)
+	err = w.Handler.V2HeadS1S2S3ManifestsReference(ctx, s1, s2, s3, reference, params)
 	return err
 }
 
@@ -1307,24 +1325,24 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

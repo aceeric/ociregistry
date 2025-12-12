@@ -1,12 +1,8 @@
 # In progress
 
-# On deck
-
 - additional path segments
-  - change impl/handlers.go LAST
-  - handleV2GetOrgImageBlobsDigest should only accept digest if truly ignores all other params
-- /home/eace/projects/ociregistry/impl/pullrequest/pullrequest.go - `type PullRequest struct {` has dangling comment?
-- impl/cache/cache.go has fmt.Printf
+
+# On deck
 
 # Parked
 
@@ -19,9 +15,3 @@
 - Consider https://github.com/OpenAPITools/openapi-generator
 - Enable swagger UI (https://github.com/go-swagger/go-swagger)?
 - Other (badges) https://github.com/prometheus/prometheus
-
-
-update /home/eace/projects/ociregistry/api/ociregistry.yaml
-make oapi-codegen
-impl/ociregistry.go
- - get / head / put / delete - rename method, unimlp methods, and params

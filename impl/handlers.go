@@ -17,10 +17,9 @@ import (
 )
 
 // HEAD or GET /v2/.../manifests/ref
-func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org string, image string, ref string, verb string, ns *string) error {
+func (r *OciRegistry) handleV2ManifestsReference(ctx echo.Context, pr pullrequest.PullRequest, verb string) error {
 	metrics.IncV2ApiEndpointHits()
 	metrics.IncManifestPulls()
-	pr := pullrequest.NewPullRequest(org, image, ref, parseRemote(ctx, ns, r.defaultNs))
 	if r.airGapped && !cache.IsCached(pr) {
 		log.Debugf("request for un-cached manifest %q in air-gapped mode - returning 404", pr.Url())
 		metrics.IncApiErrorResults()
@@ -45,20 +44,20 @@ func (r *OciRegistry) handleV2OrgImageManifestsReference(ctx echo.Context, org s
 	}
 }
 
-// GET /v2/org/image/blobs/digest
-func (r *OciRegistry) handleV2GetOrgImageBlobsDigest(ctx echo.Context, org string, image string, digest string) error {
+// GET /v2/.../blobs/digest
+func (r *OciRegistry) handleV2BlobsDigest(ctx echo.Context, repository string, digest string) error {
 	metrics.IncV2ApiEndpointHits()
 	metrics.IncBlobPulls()
 	digest = helpers.GetDigestFrom(digest)
 	if refCnt := cache.GetBlob(digest); refCnt <= 0 {
-		log.Errorf("blob not in cache for org %q, image %q, digest %q", org, image, digest)
+		log.Errorf("blob not in cache for %q, digest %q", repository, digest)
 		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusNotFound, "")
 	}
 	blob_file := helpers.GetBlobPath(r.imagePath, digest)
 	fi, err := os.Stat(blob_file)
 	if err != nil {
-		log.Errorf("blob not on the file system for org %q, image %q, digest %q", org, image, digest)
+		log.Errorf("blob not on the file system for %q, digest %q", repository, digest)
 		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}
@@ -102,24 +101,11 @@ func (r *OciRegistry) handleV2Auth(ctx echo.Context, params models.V2AuthParams)
 	return ctx.JSON(http.StatusOK, body)
 }
 
-// parseRemote looks in the passed echo context for header 'X-Registry' and if
-// it exists, returns the header value. Else looks at the passed namespace arg and if
-// non-nil, returns the value from the pointer. Background: if containerd is configured
-// to mirror, then when it pulls from the mirror it passes the registry being mirrored
-// as a query param like so:
-//
-//	https://mymirror.io/v2/image-name/manifests/tag-name?ns=myregistry.io:5000.
-//
-// This query param is passed through to the API handlers so they can know which upstream
-// registry to pull from. If neither the header nor the query param are set then the
-// function returns the empty string.
-func parseRemote(ctx echo.Context, namespace *string, defaultNs string) string {
+// x_registry_hdr returns the X-Registry header from the passed context or the empty
+// string if the header is not present.
+func (r *OciRegistry) x_registry_hdr(ctx echo.Context) string {
 	if hdr, exists := ctx.Request().Header["X-Registry"]; exists && len(hdr) == 1 {
 		return hdr[0]
-	} else if namespace != nil {
-		return *namespace
-	} else if defaultNs != "" {
-		return defaultNs
 	}
 	return ""
 }

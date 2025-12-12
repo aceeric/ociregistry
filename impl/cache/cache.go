@@ -520,7 +520,7 @@ func signalWaiters(url string) {
 		for _, ch := range chans {
 			defer func() {
 				if err := recover(); err != nil {
-					fmt.Printf("attempt to write to closed channel for url %q", url)
+					log.Errorf("attempt to write to closed channel for url %q", url)
 				}
 			}()
 			ch <- true

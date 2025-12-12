@@ -521,6 +521,12 @@ paths:
         required: true
         schema:
           type: string
+      - name: ns
+        in: query
+        description: ""
+        required: false
+        schema:
+          type: string
       responses:
         '200':
           description: ""
@@ -555,6 +561,12 @@ paths:
         in: path
         description: ""
         required: true
+        schema:
+          type: string
+      - name: ns
+        in: query
+        description: ""
+        required: false
         schema:
           type: string
       responses:

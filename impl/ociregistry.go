@@ -84,6 +84,11 @@ func (r *OciRegistry) V2GetS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 str
 	return r.handleV2BlobsDigest(ctx, strings.Join([]string{s1, s2, s3}, "/"), digest)
 }
 
+// GET /v2/{s1}/{s2}/{s3}/{s4}/blobs/{digest}
+func (r *OciRegistry) V2GetS1S2S3S4BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, digest string) error {
+	return r.handleV2BlobsDigest(ctx, strings.Join([]string{s1, s2, s3, s4}, "/"), digest)
+}
+
 // HEAD /v2/{s1}/manifests/{reference}
 func (r *OciRegistry) V2HeadS1ManifestsReference(ctx echo.Context, s1 string, reference string, params models.V2HeadS1ManifestsReferenceParams) error {
 	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1); err == nil {
@@ -105,6 +110,15 @@ func (r *OciRegistry) V2HeadS1S2ManifestsReference(ctx echo.Context, s1 string, 
 // HEAD /v2/{s1}/{s2}/{s3}/manifests/{reference}
 func (r *OciRegistry) V2HeadS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string, params models.V2HeadS1S2S3ManifestsReferenceParams) error {
 	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2, s3); err == nil {
+		return r.handleV2ManifestsReference(ctx, pr, http.MethodHead)
+	} else {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
+}
+
+// HEAD /v2/{s1}/{s2}/{s3}/{s4}/manifests/{reference}
+func (r *OciRegistry) V2HeadS1S2S3S4ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, reference string, params models.V2HeadS1S2S3S4ManifestsReferenceParams) error {
+	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2, s3, s4); err == nil {
 		return r.handleV2ManifestsReference(ctx, pr, http.MethodHead)
 	} else {
 		return ctx.JSON(http.StatusBadRequest, err)
@@ -138,7 +152,20 @@ func (r *OciRegistry) V2GetS1S2S3ManifestsReference(ctx echo.Context, s1 string,
 	}
 }
 
+// GET /v2/{s1}/{s2}/{s3}/{s4}/manifests/{reference}
+func (r *OciRegistry) V2GetS1S2S3S4ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, reference string, params models.V2GetS1S2S3S4ManifestsReferenceParams) error {
+	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2, s3, s4); err == nil {
+		return r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
+	} else {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
+}
+
 // unimplemented methods of the OCI distribution spec
+
+func (r *OciRegistry) V2HeadS1S2S3S4BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, digest string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
 
 func (r *OciRegistry) V2HeadS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
@@ -168,6 +195,10 @@ func (r *OciRegistry) V2PutNameBlobsUploadsReference(ctx echo.Context, name stri
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
+func (r *OciRegistry) V2PutS1S2S3S4ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, reference string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
 func (r *OciRegistry) V2PutS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
@@ -184,6 +215,10 @@ func (r *OciRegistry) V2GetNameTagsList(ctx echo.Context, name string, params mo
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 
+func (r *OciRegistry) V2DeleteS1S2S3S4BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, digest string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
 func (r *OciRegistry) V2DeleteS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, digest string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
@@ -193,6 +228,10 @@ func (r *OciRegistry) V2DeleteS1S2BlobsDigest(ctx echo.Context, s1 string, s2 st
 }
 
 func (r *OciRegistry) V2DeleteS1BlobsDigest(ctx echo.Context, s1 string, digest string) error {
+	return ctx.NoContent(http.StatusMethodNotAllowed)
+}
+
+func (r *OciRegistry) V2DeleteS1S2S3S4ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, reference string) error {
 	return ctx.NoContent(http.StatusMethodNotAllowed)
 }
 

@@ -86,6 +86,135 @@ paths:
           content: {}
         '401':
           description: ""
+  /v2/{s1}/{s2}/{s3}/{s4}/blobs/{digest}:
+    get:
+      tags: []
+      summary: ""
+      description: ""
+      operationId: v2-get-s1-s2-s3-s4-blobs-digest
+      parameters:
+      - name: s1
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s2
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s3
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s4
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ""
+          content: {}
+        '404':
+          description: ""
+    head:
+      tags: []
+      summary: ""
+      description: ""
+      operationId: v2-head-s1-s2-s3-s4-blobs-digest
+      parameters:
+      - name: s1
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s2
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s3
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s4
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ""
+          content: {}
+        '404':
+          description: ""
+    delete:
+      tags: []
+      summary: ""
+      description: ""
+      operationId: v2-delete-s1-s2-s3-s4-blobs-digest
+      parameters:
+      - name: s1
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s2
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s3
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s4
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: digest
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: ""
+          content: {}
+        '404':
+          description: ""
+        '405':
+          description: ""
   /v2/{s1}/{s2}/{s3}/blobs/{digest}:
     get:
       tags: []
@@ -489,6 +618,191 @@ paths:
           description: ""
           content: {}
         '404':
+          description: ""
+  /v2/{s1}/{s2}/{s3}/{s4}/manifests/{reference}:
+    get:
+      tags: []
+      summary: ""
+      description: ""
+      operationId: v2-get-s1-s2-s3-s4-manifests-reference
+      parameters:
+      - name: s1
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s2
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s3
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s4
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: ns
+        in: query
+        description: ""
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ""
+          content: {}
+        '404':
+          description: ""
+    head:
+      tags: []
+      summary: ""
+      description: ""
+      operationId: v2-head-s1-s2-s3-s4-manifests-reference
+      parameters:
+      - name: s1
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s2
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s3
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s4
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: ns
+        in: query
+        description: ""
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ""
+          content: {}
+        '404':
+          description: ""
+    put:
+      tags: []
+      summary: ""
+      description: ""
+      operationId: v2-put-s1-s2-s3-s4-manifests-reference
+      parameters:
+      - name: s1
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s2
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s3
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s4
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      responses:
+        '201':
+          description: ""
+          content: {}
+        '404':
+          description: ""
+    delete:
+      tags: []
+      summary: ""
+      description: ""
+      operationId: v2-delete-s1-s2-s3-s4-manifests-reference
+      parameters:
+      - name: s1
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s2
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s3
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: s4
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      - name: reference
+        in: path
+        description: ""
+        required: true
+        schema:
+          type: string
+      responses:
+        '202':
+          description: ""
+          content: {}
+        '400':
+          description: ""
+        '404':
+          description: ""
+        '405':
           description: ""
   /v2/{s1}/{s2}/{s3}/manifests/{reference}:
     get:

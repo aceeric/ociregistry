@@ -61,6 +61,8 @@ func (r *OciRegistry) handleV2BlobsDigest(ctx echo.Context, repository string, d
 		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}
+	// if the Range header is set in the request then by omitting the Content-Length header
+	// in the response, the underlying http library automatically supports chunked transfer
 	if ctx.Request().Header.Get("Range") == "" {
 		ctx.Response().Header().Add("Content-Length", strconv.Itoa(int(fi.Size())))
 	}

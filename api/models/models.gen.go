@@ -90,3 +90,13 @@ type V2GetS1S2S3ManifestsReferenceParams struct {
 type V2HeadS1S2S3ManifestsReferenceParams struct {
 	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
 }
+
+// V2GetS1S2S3S4ManifestsReferenceParams defines parameters for V2GetS1S2S3S4ManifestsReference.
+type V2GetS1S2S3S4ManifestsReferenceParams struct {
+	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
+}
+
+// V2HeadS1S2S3S4ManifestsReferenceParams defines parameters for V2HeadS1S2S3S4ManifestsReference.
+type V2HeadS1S2S3S4ManifestsReferenceParams struct {
+	Ns *string `form:"ns,omitempty" json:"ns,omitempty"`
+}

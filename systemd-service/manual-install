@@ -12,6 +12,9 @@ if [[ $(id -u) -ne 0 ]]; then
   exit  1
 fi
 
+systemctl stop ociregistry || echo  "ociregistry is not running"
 cp bin/ociregistry /bin/ociregistry-server
-cp systemd-service/ociregistry.service /etc/systemd/system/
+if [[ ! -f /etc/systemd/system/ociregistry.service ]]; then
+  cp systemd-service/ociregistry.service /etc/systemd/system/
+fi
 systemctl enable --now ociregistry

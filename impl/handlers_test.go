@@ -11,7 +11,6 @@ import (
 
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/config"
-	"github.com/aceeric/ociregistry/impl/pullrequest"
 	"github.com/aceeric/ociregistry/mock"
 
 	"github.com/labstack/echo/v4"
@@ -67,8 +66,7 @@ func TestManifestGetWithNs(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 	getCnt := 5
 	for i := 0; i < getCnt; i++ {
-		pr, _ := pullrequest.NewPullRequest("", &url, "", "latest", "hello-world")
-		r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
+		r.handleV2ManifestsReference(ctx, "latest", &url, http.MethodGet, "hello-world")
 		if ctx.Response().Status != 200 {
 			t.Fail()
 		}
@@ -109,8 +107,7 @@ func TestNeverCacheLatest(t *testing.T) {
 	getCnt := 5
 	expectCnt := getCnt * 2
 	for i := 0; i < getCnt; i++ {
-		pr, _ := pullrequest.NewPullRequest("", &url, "", "latest", "hello-world")
-		r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
+		r.handleV2ManifestsReference(ctx, "latest", &url, http.MethodGet, "hello-world")
 		if ctx.Response().Status != 200 {
 			t.Fail()
 		}
@@ -140,7 +137,7 @@ func TestBlobGetFails(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
-	r.handleV2BlobsDigest(ctx, "hello-world", "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a")
+	r.handleV2BlobsDigest(ctx, "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a", "hello-world")
 	if ctx.Response().Status != 404 {
 		t.Fail()
 	}
@@ -165,13 +162,11 @@ func TestPullImageAndBlob(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
-	pr, _ := pullrequest.NewPullRequest("", &url, "", "sha256:e2fc4e5012d16e7fe466f5291c476431beaa1f9b90a5c2125b493ed28e2aba57", "hello-world")
-
-	r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
+	r.handleV2ManifestsReference(ctx, "sha256:e2fc4e5012d16e7fe466f5291c476431beaa1f9b90a5c2125b493ed28e2aba57", &url, http.MethodGet, "hello-world")
 	if ctx.Response().Status != 200 {
 		t.Fail()
 	}
-	r.handleV2BlobsDigest(ctx, "hello-world", "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a")
+	r.handleV2BlobsDigest(ctx, "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a", "hello-world")
 	if ctx.Response().Status != 200 {
 		t.Fail()
 	}

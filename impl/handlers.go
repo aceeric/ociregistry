@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/cache"
@@ -17,9 +18,13 @@ import (
 )
 
 // HEAD or GET /v2/.../manifests/ref
-func (r *OciRegistry) handleV2ManifestsReference(ctx echo.Context, pr pullrequest.PullRequest, verb string) error {
+func (r *OciRegistry) handleV2ManifestsReference(ctx echo.Context, reference string, namespace *string, verb string, repoSegments ...string) error {
 	metrics.IncV2ApiEndpointHits()
 	metrics.IncManifestPulls()
+	pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), namespace, r.defaultNs, reference, repoSegments...)
+	if err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
+	}
 	if r.airGapped && !cache.IsCached(pr) {
 		log.Debugf("request for un-cached manifest %q in air-gapped mode - returning 404", pr.Url())
 		metrics.IncApiErrorResults()
@@ -45,19 +50,19 @@ func (r *OciRegistry) handleV2ManifestsReference(ctx echo.Context, pr pullreques
 }
 
 // GET /v2/.../blobs/digest
-func (r *OciRegistry) handleV2BlobsDigest(ctx echo.Context, repository string, digest string) error {
+func (r *OciRegistry) handleV2BlobsDigest(ctx echo.Context, digest string, repoSegments ...string) error {
 	metrics.IncV2ApiEndpointHits()
 	metrics.IncBlobPulls()
 	digest = helpers.GetDigestFrom(digest)
 	if refCnt := cache.GetBlob(digest); refCnt <= 0 {
-		log.Errorf("blob not in cache for %q, digest %q", repository, digest)
+		log.Errorf("blob not in cache for %q, digest %q", strings.Join(repoSegments, "/"), digest)
 		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusNotFound, "")
 	}
 	blob_file := helpers.GetBlobPath(r.imagePath, digest)
 	fi, err := os.Stat(blob_file)
 	if err != nil {
-		log.Errorf("blob not on the file system for %q, digest %q", repository, digest)
+		log.Errorf("blob not on the file system for %q, digest %q", strings.Join(repoSegments, "/"), digest)
 		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusInternalServerError, "")
 	}

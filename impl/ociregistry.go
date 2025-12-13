@@ -6,11 +6,9 @@ package impl
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/config"
-	"github.com/aceeric/ociregistry/impl/pullrequest"
 
 	_ "crypto/sha256"
 	_ "crypto/sha512"
@@ -71,94 +69,62 @@ func (r *OciRegistry) V2HeadDefault(ctx echo.Context) error {
 
 // GET /v2/{s1}/blobs/{digest}
 func (r *OciRegistry) V2GetS1BlobsDigest(ctx echo.Context, s1 string, digest string) error {
-	return r.handleV2BlobsDigest(ctx, s1, digest)
+	return r.handleV2BlobsDigest(ctx, digest, s1)
 }
 
 // GET /v2/{s1}/{s2}/blobs/{digest}
 func (r *OciRegistry) V2GetS1S2BlobsDigest(ctx echo.Context, s1 string, s2 string, digest string) error {
-	return r.handleV2BlobsDigest(ctx, strings.Join([]string{s1, s2}, "/"), digest)
+	return r.handleV2BlobsDigest(ctx, digest, s1, s2)
 }
 
 // GET /v2/{s1}/{s2}/{s3}/blobs/{digest}
 func (r *OciRegistry) V2GetS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, digest string) error {
-	return r.handleV2BlobsDigest(ctx, strings.Join([]string{s1, s2, s3}, "/"), digest)
+	return r.handleV2BlobsDigest(ctx, digest, s1, s2, s3)
 }
 
 // GET /v2/{s1}/{s2}/{s3}/{s4}/blobs/{digest}
 func (r *OciRegistry) V2GetS1S2S3S4BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, digest string) error {
-	return r.handleV2BlobsDigest(ctx, strings.Join([]string{s1, s2, s3, s4}, "/"), digest)
+	return r.handleV2BlobsDigest(ctx, digest, s1, s2, s3, s4)
 }
 
 // HEAD /v2/{s1}/manifests/{reference}
 func (r *OciRegistry) V2HeadS1ManifestsReference(ctx echo.Context, s1 string, reference string, params models.V2HeadS1ManifestsReferenceParams) error {
-	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1); err == nil {
-		return r.handleV2ManifestsReference(ctx, pr, http.MethodHead)
-	} else {
-		return ctx.JSON(http.StatusBadRequest, err)
-	}
+	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodHead, s1)
 }
 
 // HEAD /v2/{s1}/{s2}/manifests/{reference}
 func (r *OciRegistry) V2HeadS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string, params models.V2HeadS1S2ManifestsReferenceParams) error {
-	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2); err == nil {
-		return r.handleV2ManifestsReference(ctx, pr, http.MethodHead)
-	} else {
-		return ctx.JSON(http.StatusBadRequest, err)
-	}
+	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodHead, s1, s2)
 }
 
 // HEAD /v2/{s1}/{s2}/{s3}/manifests/{reference}
 func (r *OciRegistry) V2HeadS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string, params models.V2HeadS1S2S3ManifestsReferenceParams) error {
-	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2, s3); err == nil {
-		return r.handleV2ManifestsReference(ctx, pr, http.MethodHead)
-	} else {
-		return ctx.JSON(http.StatusBadRequest, err)
-	}
+	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodHead, s1, s2, s3)
 }
 
 // HEAD /v2/{s1}/{s2}/{s3}/{s4}/manifests/{reference}
 func (r *OciRegistry) V2HeadS1S2S3S4ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, reference string, params models.V2HeadS1S2S3S4ManifestsReferenceParams) error {
-	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2, s3, s4); err == nil {
-		return r.handleV2ManifestsReference(ctx, pr, http.MethodHead)
-	} else {
-		return ctx.JSON(http.StatusBadRequest, err)
-	}
+	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodHead, s1, s2, s3, s4)
 }
 
 // GET /v2/{s1}/manifests/{reference}
 func (r *OciRegistry) V2GetS1ManifestsReference(ctx echo.Context, s1 string, reference string, params models.V2GetS1ManifestsReferenceParams) error {
-	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1); err == nil {
-		return r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
-	} else {
-		return ctx.JSON(http.StatusBadRequest, err)
-	}
+	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodGet, s1)
 }
 
 // GET /v2/{s1}/{s2}/manifests/{reference}
 func (r *OciRegistry) V2GetS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string, params models.V2GetS1S2ManifestsReferenceParams) error {
-	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2); err == nil {
-		return r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
-	} else {
-		return ctx.JSON(http.StatusBadRequest, err)
-	}
+	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodGet, s1, s2)
 }
 
 // GET /v2/{s1}/{s2}/{s3}/manifests/{reference}
 func (r *OciRegistry) V2GetS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string, params models.V2GetS1S2S3ManifestsReferenceParams) error {
-	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2, s3); err == nil {
-		return r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
-	} else {
-		return ctx.JSON(http.StatusBadRequest, err)
-	}
+	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodGet, s1, s2, s3)
 }
 
 // GET /v2/{s1}/{s2}/{s3}/{s4}/manifests/{reference}
 func (r *OciRegistry) V2GetS1S2S3S4ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, reference string, params models.V2GetS1S2S3S4ManifestsReferenceParams) error {
-	if pr, err := pullrequest.NewPullRequest(r.x_registry_hdr(ctx), params.Ns, r.defaultNs, reference, s1, s2, s3, s4); err == nil {
-		return r.handleV2ManifestsReference(ctx, pr, http.MethodGet)
-	} else {
-		return ctx.JSON(http.StatusBadRequest, err)
-	}
+	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodGet, s1, s2, s3, s4)
 }
 
 // unimplemented methods of the OCI distribution spec

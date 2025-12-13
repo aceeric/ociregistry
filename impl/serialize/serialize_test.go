@@ -2,8 +2,11 @@ package serialize
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
+	"strconv"
 	"testing"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
@@ -338,5 +341,51 @@ func TestSaveAndLoad(t *testing.T) {
 		if !reflect.DeepEqual(mhOut, mhIn) {
 			t.FailNow()
 		}
+	}
+}
+
+// Test the TestWalkTheCache function
+func TestWalkTheCache(t *testing.T) {
+	td, _ := os.MkdirTemp("", "")
+	defer os.RemoveAll(td)
+	// dirs are expected by the function
+	for _, d := range []string{"img", "lts"} {
+		if os.Mkdir(filepath.Join(td, d), 0755) != nil {
+			t.FailNow()
+		}
+	}
+	// create 10 manifests in which the digest is a known test value
+	for i := 0; i < 10; i++ {
+		digest := fmt.Sprintf("%d", i)
+		mh := imgpull.ManifestHolder{
+			Type:     imgpull.Undefined,
+			Digest:   digest,
+			ImageUrl: fmt.Sprintf("zed.io/foo:%d", i),
+			Bytes:    []byte("TEST"),
+		}
+		mhOut, err := json.Marshal(mh)
+		if err != nil {
+			t.FailNow()
+		}
+		if os.WriteFile(filepath.Join(td, "img", digest), mhOut, 0777) != nil {
+			t.FailNow()
+		}
+	}
+	totVal := 0
+	// expVal is 0+1+2...+9
+	expVal := 45
+	tf := func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
+		d, err := strconv.Atoi(mh.Digest)
+		if err != nil {
+			t.FailNow()
+		}
+		totVal += d
+		return nil
+	}
+	if WalkTheCache(td, tf) != nil {
+		t.FailNow()
+	}
+	if totVal != expVal {
+		t.FailNow()
 	}
 }

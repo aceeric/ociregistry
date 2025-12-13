@@ -55,3 +55,39 @@ func TestPreload(t *testing.T) {
 		t.Fail()
 	}
 }
+
+var loadConfig = `
+---
+registries:
+  - name: %s
+    scheme: http
+imagePath: %s
+os: %s
+arch: %s
+`
+
+func TestLoad(t *testing.T) {
+	d, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.RemoveAll(d)
+
+	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
+	defer server.Close()
+
+	cfg := fmt.Sprintf(loadConfig, url, d, "linux", "amd64")
+	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
+		t.Fail()
+	}
+
+	err = os.WriteFile(d+"/image-list", []byte(url+"/hello-world:latest"), 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = Load(d + "/image-list")
+	if err != nil {
+		t.Fail()
+	}
+}

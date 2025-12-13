@@ -24,7 +24,7 @@ oapi-codegen:
 .PHONY: test
 test:
 	go test $(ROOT)/cmd/... $(ROOT)/impl/... $(ROOT)/mock/...\
-	  -coverpkg ./...\
+	  -coverpkg ./... -covermode=atomic\
 	  -v -cover -coverprofile=$(ROOT)/cover.out
 
 .PHONY: coverage

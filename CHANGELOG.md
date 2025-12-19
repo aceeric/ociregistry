@@ -1,8 +1,8 @@
 # CHANGELOG
 
-## 1.10.0-prerelease
+## 1.10.0
 
-12-Dec-2025
+18-Dec-2025
 
 1. Handle up to three levels of repository segments including in-path namespace (total 4 path components). Example: `docker pull ociregistry:8080/registry.gitlab.com/gitlab-org/gitlab-runner/gitlab-runner-helper:x86_64-v18.5.0` (#24).
 

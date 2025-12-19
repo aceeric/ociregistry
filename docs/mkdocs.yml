@@ -17,6 +17,7 @@ nav:
   - Observability: observability.md
   - Load Testing: load-testing.md
   - Test Driver: test-driver.md
+  - Limitations: limitations.md
 
 theme:
   logo: assets/white-logo-no-background.svg

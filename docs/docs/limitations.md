@@ -1,0 +1,4 @@
+# Limitations
+
+1. The server serves from an in-memory cache of the image store, synchronized using Go synchronization objects (mutexes.) Therefore only one instance of the server can serve clients. So in Kubernetes, for example, you can't run multiple replicas behind a service.
+2. The maximim number of path segments supported is for an image is **four**. E.g. `docker pull ociregistry.host:8080/ghcr.io/two/three/four:v1.1.1`. In the example, `ghcr.io` is the upstream namespace, taking up one of the four segments, and leaving `two/three/four` as the full repository name. When containerd mirrors to _Ociregistry_, it appends the namespace as a query parameter on the REST API calls, which frees up an additional segment which would allow an image name like `one/two/three/four:v1.1.1` to be mirrored.

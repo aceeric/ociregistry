@@ -1,5 +1,5 @@
 apiVersion: v2
-appVersion: 1.10.0-prerelease
+appVersion: 1.10.0
 name: ociregistry
 description: A pull-only, pull-through caching OCI image distribution server.
 home: https://github.com/aceeric/ociregistry
@@ -15,7 +15,7 @@ keywords:
 - ddil
 sources:
 - https://github.com/aceeric/ociregistry
-version: 1.10.0-prerelease
+version: 1.10.0
 maintainers:
 - name: Eric Ace
   url: https://github.com/aceeric

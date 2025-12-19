@@ -13,6 +13,7 @@ import (
 
 	"github.com/aceeric/ociregistry/api"
 	"github.com/aceeric/ociregistry/impl"
+	"github.com/aceeric/ociregistry/impl/auth"
 	"github.com/aceeric/ociregistry/impl/cache"
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
@@ -54,6 +55,17 @@ func Serve(buildVer string, buildDtm string) error {
 	swagger, err := api.GetSwagger()
 	if err != nil {
 		return fmt.Errorf("error loading swagger spec: %s", err)
+	}
+	for ta := range config.UpstreamAuthProviders {
+		log.Infof("initializing auth provider %q", ta.Provider)
+
+		if isInitted, err := auth.IsInitialized(ta.Provider); err != nil {
+			return fmt.Errorf("error validating auth provider: %s", err)
+		} else if !isInitted {
+			if auth.Init(ta.Provider, ta.ProviderOpts, ta.Expiry) != nil {
+				return fmt.Errorf("error initializing auth provider: %s", err)
+			}
+		}
 	}
 
 	// clear out the servers array in the swagger spec, that skips validating

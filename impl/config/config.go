@@ -8,17 +8,28 @@ import (
 	"runtime"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
+	"github.com/aceeric/ociregistry/impl/auth"
 
 	yaml "go.yaml.in/yaml/v4"
 )
 
+// TokenAuth configures external token provisioning. The Static member is mainly for test.
+type TokenAuth struct {
+	Provider     string `yaml:"provider"`
+	ProviderOpts string `yaml:"providerOpts"`
+	Expiry       string `yaml:"expiry"`
+	Static       string `yaml:"static"`
+}
+
 // authCfg holds basic auth user/pass for registry access. The PasswordFromEnv field specifies
 // an environment variable name to read the password from which supports running the server as a
-// Kubernetes workload
+// Kubernetes workload. The 'Token' key supports obtaining an auth token for the upstream from
+// an external token provisioning service.
 type authCfg struct {
-	User            string `yaml:"user"`
-	Password        string `yaml:"password"`
-	PasswordFromEnv string `yaml:"passwordFromEnv"`
+	User            string    `yaml:"user"`
+	Password        string    `yaml:"password"`
+	PasswordFromEnv string    `yaml:"passwordFromEnv"`
+	Token           TokenAuth `yaml:"token"`
 }
 
 // tlsCfg holds TLS configuration for upstream registry access
@@ -120,7 +131,7 @@ var (
 	// config is the gloal configuration, accessed through getters and setters
 	// below
 	config    Configuration
-	emptyAuth = authCfg{User: "", Password: "", PasswordFromEnv: ""}
+	emptyAuth = authCfg{User: "", Password: "", PasswordFromEnv: "", Token: TokenAuth{}}
 	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", InsecureSkipVerify: false}
 	emptyOpts = imgpull.PullerOpts{}
 )
@@ -282,7 +293,15 @@ func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 	}
 
 	if found.Opts != emptyOpts {
-		// already parsed
+		// already parsed, but if the token comes from an auth provider it has to be gotten every time in
+		// case it has expired
+		if found.Auth.Token.Provider != "" && found.Auth.Token.Static == "" {
+			if token, err := auth.GetToken(found.Auth.Token.Provider); err != nil {
+				return opts, fmt.Errorf("error getting token for config entry %s, provider: %s", registry, found.Auth.Token.Provider)
+			} else {
+				found.Opts.Token = token
+			}
+		}
 		return found.Opts, nil
 	}
 
@@ -297,6 +316,15 @@ func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 			opts.Password = os.Getenv(found.Auth.PasswordFromEnv)
 		} else {
 			opts.Password = found.Auth.Password
+		}
+		if found.Auth.Token.Static != "" {
+			opts.Token = found.Auth.Token.Static
+		} else if found.Auth.Token.Provider != "" {
+			if token, err := auth.GetToken(found.Auth.Token.Provider); err != nil {
+				return opts, fmt.Errorf("error getting token for config entry %s, provider: %s", registry, found.Auth.Token.Provider)
+			} else {
+				opts.Token = token
+			}
 		}
 	}
 
@@ -328,4 +356,16 @@ func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 	}
 	found.Opts = opts
 	return opts, nil
+}
+
+// UpstreamAuthProviders is an iterator over the registries configuration that returns
+// the TokenAuth struct for all the registries that have an auth token provider configured.
+func UpstreamAuthProviders(yield func(TokenAuth) bool) {
+	for _, reg := range config.Registries {
+		if reg.Auth.Token.Provider != "" {
+			if !yield(reg.Auth.Token) {
+				return
+			}
+		}
+	}
 }

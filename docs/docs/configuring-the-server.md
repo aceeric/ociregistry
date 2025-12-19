@@ -103,6 +103,7 @@ Each entry supports the following configuration structure overall. Not all value
     user: theuser
     password: thepass
     passwordFromEnv: THEPASS_ENV_VAR
+    token: {}
   tls:
     ca: /my/ca.crt
     cert: /my/client.cert
@@ -113,6 +114,9 @@ Each entry supports the following configuration structure overall. Not all value
 Since `scheme` defaults to `https` you can omit that entirely. The `tls` key is optional. If omitted and `scheme` is https then the _Ociregistry_ server attempts insecure 1-way TLS. The default for `tls.insecureSkipVerify` is `false` if omitted (and `tls` is specified.) Similarly, `description` is ignored by the server and can be omitted.
 
 The `auth` section implements basic auth, just like your `~/.docker/config.json` file.
+
+!!! note
+    The `auth.token` configuration element supports token-based authentication using an external service and is documented in the [Authentication](auth.md) section.
 
 The `name` value is the upstream host name that you will pull from. For example say you're running the server on your desktop in test mode on `localhost:8080`. Let's also say that you have an in-house corporate registry that serves proprietary images on `my-corp-registry.myco.org:8888`. You run this command to pull **through** the _Ociregistry_ server **from** your corporate registry server this way:
 ```shell

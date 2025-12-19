@@ -172,12 +172,47 @@ func TestPassFromEnv(t *testing.T) {
 	}
 }
 
+var testStaticTokenAuth = `
+---
+registries:
+  - name: testme
+    auth:
+      token:
+        static: HARDCODEDTOKEN
+`
+
+// Test getting a static token
+func TestTokenAuth(t *testing.T) {
+	td, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.FailNow()
+	}
+	defer os.RemoveAll(td)
+	cfgFile := filepath.Join(td, "testcfg.yaml")
+	os.WriteFile(cfgFile, []byte(testStaticTokenAuth), 0700)
+	if Load(cfgFile) != nil {
+		t.FailNow()
+	}
+	opts, err := ConfigFor("testme")
+	if err != nil {
+		t.FailNow()
+	}
+	if opts.Token != "HARDCODEDTOKEN" {
+		t.FailNow()
+	}
+}
+
 // test getters
 func TestGetters(t *testing.T) {
 	ac := authCfg{
 		User:            "a",
 		Password:        "b",
 		PasswordFromEnv: "c",
+		Token: TokenAuth{
+			Provider: "FOO",
+			Expiry:   "1h",
+			Static:   "TESTME",
+		},
 	}
 	tc := tlsCfg{
 		Cert:               "d",

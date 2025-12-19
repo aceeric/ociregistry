@@ -6,6 +6,7 @@ nav:
   - Quick Start (Desktop): quickstart-desktop.md
   - Quick Start (Kubernetes): quickstart-kubernetes.md
   - Configuring The Server: configuring-the-server.md
+  - Authentication: auth.md
   - The Command Line: command-line.md
   - Loading And Preloading:  loading.md
   - Pruning The Image Cache: pruning.md

@@ -113,7 +113,7 @@ Each result section below stacks the charts listed in the table below. Since cli
 
 ### Pull-Through Results
 
-The pull-through test pulled through the _Ociregistry_ server to the Docker registry. After each pass through the pull list, the puller goroutine pruned the images it just pulled, foring the _Ociregistry_ to re-pull them the next time. The prune operation - while  fast - _does_ lock the in-mem cache briefly which certainly impacts performance and therefore taints the test. However, without having the ability to load an upstream registry with literally hundreds of thousands of images, the selected approach was the only feasible way to test pull-through concurrency.
+The pull-through test pulled through the _Ociregistry_ server to the Docker registry. After each pass through the pull list, the puller goroutine pruned the images it just pulled, forcing the _Ociregistry_ to re-pull them the next time. The prune operation - while  fast - _does_ lock the in-mem cache briefly which certainly impacts performance and therefore taints the test. However, without having the ability to load an upstream registry with literally hundreds of thousands of images, the selected approach was the only feasible way to test pull-through concurrency.
 
 Topline summary: with 10 client goroutines, the client-side pull rate topped out at about 320 images per second. The rate never peaked so its possible that with more goroutines, a higher pull rate could be acheived. Some aspect of latency is attributable to the "upstream" Docker Registry container but that was not specifically tested.
 

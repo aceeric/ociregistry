@@ -45,6 +45,7 @@ project root
 ├── cmd
 ├── docs
 ├── impl
+│   ├── auth
 │   ├── cache
 │   ├── cmdline
 │   ├── config

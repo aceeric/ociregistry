@@ -109,18 +109,17 @@ func Init(providerStr string, options string, expiry string) error {
 	return nil
 }
 
-// GetToken gets the current token value the is being asynchronously refreshed
-// by the token provider.
+// GetToken gets the current token value (which is being asynchronously refreshed
+// by the token provider.)
 func GetToken(providerStr string) (string, error) {
 	p, err := toProvider(providerStr)
 	if err != nil {
 		return "", err
 	}
-	_, ok := tokenProviders[p]
+	tp, ok := tokenProviders[p]
 	if !ok {
 		return "", fmt.Errorf("provider not initialized: %s", providerStr)
 	}
-	tp := tokenProviders[p]
 	tp.RLock()
 	defer tp.RUnlock()
 	return tp.token, nil
@@ -129,7 +128,7 @@ func GetToken(providerStr string) (string, error) {
 // tokenRefresher is intended to be run as a goroutine. It creates a time ticker
 // according to the refresh interval in the passed token provider struct. On each
 // tick of the ticker it calls the token getter function in the struct and updates
-// the token in the struct from the function return values.
+// the token in the struct from the token getter return value.
 func tokenRefresher(tp *tokenProvider) {
 	ticker := time.NewTicker(tp.expiry)
 	defer ticker.Stop()
@@ -170,7 +169,7 @@ func getTokenGetter(p provider) (tokenGetter, error) {
 	return nil, fmt.Errorf("unknown provider: %d", p)
 }
 
-// getECRToken gets a token for Elastic Container Registry using the AWS Golang SDK.
+// getECRToken gets a token for Elastic Container Registry using the AWS SDK.
 func getECRToken(options string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -198,6 +197,7 @@ func getECRToken(options string) (string, error) {
 	return "", fmt.Errorf("no authorization token returned")
 }
 
+// parseECROptions parses provider options for the ECR provider.
 func parseECROptions(options string) ([]func(*config.LoadOptions) error, error) {
 	opts := []func(*config.LoadOptions) error{}
 
@@ -205,7 +205,7 @@ func parseECROptions(options string) ([]func(*config.LoadOptions) error, error) 
 		return opts, nil
 	}
 
-	for _, opt := range strings.Split(options, ",") {
+	for opt := range strings.SplitSeq(options, ",") {
 		kv := strings.Split(opt, "=")
 		if len(kv) != 2 {
 			return nil, fmt.Errorf("unable to parse configuration option %s for provider", kv)

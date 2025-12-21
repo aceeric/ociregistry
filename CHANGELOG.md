@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.11.0
+
+20-Dec-2025
+
+1. Implement Amazon ECR token-based auth (#26).
+
 ## 1.10.0
 
 18-Dec-2025

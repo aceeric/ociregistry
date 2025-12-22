@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.11.1
+
+21-Dec-2025
+
+1. Fix load/preload by digest (#27)
+
 ## 1.11.0
 
 20-Dec-2025

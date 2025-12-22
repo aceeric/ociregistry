@@ -99,6 +99,11 @@ func doPull(imageUrl string, imagePath string, platformArch string, platformOs s
 		if err != nil {
 			return itemcnt, err
 		}
+		if pr.PullType == pullrequest.ByDigest {
+			// if the manifest list was pulled by digest rather than by tag, then set the ref for the image
+			// manifest to be a digest as well
+			puller.SetUrl(pr.UrlWithDigest(digest))
+		}
 		if mh, cnt, err = getFromCacheOrRemote(puller, digest, pr.IsLatest(), true, imagePath); err != nil {
 			return itemcnt, err
 		}

@@ -45,7 +45,7 @@ aws ecr get-authorization-token --output text\
   --query 'authorizationData[].authorizationToken'
 ```
 
-_Ociregistry_ uses the AWS SDK to obtain the token. The SDK obtains its IAM identity and entitlements from the AWS configuration of the host (EC2 instance, Kubernetes pod, laptop, bare metal server, etc.) Fundamentally _Ociregistry_ doesn't know how the AWS SDK obtains the token. It is the responsibility of the registry installer, or DevOps team to configure the processor that runs _Ociregistry_ to have an identity and entitlement to get a token. From the _Ociregistry_ server's perspective, all those concerns are opaque. Clearly though the requirement is for _Ociregistry_ to be running on a host with an AWS account context.
+_Ociregistry_ uses the AWS SDK to obtain the token. The SDK obtains its IAM identity and entitlements from the AWS configuration of the host (EC2 instance, Kubernetes pod, laptop, bare metal server, etc.) Fundamentally _Ociregistry_ doesn't know how the AWS SDK obtains the token. It is the responsibility of the registry installer, or DevOps team to configure the processor that runs _Ociregistry_ to have an identity and entitlement to get a token. From the _Ociregistry_ server's perspective, all those concerns are opaque. Clearly though, the requirement is for _Ociregistry_ to be running on a host with an AWS account context.
 
 As long as `aws sts get-caller-identity` returns something meaningful on the processor that is running the _Ociregistry_ server, then the ECR integration should work.
 

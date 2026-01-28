@@ -1,6 +1,6 @@
 # Load Testing
 
-The project includes tooling to conduct two types of load tests. One load test focuses on concurrent pulls from upstreams and the second focuses on concurrent pulls from cache. Both tests use the same tools and test driver.
+The project includes tooling in the [testing/load](https://github.com/aceeric/ociregistry/tree/main/testing/load) directory to conduct two types of load tests. One load test focuses on concurrent pulls from upstreams and the second focuses on concurrent pulls from cache. Both tests use the same tools and test driver.
 
 To test concurrent pulls from upstreams, the test driver pulls through the _Ociregistry_ and then immediately prunes all the pulled images, repeating this in a loop. To test concurrent cached pulls the process is the same, omitting the pruning step.
 
@@ -115,7 +115,7 @@ Each result section below stacks the charts listed in the table below. Since cli
 
 The pull-through test pulled through the _Ociregistry_ server to the Docker registry. After each pass through the pull list, the puller goroutine pruned the images it just pulled, forcing the _Ociregistry_ to re-pull them the next time. The prune operation - while  fast - _does_ lock the in-mem cache briefly which certainly impacts performance and therefore taints the test. However, without having the ability to load an upstream registry with literally hundreds of thousands of images, the selected approach was the only feasible way to test pull-through concurrency.
 
-Topline summary: with 10 client goroutines, the client-side pull rate topped out at about 320 images per second. The rate never peaked so its possible that with more goroutines, a higher pull rate could be acheived. Some aspect of latency is attributable to the "upstream" Docker Registry container but that was not specifically tested.
+Topline summary: with 10 client goroutines, the client-side pull rate topped out at about 320 images per second. The rate never peaked so its possible that with more goroutines, a higher pull rate could be acheived. Some aspect of latency is attributable to the "upstream" Docker Registry container but that was not specifically isolated.
 
 ![Client Side](assets/load-test/pullthru-client-side.png)
 Test driver: Puller goroutines scaling up from 1 to 10 then back down.

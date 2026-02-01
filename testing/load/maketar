@@ -11,11 +11,16 @@
 # 
 # wu0dnetv4s-597p54o2q8-0001:v494.843
 #
+# Each image has 5 layers (hard-coded). You specify the layer sizes on the command line
+# to suport testing different blob sizes. E.g.: 42,123456,10K,30M,1.2G.
+#
+# The script adds files to the target directory on each run. If you want a clean start
+# then remove the target directory before running the script.
 
 set -e
 
-if [[ "$#" -ne 3 ]]; then
-  echo "usage: maketar <tar count> <segment count> <dest dir>, e.g.: ./maketar 1000 5 ~/tmp/testfiles"
+if [[ "$#" -ne 4 ]]; then
+  echo "usage: maketar <tar count> <segment count> <blob sizes> <dest dir>, e.g.: ./maketar 200 5 50K,200K,1M,3M,20M ~/tmp/testfiles"
   exit 1
 fi
 
@@ -36,16 +41,29 @@ manifest='
 
 image_count=$1
 segment_count=$2
-target_dir=$3
+IFS=',' read -r -a layer_sizes <<< "$3"
+target_dir=$4
 layer_count=5
 segment_boundary=$((image_count / segment_count))
 
-if [[ $segment_count -gt 9999 ]]; then
-  echo "max value for segment count is 9999"
-  exit 1
+if [[  ${#layer_sizes[@]} -ne $layer_count ]]; then
+  echo "number of layer sizes must equal $layer_count"
 fi
 
-rm -rf $target_dir
+# convert "10K" to "10240"
+for (( i = 0; i < ${#layer_sizes[@]}; i++)); do
+  layer_sizes[$i]=$(echo ${layer_sizes[$i]} | numfmt --from=iec)
+done
+
+# debug
+# echo "image_count=$image_count"
+# echo "segment_count=$segment_count"
+# echo "layer_sizes=${layer_sizes[@]}"
+# echo "target_dir=$target_dir"
+# echo "layer_count=$layer_count"
+# echo "segment_boundary=$segment_boundary"
+# exit
+
 mkdir -p $target_dir/image
 
 cur_segment=1
@@ -66,8 +84,8 @@ while [[ $cur_image -le $image_count ]]; do
   # create layers (hardcoded layer count)
   layer=1
   while [[ $layer -le $layer_count ]]; do
-    layer_content=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c 20)
-    echo $layer_content >| $target_dir/layer_content
+    layer_size=${layer_sizes[$((layer - 1))]}
+    < /dev/urandom LC_ALL=C tr -dc '[:print:]' | head -c $layer_size >| $target_dir/layer_content
     pushd $target_dir &>/dev/null
     tar -cf $target_dir/image/TEMP.tar layer_content
     popd &>/dev/null
@@ -111,8 +129,10 @@ while [[ $cur_image -le $image_count ]]; do
   ((++cur_image))
 
   # increment segment
-  mod=$((cur_image % segment_boundary))
-  if [[ $mod -eq 0 ]]; then
-    ((++cur_segment))
+  if [[ $segment_boundary -gt 0 ]]; then
+    mod=$((cur_image % segment_boundary))
+    if [[ $mod -eq 0 ]]; then
+      ((++cur_segment))
+    fi
   fi
 done

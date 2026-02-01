@@ -1,36 +1,106 @@
 #!/usr/bin/env bash
 #
-# Pulls through ociregistry from Docker registry. Accepts an optional arg which is
-# a filter. This supports running multiple instances of this script concurrently. E.g.:
-# in console 1:
+# Pulls through Ociregistry from Docker registry as  the "upstream". The positional arg is
+# the Ociregistry server host name. E.g., if Ociregistry is running on the desktop:
 #
-#   ./pullthru -0001:
+# ./pullthru localhost:8888
 #
-# Then in console 2
+# If Ociregistry is running is running on another host (or in a Kubernetes cluster behind
+# an ingress):
 #
-#   ./pullthru -0002:
+# ./pullthru frobozz.io
 #
-# and so on.
+# Accepts an optional arg which is a filter. This supports running multiple instances of this
+# script concurrently. E.g.: in console 1:
+#
+#   ./pullthru <host> --filter -0001:
+#
+# Then in console 2:
+#
+#   ./pullthru <host> --filter -0002:
+#
+# ...and so on.
+#
+# Accepts an optional arg --count to run multiple iterations. By default, the script runs
+# once (one pass) and then exits.
+#
+# Accepts an optional bool arg --prune. (By default, does not prune.) Pruning removes
+# the images from cache forcing the ociregistry to reach out to the upstream.
+#
+# Accepts an optional bool arg --dry-run. If specified, then just prints what it would do
+# but doesn't do it.
+#
+# Full example (with prune): ./pullthru frobozz.io --filter -0001: --count 1000 --prune --dry-run
 #
 # Ociregistry must be configured with config.yaml to pull from the ubuntu.me registry
 # on plain http. This script can also help fully load the Ociregistry to prepare for the
 # cached pull load test.
 #
+# The script writes each pulled image to the same filename ~/tmp/imgpull.$BASHPID.tar,
+# which supports running the script in multiple console windows concurrently to load
+# test.
+#
 
 set -e
 
 filter=*
-if [[ -n "$1" ]]; then
-  filter=$1
+ociregistry_host=
+count=1
+this_pid=$BASHPID
+prune=0
+imgcnt=0
+dry_run=
+
+for (( i = 1; i <= $#; i++ )); do
+  opt="${!i}"
+  if [[ $opt == "--filter" ]]; then
+    ((i++))
+    filter="${!i}"
+  elif [[ $opt == "--count" ]]; then
+    ((i++))
+    count="${!i}"
+  elif [[ $opt == "--prune" ]]; then
+    prune=1
+  elif [[ $opt == "--dry-run" ]]; then
+    dry_run=echo
+  else
+    ociregistry_host="${!i}"
+  fi
+done
+
+if [[ -z "$ociregistry_host" ]]; then
+  echo "no ociregistry host specified"
+  exit 1
 fi
 
-imgcnt=0
-while read image; do
-  # e.g. ubuntu.me:5000/33tpy3hx9u-8wo7i2rp97-0005:v172.884
-  if [[ $image == *$filter* ]]; then
-    imgpull "localhost:8888/$image" ~/tmp/imgpull.tar --scheme http
-    ((++imgcnt))
+# debug
+# echo "filter          = $filter"
+# echo "ociregistry_host= $ociregistry_host"
+# echo "count           = $count"
+# echo "this_pid        = $this_pid"
+# echo "prune           = $prune"
+# exit
+
+# Skip the registry image which is runs the container that hosts the images that
+# ociregistry is pulling from
+for i in $(seq 1 $count); do
+  if [[ $prune -eq 1 ]]; then
+    docker images | grep -v registry | grep ubuntu.me | awk '{print $1 ":" $2}' | while read image; do
+      # e.g. ubuntu.me:5000/7l4kfql7b6-dy9dt9m9ej-0004:v986.174
+      if [[ $image == *$filter* ]]; then
+        # ignore if not cached for some reason
+        $dry_run curl -X DELETE "$ociregistry_host/cmd/prune?type=pattern&expr=$image&dryRun=false" || true
+      fi
+    done
   fi
-done < <(docker images | grep ubuntu.me | awk '{print $1 ":" $2}')
+
+  while read image; do
+    # e.g. ubuntu.me:5000/33tpy3hx9u-8wo7i2rp97-0005:v172.884
+    if [[ $image == *$filter* ]]; then
+      $dry_run imgpull "$ociregistry_host/$image" ~/tmp/imgpull.$this_pid.tar --scheme http || echo "ignoring error"
+      ((++imgcnt))
+    fi
+  done < <(docker images | grep -v registry | grep ubuntu.me | awk '{print $1 ":" $2}')
+done
 
 echo "pulled $imgcnt images"

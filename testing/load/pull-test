@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+function pull() {
+  local image=$1
+  local start_time
+  start_time=$(date +%s)
+
+  echo "$(date -u +%T) $image"
+
+  while true; do
+    local current_time elapsed_time
+    current_time=$(date +%s)
+    elapsed_time=$(( current_time - start_time ))
+
+    if [[ $elapsed_time -ge 60 ]]; then
+      break
+    fi
+    imgpull "frobozz.io/ubuntu.me:5000/$image" $HOME/tmp/imgpull.$BASHPID.tar --scheme http &>/dev/null
+  done
+}
+
+images=(
+  "5dx81el15b-sqm4dpq5js-0001:v876.034"
+  "tc471odhgc-jmfkck0gof-0001:v954.690"
+  "t7jrmfgcmi-g363q4pb4c-0001:v548.845"
+  "ascd8xwg5c-4zx7ea7pin-0001:v307.242"
+  "i619ramyjj-hqhqtmio5a-0001:v809.463"
+  "5v8ep0k62v-6yue3mitpa-0001:v000.785"
+  "vi0r15j11c-8jtmdpazzo-0001:v906.919"
+  "7ug8jyy8lt-ir6ic68uvi-0001:v486.374"
+  "86nrjf7g09-fj2lxyiga3-0001:v848.123"
+  "t97q883s00-go7hphdt15-0001:v312.469"
+  "bbfn7u2wcz-mxia5thra7-0001:v767.324"
+  "ddz3f19vjc-ltam3pi5ca-0001:v416.725"
+  "qnlozgvk1z-c6g7a510ly-0001:v026.93"
+  "w37ve9amfe-etizl9p9a2-0001:v007.205"
+  "j8wwpdq8lj-jra982i610-0001:v081.803"
+  "dg0ievk2y9-p13txmiemw-0001:v335.657"
+  "0v297m3cym-4s4ugxrzrj-0001:v664.993"
+  "d623kqs6pp-gasp83lkqj-0001:v628.803"
+  "vrfkqao7ch-03d1odbbs9-0001:v436.911"
+  "rae7f2hn9k-duw64pktig-0001:v210.557"
+  "8pti0snauv-y0tf3sf76b-0001:v725.229"
+  "6ggf8ekwth-npovmudu44-0001:v708.849"
+  "84cilr7arg-jmcrzfwfjs-0001:v507.021"
+  "wyun18wfnf-fywwa0v18e-0001:v515.596"
+  "mbpmaiwhit-7x2xadopah-0001:v777.747"
+  "aq1smt2z1y-erk4ewandx-0001:v916.561"
+  "xhp86f4squ-jsto7o84ll-0001:v343.309"
+  "ujp3ujo1tb-4gvfhg4i5a-0001:v204.701"
+  "9av9i8n3ev-lkf2cpx6y8-0001:v717.978"
+  "gbsetuwqq1-pp63j9rva8-0001:v149.693"
+  "yxwirsajlf-bvredwo49q-0001:v426.918"
+  "rv5ukf6yw7-tds97cbw5m-0001:v241.051"
+  "2tnlpctr9p-t5nfjoocw0-0001:v446.034"
+  "06a3vwbxxm-bi6ycmetfs-0001:v640.793"
+  "hp3jd4khsb-y9sgvwjzpk-0001:v089.243"
+  "5zepoiuvvb-f40kvmkn4p-0001:v619.933"
+  "j5eb0fqiyb-17za7vdr2b-0001:v457.633"
+  "4k7l40npbf-1nqhn3o11m-0001:v621.190"
+  "nroxcu9kx1-eu01rvpdce-0001:v166.438"
+  "s7pwhx8q0t-1vsi3f515x-0001:v277.237"
+  "gsquxincyg-ayk9x8dtdd-0001:v775.953"
+  "81qjbogiih-25ky5mi8rs-0001:v952.484"
+)
+
+for image in "${images[@]}"; do
+  pull $image
+done

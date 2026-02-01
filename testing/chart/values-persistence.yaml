@@ -1,0 +1,10 @@
+persistence:
+  persistentVolumeClaim:
+    enabled: true
+    newClaimSpec:
+      accessModes:
+      - ReadWriteOnce
+      volumeMode: Filesystem
+      resources:
+        requests:
+          storage: 5Gi

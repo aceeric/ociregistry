@@ -1,0 +1,5 @@
+observability:
+  enabled: true
+
+metrics:
+  port: 2112

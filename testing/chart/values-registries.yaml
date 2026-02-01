@@ -1,0 +1,5 @@
+serverConfig:
+  configuration:
+    registries:
+      - name: ubuntu.me:5000
+        scheme: http

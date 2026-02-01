@@ -4,4 +4,5 @@ Your release is named {{ .Release.Name }}.
 
 To learn more about the features of the registry, please see:
 
-https://github.com/aceeric/ociregistry
+https://aceeric.github.io/ociregistry/
+

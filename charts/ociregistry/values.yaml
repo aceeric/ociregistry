@@ -55,13 +55,22 @@ service:
   nodePort: 31080
   port: 8080
 
-# -- Specify a port here and the server will add readiness and liveness probes to
-# the server deployment. You can achieve the same effect with
-# `serverConfig.configuration.health=8081`
-# (or some other value.)
+# -- Specify a port here and the server will add readiness and liveness
+# probes to the server deployment. You can achieve the same effect with
+# `serverConfig.configuration.health=8081` (or some other value.)
 # @default -- `port: 8081`
 health:
-  port: 8081
+  port:
+
+# -- Specify a port here and the server will enable metrics exposition on the port in the
+# server deployment (on the /metrics path.) You can achieve the same effect with
+# `serverConfig.configuration.metrics=2112` (or some other value.) Note that this setting
+# enables exposition. You must also enable observability - meaning the integration with
+# Prometheus and Grafana. You do that by setting `observability.enabled: true`. Exposition
+# and observability are both disabled by default.
+# @default -- `port:`
+metrics:
+  port:
 
 # -- Configures the server to serve over TLS. Works two ways: if `secretName` is empty,
 # then the chart creates a secret in the cluster called "releasename"-tls. If `secretName`
@@ -82,6 +91,16 @@ serverTls:
   ca:
   # -- valid values are `none` and `verify`.
   clientAuth: none
+
+# -- I use this for testing. I set the IP address to the IP address of my desktop. I
+# run the Ociregistry in a cluster in VMs on my desktop. Then from my desktop I can
+# run Docker Registry on my desktop, and pull through Ociregistry in the VM back to
+# Docker Registry on my desktop.
+# @default -- `[]`
+hostAliases: []
+#  - ip: "192.168.0.103"
+#    hostnames:
+#      - "ubuntu.me"
 
 # -- Configures an ingress for access to the registry outside the cluster. (Could
 # be used to run the registry in one cluster to cache for multiple other clusters.)
@@ -243,7 +262,8 @@ extraManifests: []
 # for `logLevel` which defaults to `error` and is overridden below as `info`.
 # The explicit values are provided mainly for documentation purposes. The `os`
 # and `arch` by default are determined by the system hosting the server so
-# typically you will not specify those.
+# typically you will not specify those. This configuration enables health and
+# disables metrics by default.
 # @default -- See sub-fields
 serverConfig:
   mountPath: /var/ociregistry/config
@@ -263,8 +283,8 @@ serverConfig:
     alwaysPullLatest: false
     airGapped: false
     helloWorld: false
-    # -- easier to use `health` above
-    health:
+    health: 8081
+    metrics:
     registries: []
     # -- Pruning is disabled by default
     # @default -- See sub-fields
@@ -282,3 +302,19 @@ serverConfig:
     #  key:
     #  ca:
     #  clientAuth:
+
+# -- Supports observability. This means creating the resources that integrate
+# with Prometheus and Grafana. If you set `observability.enabled=true` then you
+# must *also* configure metrics exposition. You do this by configuring the
+# Ociregistry server to gather and expose metrics. You do this either by
+# setting `serverConfig.configuration.metrics=<portnum>` or setting
+# `metrics.port=<portnum>`. Metrics exposition and observability are disabled
+# by default.
+# @default -- See sub-fields
+observability:
+  enabled: false
+  serviceMonitor:
+    enabled: true
+    port: metrics
+    interval: 15s
+    scrapeTimeout: 10s

@@ -1,0 +1,26 @@
+{{- if and (.Values.observability.enabled) (.Values.observability.serviceMonitor.enabled) }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "ociregistry.fullname" . }}
+  labels:
+    {{- include "ociregistry.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ociregistry.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: metrics
+  namespaceSelector:
+    matchNames:
+    - {{ .Release.Namespace }}
+  endpoints:
+    - honorLabels: true
+      # port: {{ coalesce .Values.metrics.port .Values.serverConfig.configuration.metrics | quote }}
+      port: metrics
+      path: /metrics
+      scheme: http
+      interval: {{ .Values.observability.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.observability.serviceMonitor.scrapeTimeout }}
+  # is this needed - jobLabel: ociregistry
+{{- end }}

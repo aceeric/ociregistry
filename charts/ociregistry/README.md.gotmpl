@@ -187,6 +187,29 @@ helm upgrade --install ociregistry oci://...\
   --values <file with contents above>.yaml
 ```
 
+## Monitoring and metrics
+
+Metrics can be enabled as follows. First enable observability. This creates the Prometheus and Grafana resources (including dashboard `ConfigMaps` for Grafana. Since these resources are created in the `ociregistry` namespace, you will need to configure Prometheus to find Service Monitors and Prometheus Rules in that namespace, or all namespaces:
+```
+observability:
+  enabled: true
+```
+
+Then enable metrics exposition by defining a metrics port for the server to expose metrics on. There are two ways:
+
+Using the `metrics` value:
+```
+metrics:
+  port: <port num>
+```
+
+Or, using the `serverConfig` value:
+```
+serverConfig:
+  configuration:
+    metrics: <port num>
+```
+
 ## More information
 
 More information, including how to configure access to upstream registries for authentication and TLS, as well as additional registry features and capabilities can be found at: https://github.com/aceeric/ociregistry.

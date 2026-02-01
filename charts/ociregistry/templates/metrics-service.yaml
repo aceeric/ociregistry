@@ -1,0 +1,18 @@
+{{- if and (.Values.observability.enabled) (.Values.observability.serviceMonitor.enabled) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ociregistry.fullname" . }}-metrics
+  labels:
+    app.kubernetes.io/component: metrics
+    {{- include "ociregistry.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{- include "ociregistry.selectorLabels" . | nindent 4 }}
+  type: ClusterIP
+  ports:
+    - name: metrics
+      port: {{ coalesce .Values.metrics.port .Values.serverConfig.configuration.metrics }}
+      targetPort: metrics
+      protocol: TCP
+{{- end }}

@@ -15,8 +15,7 @@ func TestGetBlobPath(t *testing.T) {
 	digest := "aef95111cc41a3028623128d631ef867ab83911b6eaf1a03d97dea5fa3578893"
 	tf := filepath.Join(d, globals.BlobPath, digest)
 	os.WriteFile(tf, []byte("bar"), 0777)
-	b := GetBlobPath(d, "sha256:"+digest)
-	if b != tf {
+	if _, err, _ := GetBlob(d, "sha256:"+digest); err != nil {
 		t.Fail()
 	}
 }

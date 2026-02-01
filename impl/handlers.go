@@ -59,8 +59,7 @@ func (r *OciRegistry) handleV2BlobsDigest(ctx echo.Context, digest string, repoS
 		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	blob_file := helpers.GetBlobPath(r.imagePath, digest)
-	fi, err := os.Stat(blob_file)
+	fi, err, blob_file := helpers.GetBlob(r.imagePath, digest)
 	if err != nil {
 		log.Errorf("blob not on the file system for %q, digest %q", strings.Join(repoSegments, "/"), digest)
 		metrics.IncApiErrorResults()
@@ -76,6 +75,7 @@ func (r *OciRegistry) handleV2BlobsDigest(ctx echo.Context, digest string, repoS
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 	return ctx.Stream(http.StatusOK, "binary/octet-stream", f)
 }
 

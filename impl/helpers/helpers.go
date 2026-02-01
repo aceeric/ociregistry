@@ -21,15 +21,11 @@ func GetDigestFrom(str string) string {
 	return ""
 }
 
-// GetBlobPath is looking for a blob. It makes a path specifier from the two args,
-// and if a file exists at that path, returns the path, otherwise returns the empty
-// string
-func GetBlobPath(base string, shaPat string) string {
+// GetBlob makes a blob path specifier from the two args, and returns the result
+// of os.Stat on that path, along with the full path.
+func GetBlob(base string, shaPat string) (os.FileInfo, error, string) {
 	shaPat = GetDigestFrom(shaPat)
 	blobFile := filepath.Join(base, globals.BlobPath, shaPat)
-	_, err := os.Stat(blobFile)
-	if err != nil {
-		return ""
-	}
-	return blobFile
+	fi, err := os.Stat(blobFile)
+	return fi, err, blobFile
 }

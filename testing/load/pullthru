@@ -30,6 +30,9 @@
 # Accepts an optional bool arg --dry-run. If specified, then just prints what it would do
 # but doesn't do it.
 #
+# Accepts an optional arg --image-file to get images from a file rather than the Registry container
+# running in docker. Images are expected like: "ubuntu.me:5000/xhgtm5axw4-hyzo4ala4p-0002:v000.458".
+#
 # Full example (with prune): ./pullthru frobozz.io --filter -0001: --count 1000 --prune --dry-run
 #
 # Ociregistry must be configured with config.yaml to pull from the ubuntu.me registry
@@ -50,6 +53,8 @@ this_pid=$BASHPID
 prune=0
 imgcnt=0
 dry_run=
+image_file=
+images=()
 
 for (( i = 1; i <= $#; i++ )); do
   opt="${!i}"
@@ -63,6 +68,9 @@ for (( i = 1; i <= $#; i++ )); do
     prune=1
   elif [[ $opt == "--dry-run" ]]; then
     dry_run=echo
+  elif [[ $opt == "--image-file" ]]; then
+    ((i++))
+    image_file="${!i}"
   else
     ociregistry_host="${!i}"
   fi
@@ -73,34 +81,39 @@ if [[ -z "$ociregistry_host" ]]; then
   exit 1
 fi
 
+if [[ -z "$image_file" ]]; then
+  images=( $(docker images | grep -v registry | grep ubuntu.me | awk '{print $1 ":" $2}') )
+else
+  images=( $(cat $image_file | grep -v '^#') )
+fi
+
 # debug
 # echo "filter          = $filter"
 # echo "ociregistry_host= $ociregistry_host"
 # echo "count           = $count"
 # echo "this_pid        = $this_pid"
 # echo "prune           = $prune"
+# for image in "${images[@]}"; do echo $image; done
 # exit
 
 # Skip the registry image which is runs the container that hosts the images that
 # ociregistry is pulling from
 for i in $(seq 1 $count); do
   if [[ $prune -eq 1 ]]; then
-    docker images | grep -v registry | grep ubuntu.me | awk '{print $1 ":" $2}' | while read image; do
-      # e.g. ubuntu.me:5000/7l4kfql7b6-dy9dt9m9ej-0004:v986.174
+    for image in "${images[@]}"; do
       if [[ $image == *$filter* ]]; then
-        # ignore if not cached for some reason
+        # ignore error if not cached
         $dry_run curl -X DELETE "$ociregistry_host/cmd/prune?type=pattern&expr=$image&dryRun=false" || true
       fi
     done
   fi
 
-  while read image; do
-    # e.g. ubuntu.me:5000/33tpy3hx9u-8wo7i2rp97-0005:v172.884
+  for image in "${images[@]}"; do
     if [[ $image == *$filter* ]]; then
       $dry_run imgpull "$ociregistry_host/$image" ~/tmp/imgpull.$this_pid.tar --scheme http || echo "ignoring error"
       ((++imgcnt))
     fi
-  done < <(docker images | grep -v registry | grep ubuntu.me | awk '{print $1 ":" $2}')
+  done
 done
 
 echo "pulled $imgcnt images"

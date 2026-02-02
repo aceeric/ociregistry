@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## 1.12.0
+
+02-Feb-2026
+
+1. Go from 1.25.5 to 1.25.6
+2. Enhance pullthru test script, supports load test in cluster
+3. Module updates: aws-sdk-go-v2/config v1.32.7, aws-sdk-go-v2/service/ecr v1.55.1, labstack/echo/v4 v4.15.0, logrus v1.9.4, urfave/cli/v3 v3.6.2, yaml/v4 v4.0.0-rc.4
+4. Add Helm test values files
+5. Testing updates
+6. Add missing file close in blob download
+7. Update Helm chart to support metrics exposition
+8. Minor doc cleanups
+
 ## 1.11.1
 
 21-Dec-2025

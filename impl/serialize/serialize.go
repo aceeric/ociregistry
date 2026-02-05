@@ -64,10 +64,6 @@ func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) e
 		}
 		existingMfstBytes = int(fi.Size())
 	}
-	if err := os.MkdirAll(filepath.Dir(fname), 0755); err != nil {
-		log.Errorf("unable to create directory %s, error: %s", filepath.Dir(fname), err)
-		return err
-	}
 	mb, err := json.Marshal(mh)
 	if err != nil {
 		log.Errorf("error marshalling manifest for %q, error: %q", mh.ImageUrl, err)

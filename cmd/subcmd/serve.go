@@ -7,8 +7,10 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/aceeric/ociregistry/api"
@@ -72,6 +74,9 @@ func Serve(buildVer string, buildDtm string) error {
 	// that server names match. We don't know how this thing will be run.
 	swagger.Servers = nil
 
+	stopCh := make(chan os.Signal, 1)
+	signal.Notify(stopCh, os.Interrupt, syscall.SIGTERM)
+
 	shutdownCh := make(chan bool)
 	stopPruneCh := make(chan bool)
 	pruneStoppedCh := make(chan bool)
@@ -130,8 +135,15 @@ func Serve(buildVer string, buildDtm string) error {
 
 	log.Info("server is running")
 
-	<-shutdownCh
-	log.Infof("received stop command - stopping")
+	select {
+	case <-stopCh:
+		log.Infof("received stop command - stopping")
+		break
+	case <-shutdownCh:
+		log.Infof("received shutdown signal - stopping")
+		break
+	}
+
 	e.Server.Shutdown(context.Background())
 	if config.GetPruneConfig().Enabled {
 		stopPruneCh <- true

@@ -129,14 +129,14 @@ ingress:
   #  hosts:
   #  - somehost.my.org
 
-# -- Specify requests and limits. Manifests are cached in memory to speed response
-# time. Volumetrics are forthcoming in a future release. If I run the server as a systemd
-# service and inspect it with the "glances" utility, glances reports 11 meg of resident
-# RAM with no images cached, and 14 meg of resident RAM with 60 images cached...
+# -- Specify requests and limits. See `Volumetrics` in the README.
 resources: {}
 
 # -- Use this to mount other volumes.
 volumes: []
+
+# -- This time allows the server to gracefully stop on a termination event
+terminationGracePeriodSeconds: 70
 
 # -- Volume Mounts provides the container mount paths. Since this is a caching
 # registry it needs a place to store image data.
@@ -190,8 +190,12 @@ initContainers: []
 #       mountPath: /var/lib/ociregistry
 
 # -- [Deployment Strategy](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy).
+# This value supports moving the pod during cluster re-leveling or upgrades.
 deploymentStrategy:
-  type: Recreate
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
 
 # -- Persistence establishes the persistence strategy. For ephemeral storage (i.e. for
 # testing or experimentation) the `emptyDir` option is enabled by default. If you have a storage

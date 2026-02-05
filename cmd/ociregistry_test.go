@@ -24,6 +24,7 @@ func TestTopLvlCLIs(t *testing.T) {
 		t.Fail()
 	}
 	defer os.RemoveAll(td)
+	serialize.CreateDirs(td, true)
 	imgFilename := filepath.Join(td, "images")
 	os.WriteFile(imgFilename, []byte(""), 0777)
 

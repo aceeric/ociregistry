@@ -207,6 +207,7 @@ func TestConcurrentGet(t *testing.T) {
 		t.Fail()
 	}
 	defer os.RemoveAll(td)
+	serialize.CreateDirs(td, true)
 	pr, err := pullrequest.NewPullRequestFromUrl(fmt.Sprintf("%s/hello-world:latest", url))
 	if err != nil {
 		t.Fail()

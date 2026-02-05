@@ -11,6 +11,7 @@ import (
 
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/serialize"
 	"github.com/aceeric/ociregistry/mock"
 
 	"github.com/labstack/echo/v4"
@@ -43,6 +44,7 @@ func TestManifestGetWithNs(t *testing.T) {
 		t.Fail()
 	}
 	defer os.RemoveAll(td)
+	serialize.CreateDirs(td, true)
 	cnt := 0
 	expectCnt := 2
 	callback := func(url string) {
@@ -84,6 +86,7 @@ func TestNeverCacheLatest(t *testing.T) {
 		t.Fail()
 	}
 	defer os.RemoveAll(td)
+	serialize.CreateDirs(td, true)
 	cnt := 0
 	callback := func(url string) {
 		// since no images are cached each image pull will access this url two times:
@@ -150,6 +153,7 @@ func TestPullImageAndBlob(t *testing.T) {
 		t.Fail()
 	}
 	defer os.RemoveAll(td)
+	serialize.CreateDirs(td, true)
 	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
 	cfg := fmt.Sprintf(serverCfg, td, 1000, false, url)
 	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {

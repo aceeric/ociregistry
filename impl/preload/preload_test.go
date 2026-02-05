@@ -9,6 +9,7 @@ import (
 
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
+	"github.com/aceeric/ociregistry/impl/serialize"
 	"github.com/aceeric/ociregistry/mock"
 
 	log "github.com/sirupsen/logrus"
@@ -39,6 +40,7 @@ func TestPreload(t *testing.T) {
 		t.Fail()
 	}
 	defer os.RemoveAll(d)
+	serialize.CreateDirs(d, true)
 	cnt, err := doPull(url+"/hello-world:latest", d, "amd64", "linux")
 	// count is 2 because one manifest list and one image manifest
 	if err != nil || cnt != 2 {
@@ -72,6 +74,7 @@ func TestLoad(t *testing.T) {
 		t.Fail()
 	}
 	defer os.RemoveAll(d)
+	serialize.CreateDirs(d, true)
 
 	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
 	defer server.Close()

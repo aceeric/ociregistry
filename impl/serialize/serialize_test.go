@@ -298,6 +298,7 @@ var manifestTests = []manifestTest{
 func TestSaveAndLoad(t *testing.T) {
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
+	CreateDirs(td, true)
 
 	for _, tst := range manifestTests {
 		mhOut := imgpull.ManifestHolder{
@@ -348,13 +349,7 @@ func TestSaveAndLoad(t *testing.T) {
 func TestWalkTheCache(t *testing.T) {
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
-	// dirs are expected by the function
-	for _, d := range []string{"img", "lts"} {
-		if os.Mkdir(filepath.Join(td, d), 0755) != nil {
-			t.FailNow()
-		}
-	}
-	// create 10 manifests in which the digest is a known test value
+	CreateDirs(td, true)
 	for i := 0; i < 10; i++ {
 		digest := fmt.Sprintf("%d", i)
 		mh := imgpull.ManifestHolder{

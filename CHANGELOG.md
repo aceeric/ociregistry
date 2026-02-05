@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.12.1
+
+04-Feb-2026
+
+1. Handle SIGTERM (to gracefully stop the server)
+2. Support rolling update
+3. Specify termination grace period for the Ociregistry pod
+4. Add volume and pod sizing documentation
+5. Do not attempt MkdirAll on each blob write - expect filesystem initialized correctly at startup
+6. Move health check start until after server is running
+
 ## 1.12.0
 
 02-Feb-2026

@@ -102,8 +102,6 @@ func Serve(buildVer string, buildDtm string) error {
 	fmt.Fprintf(os.Stderr, startupBanner, buildVer, buildDtm, time.Unix(0, time.Now().UnixNano()), config.GetPort(),
 		os.Getuid(), os.Getgid(), os.Getpid(), tlsMsg(), strings.Join(os.Args, " "))
 
-	go health()
-
 	// start the API server
 	go func() {
 		addr := net.JoinHostPort("0.0.0.0", strconv.Itoa(int(config.GetPort())))
@@ -127,6 +125,9 @@ func Serve(buildVer string, buildDtm string) error {
 		return errors.New("timed out waiting for Echo listener")
 	}
 	listener = getEchoListener(e)
+
+	go health()
+
 	log.Info("server is running")
 
 	<-shutdownCh

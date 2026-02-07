@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+cleanup() {
+  kubectl -n ociregistry delete pod hello-world --ignore-not-found=true
+  exit 0
+}
+
+trap cleanup SIGINT SIGTERM
+
+while true; do
+  kubectl -n ociregistry run hello-world\
+    --image=docker.io/hello-world@sha256:2771e37a12b7bcb2902456ecf3f29bf9ee11ec348e66e8eb322d9780ad7fc2df\
+    --image-pull-policy=Always\
+    --restart=Never && echo SUCCESS || echo FAIL
+  sleep 2s
+  kubectl -n ociregistry delete pod hello-world
+  kubectl -n ociregistry wait --for=delete pod/hello-world --timeout=60s
+done

@@ -1,0 +1,11 @@
+persistence:
+  persistentVolumeClaim:
+    enabled: true
+    newClaimSpec:
+      accessModes:
+      - ReadWriteMany
+      volumeMode: Filesystem
+      resources:
+        requests:
+          storage: 5Gi
+      storageClassName: nfs-client

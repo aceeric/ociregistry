@@ -214,7 +214,7 @@ serverConfig:
 
 The server stores each image manifest in memory twice - once by digest and once by tag for fast retrieval. The 64-byte blob digests are also cached in memory. Each image manifest is a different size, and each image has a different number of blobs. So there is no such thing as a typical cache configuration. If you take 5K as a hypothetical average manifest size and 5ish for the average number of blobs per image, then the amount of memory required to cache 1,500 image manifests and blob digests in memory is less than 10 meg.
 
-However, the bulk of the server's work in the steady state is serving blobs. This is a lot of file system IO and I've observed that this results in a large amount of Pod memory that is **not** visible to the go runtime. My belief is this is OS page caching associated with blob IO. I can cause this metric to increase by loading blob retrieval as part of a load test. This non-go-managed memory can consume the entire pod memory. Therefore you are recommended to configure two settings in your values:
+However, the bulk of the server's work in the steady state is serving blobs. This is a lot of file system IO and I've observed that this can result in a large amount of Pod memory that is **not** visible to the go runtime. My belief is this is OS page caching associated with blob IO. I can cause this metric to increase by loading blob retrieval as part of a load test. This non-go-managed memory can consume the entire pod memory. Therefore you are recommended to configure memory limits in your values:
 
 The following resource configuration will allow plenty of memory for the Go heap objects that comprise the cache, and the the OS overhead that is not visible to the go runtime.
 
@@ -226,13 +226,6 @@ resources:
   limits:
     cpu: "1"
     memory: 300Mi
-```
-
-Second - you should set the `GOMEMLIMIT` environment variable to about 80% of your pod limit. 250MiB is a huge amount given the volumetrics above and should be plenty. But you can change both based on your usage. The metrics dashboards will tell you heap allocation, etc. E.g.:
-```
-env:
-- name: GOMEMLIMIT
-  value: 250MiB
 ```
 
 ## More information

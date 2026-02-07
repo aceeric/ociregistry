@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.12.2
+
+06-Feb-2026
+
+1. Properly shut down the HTTP server with a timeout to allow connections to go idle. Supports the Ociregistry pod being evicted to a new Node, or rollout restarted.
+
 ## 1.12.1
 
 04-Feb-2026

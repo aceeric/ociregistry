@@ -144,7 +144,13 @@ func Serve(buildVer string, buildDtm string) error {
 		break
 	}
 
-	e.Server.Shutdown(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := e.Server.Shutdown(ctx); err != nil {
+		log.Errorf("echo server shutdown encountered an error: %s", err)
+	}
+
 	if config.GetPruneConfig().Enabled {
 		stopPruneCh <- true
 		log.Infof("waiting for pruner to stop")

@@ -5,6 +5,7 @@
 06-Feb-2026
 
 1. Properly shut down the HTTP server with a timeout to allow connections to go idle. Supports the Ociregistry pod being evicted to a new Node, or rollout restarted.
+2. Go from 1.25.6 to 1.25.7
 
 ## 1.12.1
 

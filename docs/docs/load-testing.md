@@ -203,7 +203,7 @@ Ociregistry: no API errors.
 
 ## Summary
 
-The load test is an artificial effort to max out concurrency. The test set is a 1,500 small images. Pulling any one of these images produces a roughly 9K tarball that can be pulled from cache in 7.5 milliseconds:
+The load test is an artificial effort to max out concurrency. The test set consists of 1,500 small images. Pulling any one of these images produces a roughly 9K tarball that can be pulled from cache in 7.5 milliseconds:
 
 ```
 $ imgpull localhost:8888/ubuntu.me:5000/a3xuzdp7kd-pmwvzztrob-0010:v339.283 deleteme.tar --scheme http

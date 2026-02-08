@@ -144,13 +144,13 @@ By default the server serves over HTTP in the cluster. To serve over HTTPS, the 
 
 1. Have server cert and key PEM files, and optionally a CA PEM file, on the file system.
 2. Configure values like this:
-   ```
+   ```yaml
    serverTls:
      enabled: true
      clientAuth: none # or 'verify'
    ```
 3. Deploy the chart:
-   ```
+   ```shell
    helm upgrade --install ociregistry oci://...\
     --namespace ociregistry\
     --create-namespace\
@@ -162,7 +162,7 @@ By default the server serves over HTTP in the cluster. To serve over HTTPS, the 
 
 If you already have a secret in the cluster with cert, key, and (optionally) ca then configure the `serverTls` as shown below. Then omit supplying values/files for the `tls.crt`, `tls.key`, and `ca.crt` sub-keys of the `serverTls` hash. For example, suppose:
 
-```
+```shell
 kubectl -n ociregistry create secret generic my-tls-secret\
   --from-file=tls.crt=/tmp/localhost.crt\
   --from-file=tls.key=/tmp/localhost.key\
@@ -171,7 +171,7 @@ kubectl -n ociregistry create secret generic my-tls-secret\
 
 Then you would install the ociregistry with this a values override containing this:
 
-```
+```yaml
 serverTls:
   secretName: my-tls-secret
   enabled: true
@@ -180,7 +180,7 @@ serverTls:
 
 And you helm install command would look like this (omit the `--set-file` args):
 
-```
+```shell
 helm upgrade --install ociregistry oci://...\
   --namespace ociregistry\
   --create-namespace\
@@ -189,22 +189,24 @@ helm upgrade --install ociregistry oci://...\
 
 ## Monitoring and metrics
 
-Metrics can be enabled as follows. First enable observability. This creates the Prometheus and Grafana resources (including dashboard `ConfigMaps` for Grafana.) Since these resources are created in the `ociregistry` namespace, you will need to configure Prometheus to find Service Monitors and Prometheus Rules in that namespace, or all namespaces:
-```
+Metrics can be enabled as follows. First enable observability. This creates the Prometheus and Grafana resources, including dashboard `ConfigMaps` for Grafana:
+```yaml
 observability:
   enabled: true
 ```
 
-Then enable metrics exposition by defining a metrics port for the server to expose metrics on. There are two ways:
+> Since these resources are created in the `ociregistry` namespace, you will need to configure Prometheus to find Service Monitors and Prometheus Rules in that namespace, or all namespaces.
+
+Next enable metrics exposition by defining a metrics port for the server to expose metrics on. There are two ways:
 
 Using the `metrics` value:
-```
+```yaml
 metrics:
   port: <port num>
 ```
 
 Or, using the `serverConfig` value:
-```
+```yaml
 serverConfig:
   configuration:
     metrics: <port num>
@@ -212,13 +214,17 @@ serverConfig:
 
 ## Volumetrics
 
-The server stores each image manifest in memory twice - once by digest and once by tag for fast retrieval. The 64-byte blob digests are also cached in memory. Each image manifest is a different size, and each image has a different number of blobs. So there is no such thing as a typical cache configuration. If you take 5K as a hypothetical average manifest size and 5ish for the average number of blobs per image, then the amount of memory required to cache 1,500 image manifests and blob digests in memory is less than 10 meg.
+The server stores each image manifest in memory twice - once by digest and once by tag for fast retrieval. The 64-byte blob digests are also cached in memory. Each image manifest is a different size, and each image has a different number of blobs. So there is no such thing as a typical cache configuration. If you consider 5K as a hypothetical average manifest size and approximately 5 as a hypothetical average number of blobs per image, then the amount of memory required to cache 1,500 image manifests and blob digests in memory is less than 10Mb.
 
-However, the bulk of the server's work in the steady state is serving blobs. This is a lot of file system IO and I've observed that this can result in a large amount of Pod memory that is **not** visible to the go runtime. My belief is this is OS page caching associated with blob IO. I can cause this metric to increase by loading blob retrieval as part of a load test. This non-go-managed memory can consume the entire pod memory. Therefore you are recommended to configure memory limits in your values:
+However, the bulk of the server's work in the steady state is serving blobs. Serving blobs requires a lot of file system reads. This _can_ result in the OS caching a large volume of file pages in memory. This OS cache is **not** visible to the go runtime and can consume the entire host memory. The typical scenario in which this occurs is when a large number of pods request the same set of images, resulting in the server reading the same blobs from the file system concurrently.
 
-The following resource configuration will allow plenty of memory for the Go heap objects that comprise the cache, and the the OS overhead that is not visible to the go runtime.
+Consider the following Prometheus graph of the `container_memory_working_set_bytes` metric. In this example a load test began at 02:27 and continued until about 02:34. During this period the load test pulled the same 50 images from multiple clients. The images comprising the test ranged in size from a few hundred bytes to several hundred megabytes. The effect of a large number of server goroutines reading the same set of file system pages caused the OS to significantly increase the amount of memory used to cache filesystem pages. The Ociregistry server under test was configured with `resources.limits.memory: 300Mi`. The metric floor of about 25Mi is all the Ociregistry needs to manage its in-memory manifest and blob digest cache. Everything else is OS file page caching:
 
-```
+![load-test.jpg](./load-test.jpg)
+
+Because of OS file page caching, you are **strongly** recommended to configure memory limits in your values. The following resource configuration will allow plenty of memory for the Go heap objects that comprise the cache, and the the OS caching overhead that is not visible to the go runtime. Testing has shown that the OS will honor the pod memory limit and trim the file page cache to live within the pod limit and avoid OOMKilling the pod. Example (for the hypothetical 1,500 images discussed above):
+
+```yaml
 resources:
   requests:
     cpu: 500m

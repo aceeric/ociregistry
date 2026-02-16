@@ -129,6 +129,31 @@ ingress:
   #  hosts:
   #  - somehost.my.org
 
+# -- Configures an httpRoute for access to the registry outside the cluster.
+# @default -- `enabled: false`
+httpRoute:
+  enabled: false
+  annotations: {}
+  parentRefs: []
+  hostnames: []
+  rules: []
+# Example:
+# httpRoute:
+#   enabled: true
+#   parentRefs:
+#     - name: dtk-gateway
+#       namespace: nginx-gateway
+#   hostnames:
+#     - ociregistry.io
+#   rules:
+#     - matches:
+#         - path:
+#             type: PathPrefix
+#             value: /
+#       backendRefs:
+#         - name: ociregistry
+#           port: 8080
+
 # -- Specify requests and limits. See `Volumetrics` in the README.
 resources: {}
 

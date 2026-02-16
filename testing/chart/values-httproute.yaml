@@ -1,0 +1,23 @@
+httpRoute:
+  enabled: true
+  annotations:
+    foo: bar
+  parentRefs:
+    - name: dtk-gateway
+      namespace: nginx-gateway
+  hostnames:
+    - foo.bar.io
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /ociregistry
+    - filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplaceFullPath
+              replaceFullPath: /
+      backendRefs:
+        - name: ociregistry
+          port: 8080

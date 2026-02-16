@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.12.3
+
+16-Feb-2026
+
+1. Support `HTTPRoute` resource.
+
 ## 1.12.2
 
 06-Feb-2026

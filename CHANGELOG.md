@@ -6,6 +6,7 @@
 
 1. Go from 1.25.7 to 1.26.0
 2. Helm docs fix
+3. Implement changes from 1.26.0 'go fix'
 
 ## 1.12.3
 

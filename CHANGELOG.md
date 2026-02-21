@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 1.12.4
+
+20-Feb-2026
+
+1. Go from 1.25.7 to 1.26.0
+2. Helm docs fix
+
 ## 1.12.3
 
 16-Feb-2026

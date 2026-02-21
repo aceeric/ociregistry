@@ -4,8 +4,8 @@ go 1.26.0
 
 require (
 	github.com/aceeric/imgpull v1.13.0
-	github.com/aws/aws-sdk-go-v2/config v1.32.7
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.55.1
+	github.com/aws/aws-sdk-go-v2/config v1.32.9
+	github.com/aws/aws-sdk-go-v2/service/ecr v1.55.2
 	github.com/getkin/kin-openapi v0.133.0
 	github.com/labstack/echo/v4 v4.15.0
 	github.com/oapi-codegen/echo-middleware v1.0.2
@@ -24,7 +24,7 @@ require (
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.41.1 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.7 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.9 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.17 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.17 // indirect
@@ -32,10 +32,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.17 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.9 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.13 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.14 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.6 // indirect
-	github.com/aws/smithy-go v1.24.0 // indirect
+	github.com/aws/smithy-go v1.24.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.22.4 // indirect
@@ -59,10 +59,10 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/woodsbury/decimal128 v1.4.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
-	golang.org/x/net v0.49.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
-	golang.org/x/text v0.33.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/net v0.50.0 // indirect
+	golang.org/x/sys v0.41.0 // indirect
+	golang.org/x/text v0.34.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 )

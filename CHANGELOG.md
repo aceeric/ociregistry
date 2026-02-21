@@ -7,6 +7,7 @@
 1. Go from 1.25.7 to 1.26.0
 2. Helm docs fix
 3. Implement changes from 1.26.0 'go fix'
+4. Module updates: aws-sdk-go-v2/config v1.32.9, aws-sdk-go-v2/service/ecr v1.55.2
 
 ## 1.12.3
 

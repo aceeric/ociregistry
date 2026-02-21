@@ -1,0 +1,1390 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://aceeric.github.io/ociregistry/configuring-the-server/">
+      
+      
+        <link rel="prev" href="../quickstart-kubernetes/">
+      
+      
+        <link rel="next" href="../auth/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Configuring The Server - Caching Pull-through OCI Distribution Server</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#configuring-the-server" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Caching Pull-through OCI Distribution Server" class="md-header__button md-logo" aria-label="Caching Pull-through OCI Distribution Server" data-md-component="logo">
+      
+  <img src="../assets/white-logo-no-background.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Caching Pull-through OCI Distribution Server
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuring The Server
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/aceeric/ociregistry" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Caching Pull-through OCI Distribution Server" class="md-nav__button md-logo" aria-label="Caching Pull-through OCI Distribution Server" data-md-component="logo">
+      
+  <img src="../assets/white-logo-no-background.svg" alt="logo">
+
+    </a>
+    Caching Pull-through OCI Distribution Server
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/aceeric/ociregistry" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-desktop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start (Desktop)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start (Kubernetes)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring The Server
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring The Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defaults
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#config-file-keys-and-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config file keys and values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registry-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-tls-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server TLS configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-tls-permutations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server TLS permutations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prune-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prune Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prune-configuration-keys-and-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prune configuration keys and values
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../command-line/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Command Line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../loading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loading And Preloading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pruning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pruning The Image Cache
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concur-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concurrency Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../airgap-considerations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Airgap Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rest-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrative REST API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../systemd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running as a systemd Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../load-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Load Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Driver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#defaults" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Defaults
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#config-file-keys-and-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Config file keys and values
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#registry-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registry Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-tls-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server TLS configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server-tls-permutations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server TLS permutations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prune-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prune Configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prune-configuration-keys-and-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prune configuration keys and values
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="configuring-the-server">Configuring The Server<a class="headerlink" href="#configuring-the-server" title="Permanent link">&para;</a></h1>
+<p>The server will accept configuration on the command line, or via a configuration yaml file. Most of the configuration file settings map directly to the command line. The exceptions are the <code>pruneConfig</code>, <code>registries</code>, and <code>serverTlsConfig</code> entries which are only accepted in the configuration file at this time, being too complex to easily represent as command line args.</p>
+<p>As one would expect the following values provide configuration with the lowest priority on the bottom and the highest priority on the top:</p>
+<pre class="mermaid"><code>block
+  columns 1
+  a["Command line"]
+  b["Config file"]
+  c["Hard-coded defaults in the Go code"]</code></pre>
+<p>To provide full configuration in a file, run the server this way:</p>
+<div class="highlight"><pre><span></span><code>bin/ociregistry<span class="w"> </span>--config-file<span class="w"> </span>&lt;some<span class="w"> </span>file&gt;<span class="w"> </span>serve
+</code></pre></div>
+<p>But this is also valid:</p>
+<div class="highlight"><pre><span></span><code>bin/ociregistry<span class="w"> </span>--config-file<span class="w"> </span>&lt;some<span class="w"> </span>file&gt;<span class="w"> </span>serve<span class="w"> </span>--port<span class="w"> </span><span class="m">9999</span>
+</code></pre></div>
+<h2 id="defaults">Defaults<a class="headerlink" href="#defaults" title="Permanent link">&para;</a></h2>
+<p>The yaml document below shows a <code>config.yaml</code> file specifying the defaults that are implemented in the Go code. In other words, running the server with this exact configuration file is the same as running with no configuration file:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">imagePath</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/var/lib/ociregistry</span>
+<span class="nt">logLevel</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">error</span>
+<span class="nt">logFile</span><span class="p">:</span>
+<span class="nt">preloadImages</span><span class="p">:</span>
+<span class="nt">imageFile</span><span class="p">:</span>
+<span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">8080</span>
+<span class="c1">#os: omit to use the server OS</span>
+<span class="c1">#arch: omit to use the server architecture</span>
+<span class="nt">pullTimeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60000</span>
+<span class="nt">alwaysPullLatest</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">airGapped</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">helloWorld</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">defaultNs</span><span class="p">:</span>
+<span class="nt">health</span><span class="p">:</span>
+<span class="nt">metrics</span><span class="p">:</span>
+<span class="nt">registries</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[]</span>
+<span class="nt">pruneConfig</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="nt">serverTlsConfig</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+</code></pre></div>
+<h2 id="config-file-keys-and-values">Config file keys and values<a class="headerlink" href="#config-file-keys-and-values" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Default</th>
+<th>Command line arg</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>imagePath</code></td>
+<td>Path spec</td>
+<td>/var/lib/ociregistry</td>
+<td><code>--image-path</code></td>
+<td>The base path for the image cache. The server will create sub-directories under this for blobs and manifests.</td>
+</tr>
+<tr>
+<td><code>logLevel</code></td>
+<td>keyword</td>
+<td>error</td>
+<td><code>--log-level</code></td>
+<td>Error level logging. See help for valid values.</td>
+</tr>
+<tr>
+<td><code>logFile</code></td>
+<td>Path spec</td>
+<td>-</td>
+<td><code>--log-file</code></td>
+<td>Empty means log to stderr. If you specify a file, the logging is directed to the file.</td>
+</tr>
+<tr>
+<td><code>preloadImages</code></td>
+<td>Path spec</td>
+<td>-</td>
+<td><code>--preload-images</code></td>
+<td>If the <code>serve</code> subcommand is specified, then this is the file containing a list of images to pre-load before starting the server.</td>
+</tr>
+<tr>
+<td><code>imageFile</code></td>
+<td>Path spec</td>
+<td>-</td>
+<td><code>--image-file</code></td>
+<td>If the <code>load</code> subcommand is specified, then this is the file containing a list of images to load.</td>
+</tr>
+<tr>
+<td><code>port</code></td>
+<td>Integer</td>
+<td>8080</td>
+<td><code>--port</code></td>
+<td>The port to serve on</td>
+</tr>
+<tr>
+<td><code>os</code></td>
+<td>keyword</td>
+<td>runtime.GOOS</td>
+<td><code>--os</code></td>
+<td>If loading or preloading, the OS and arch. If empty, then defaults to the host running the server. So usually comment these out.</td>
+</tr>
+<tr>
+<td><code>arch</code></td>
+<td>keyword</td>
+<td>runtime.GOARCH</td>
+<td><code>--arch</code></td>
+<td>"</td>
+</tr>
+<tr>
+<td><code>pullTimeout</code></td>
+<td>Integer</td>
+<td>60000</td>
+<td><code>--pull-timeout</code></td>
+<td>Number of milliseconds before a pull from an upstream will time out.</td>
+</tr>
+<tr>
+<td class="nowrap-column"><code>alwaysPullLatest</code></td>
+<td>Boolean</td>
+<td>false</td>
+<td><code>--always-pull-latest</code></td>
+<td>If true, then whenever a latest tag is pulled, the server will always pull from the upstream - in other words it acts like a basic proxy. Useful when supporting dev environments where latest is frequently changing.</td>
+</tr>
+<tr>
+<td><code>airGapped</code></td>
+<td>Boolean</td>
+<td>false</td>
+<td><code>--air-gapped</code></td>
+<td>If true, will not attempt to pull from an upstream when an image is requested that is not cached.</td>
+</tr>
+<tr>
+<td><code>helloWorld</code></td>
+<td>Boolean</td>
+<td>false</td>
+<td><code>--hello-world</code></td>
+<td>For testing. Only serves 'docker.io/hello-world:latest' from embedded blobs and manifests</td>
+</tr>
+<tr>
+<td><code>defaultNs</code></td>
+<td>String</td>
+<td>Empty</td>
+<td><code>--default-ns</code></td>
+<td>Allows pulling without an explicit namespace. Otherise, a namespace is required either in-path (<code>docker pull ociregistry:8080/docker.io/hello-world</code>) or as a query param the way <code>containerd</code> does it when registry mirroring is configured in the <code>containerd</code> <code>config.toml</code>. E.g. if <code>--default-ns=docker.io</code> then <code>docker pull ociregistry:8080/hello-world</code> will pull from <code>docker.io</code>, otherwise it is an error.</td>
+</tr>
+<tr>
+<td><code>health</code></td>
+<td>Integer</td>
+<td>-</td>
+<td><code>--health</code></td>
+<td>A port number to run a <code>/health</code> endpoint on for Kubernetes liveness and readiness. By default, the server doesn't listen on a health port. The Helm chart enables this by default when running the server as a cluster workload.</td>
+</tr>
+<tr>
+<td><code>metrics</code></td>
+<td>Integer</td>
+<td>-</td>
+<td><code>--metrics</code></td>
+<td>A port number to run a <code>/metrics</code> endpoint on for Prometheus. By default, the server doesn't enable or expose metrics.</td>
+</tr>
+<tr>
+<td><code>registries</code></td>
+<td>List of dictionary</td>
+<td><code>[]</code></td>
+<td>n/a</td>
+<td>Upstream registries configuration. See further down for registry configuration.</td>
+</tr>
+<tr>
+<td><code>pruneConfig</code></td>
+<td>Dictionary</td>
+<td>see below</td>
+<td>n/a</td>
+<td>Prune configuration. Pruning is disabled by default. See further down for prune configuration.</td>
+</tr>
+<tr>
+<td><code>serverTlsConfig</code></td>
+<td>Dictionary</td>
+<td><code>{}</code></td>
+<td>n/a</td>
+<td>Configures TLS with downstream (client) pullers, e.g. containerd. By default, serves over HTTP. See server tls configuration further down.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="registry-configuration">Registry Configuration<a class="headerlink" href="#registry-configuration" title="Permanent link">&para;</a></h2>
+<p>The OCI Distribution server may need configuration to connect to upstream registries. If run with no configuration for a given registry, the server will default to anonymous insecure <code>HTTPS</code> access. You specify registry configuration using the <code>registries</code> list:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">registries</span><span class="p">:</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">upstream one</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foo</span>
+<span class="w">  </span><span class="nt">scheme</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https</span>
+<span class="w">  </span><span class="nt">auth</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="w">  </span><span class="nt">tls</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">upstream two</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">bar</span>
+<span class="w">  </span><span class="nt">scheme</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http</span>
+<span class="w">  </span><span class="nt">auth</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="w">  </span><span class="nt">tls</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">etc...</span>
+</code></pre></div>
+<p>Each entry supports the following configuration structure overall. Not all values are required. More detail is presented on that below. This shows the full structure:</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-upstream</span><span class="w"> </span><span class="c1"># or my-upstream:PORT, e.g. index.docker.io</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Something that makes sense to you (or omit it - it is optional)</span>
+<span class="w">  </span><span class="nt">scheme</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">https</span><span class="w"> </span><span class="c1"># (the default), also accepts http</span>
+<span class="w">  </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">theuser</span>
+<span class="w">    </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">thepass</span>
+<span class="w">    </span><span class="nt">passwordFromEnv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">THEPASS_ENV_VAR</span>
+<span class="w">    </span><span class="nt">token</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">{}</span>
+<span class="w">  </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">ca</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/ca.crt</span>
+<span class="w">    </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/client.cert</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/client.key</span>
+<span class="w">    </span><span class="nt">insecureSkipVerify</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true/false</span><span class="w"> </span><span class="c1"># defaults to false</span>
+</code></pre></div>
+<p>Since <code>scheme</code> defaults to <code>https</code> you can omit that entirely. The <code>tls</code> key is optional. If omitted and <code>scheme</code> is https then the <em>Ociregistry</em> server attempts insecure 1-way TLS. The default for <code>tls.insecureSkipVerify</code> is <code>false</code> if omitted (and <code>tls</code> is specified.) Similarly, <code>description</code> is ignored by the server and can be omitted.</p>
+<p>The <code>auth</code> section implements basic auth, just like your <code>~/.docker/config.json</code> file.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code>auth.token</code> configuration element supports token-based authentication using an external service and is documented in the <a href="../auth/">Authentication</a> section.</p>
+</div>
+<p>The <code>name</code> value is the upstream host name that you will pull from. For example say you're running the server on your desktop in test mode on <code>localhost:8080</code>. Let's also say that you have an in-house corporate registry that serves proprietary images on <code>my-corp-registry.myco.org:8888</code>. You run this command to pull <strong>through</strong> the <em>Ociregistry</em> server <strong>from</strong> your corporate registry server this way:
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>localhost:8080/my-corp-registry.myco.org:8888/my-proprietary-app:v1.0.0
+</code></pre></div>
+Say your corp registry server requires user and password. Then you would configure a <code>registries</code> entry in the <em>Ociregistry</em> server config file like this:
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-corp-registry.myco.org:8888</span>
+<span class="w">  </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">theuser</span>
+<span class="w">    </span><span class="nt">password</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">thepass</span>
+</code></pre></div></p>
+<p>To read the password from an environment variable, use the <code>passwordFromEnv</code> key:
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">my-corp-registry.myco.org:8888</span>
+<span class="w">  </span><span class="nt">auth</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">user</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">theuser</span>
+<span class="w">    </span><span class="nt">passwordFromEnv</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">THEPASS_ENV_VAR</span>
+</code></pre></div></p>
+<p>Here's another scenario. Let's say your corp DNS resolves <code>index.docker.io</code> to an in-house registry mirror that requires an NPE cert. Then your registry entry might look like:
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">index.docker.io</span>
+<span class="w">  </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">npe.crt</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">npe.key</span>
+</code></pre></div></p>
+<p>The <code>tls</code> section can implement multiple scenarios:</p>
+<ol>
+<li>One-way <strong>insecure</strong> TLS, in which client certs are not provided to the remote, and the remote server cert is not validated:
+   <div class="highlight"><pre><span></span><code><span class="nt">tls</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">insecureSkipVerify</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div></li>
+<li>One-way <strong>secure</strong> TLS, in which client certs are not provided to the remote, and the remote server cert <strong>is</strong> validated using the OS trust store:
+   <div class="highlight"><pre><span></span><code><span class="nt">tls</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">insecureSkipVerify</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span><span class="w"> </span><span class="c1"># (or omit, since it defaults to false)</span>
+</code></pre></div></li>
+<li>One-way <strong>secure</strong> TLS, in which client certs are not provided to the remote, and the remote server cert is validate using a <strong>provided</strong> CA cert:
+   <div class="highlight"><pre><span></span><code><span class="nt">tls</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ca</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/ca.crt</span>
+</code></pre></div></li>
+<li>mTLS (client certs are provided to the remote):
+   <div class="highlight"><pre><span></span><code><span class="nt">tls</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/client.cert</span>
+<span class="w">  </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/client.key</span>
+</code></pre></div>
+   mTLS can be implemented <strong>with</strong> and <strong>without</strong> remote server cert validation as described above in the various one-way TLS scenarios. Examples:
+   <div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foo.bar.1.io</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mTLS, don&#39;t verify server cert</span>
+<span class="w">  </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/client.cert</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/client.key</span>
+<span class="w">    </span><span class="nt">insecureSkipVerify</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foo.bar.2.io</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mTLS, verify server cert from OS trust store</span>
+<span class="w">  </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/client.cert</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/client.key</span>
+<span class="w">    </span><span class="nt">insecureSkipVerify</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">foo.bar.3.io</span>
+<span class="w">  </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">mTLS, verify server cert from provided CA</span>
+<span class="w">  </span><span class="nt">tls</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/client.cert</span>
+<span class="w">    </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/my/client.key</span>
+<span class="w">    </span><span class="nt">ca</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/remote/ca.crt</span>
+<span class="w">    </span><span class="nt">insecureSkipVerify</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div></li>
+</ol>
+<h2 id="server-tls-configuration">Server TLS configuration<a class="headerlink" href="#server-tls-configuration" title="Permanent link">&para;</a></h2>
+<p>By default, the server serves over HTTP. The <code>serverTlsConfig</code> section in the config file configures the <em>Ociregistry</em> server to serve over TLS. </p>
+<p>The <code>cert</code>, <code>key</code>, and <code>ca</code> are expected to be PEM encoded files. Example:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">serverTlsConfig</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">cert</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/pem/encoded/server.crt</span>
+<span class="w">  </span><span class="nt">key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/pem/encoded/server.private.key</span>
+<span class="w">  </span><span class="nt">ca</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/path/to/pem/encoded/ca.crt</span>
+<span class="w">  </span><span class="nt">clientAuth</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">none</span><span class="w"> </span><span class="c1"># or verify</span>
+</code></pre></div>
+<h2 id="server-tls-permutations">Server TLS permutations<a class="headerlink" href="#server-tls-permutations" title="Permanent link">&para;</a></h2>
+<p>The following permutations are supported or serving over HTTPS:</p>
+<table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>cert</code> and <code>key</code> populated</td>
+<td>The server will provide the cert to the client to establish 1-way TLS.</td>
+</tr>
+<tr>
+<td><code>clientAuth: none</code></td>
+<td>Client cert is not requested and will be ignored if provided.</td>
+</tr>
+<tr>
+<td><code>clientAuth: verify</code></td>
+<td>mTLS: Client cert is required and verified. See the <code>ca</code> key below.</td>
+</tr>
+<tr>
+<td><code>ca</code> populated</td>
+<td>Client cert is validated against the provided CA.</td>
+</tr>
+<tr>
+<td><code>ca</code> omitted</td>
+<td>Client cert is validated against the OS trust store.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="prune-configuration">Prune Configuration<a class="headerlink" href="#prune-configuration" title="Permanent link">&para;</a></h2>
+<p>Pruning configures the server to remove images as a background process based on create date or recency of a pull. (Each time an image is pulled the server updates the pull date/time for the image.) Pruning is disabled by default. An example full prune configuration is as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">pruneConfig</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">enabled</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">duration</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30d</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">accessed</span>
+<span class="w">  </span><span class="nt">frequency</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1d</span>
+<span class="w">  </span><span class="nt">count</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">-1</span>
+<span class="w">  </span><span class="nt">dryRun</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</code></pre></div>
+<h2 id="prune-configuration-keys-and-values">Prune configuration keys and values<a class="headerlink" href="#prune-configuration-keys-and-values" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>enabled</code></td>
+<td>Boolean</td>
+<td>If true, enables background pruning.</td>
+</tr>
+<tr>
+<td><code>duration</code></td>
+<td>Duration expression</td>
+<td>E.g.: <code>30d</code>. The value is interpreted based on the prune <code>type</code> below. Valid time units are <code>ns</code> (nanoseconds), <code>us</code> or <code>µs</code> (microseconds), <code>ms</code> (milliseconds), <code>s</code> (seconds), <code>m</code> (minutes), <code>h</code> (hours), and <code>d</code> (days).</td>
+</tr>
+<tr>
+<td><code>type</code></td>
+<td>Keyword</td>
+<td>Valid values are <code>accessed</code> and <code>created</code>. If <code>accessed</code>, then the server prunes images that have not been pulled in <code>duration</code> amount of time. If <code>created</code>, then the server prunes images whose create date is older than <code>duration</code> time ago.</td>
+</tr>
+<tr>
+<td><code>frequency</code></td>
+<td>Duration expression</td>
+<td>E.g.: <code>1d</code>. Run the background pruner with this frequency. The time units are the same as for <code>duration</code>.</td>
+</tr>
+<tr>
+<td><code>count</code></td>
+<td>Integer</td>
+<td>The number of images to prune on each run of the background pruner. A value of <code>-1</code> means no limit to the number of images pruned.</td>
+</tr>
+<tr>
+<td><code>dryRun</code></td>
+<td>Boolean</td>
+<td>If <code>true</code> then just log messages but don't actually prune. For testing and troubleshooting.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Since pruning locks the cache, a good strategy is to limit the number of pruned images on each invocation of the pruner and run with greater frequency.</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../quickstart-kubernetes/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Quick Start (Kubernetes)">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Quick Start (Kubernetes)
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../auth/" class="md-footer__link md-footer__link--next" aria-label="Next: Authentication">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Authentication
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.footer", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

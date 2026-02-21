@@ -1,0 +1,1255 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://aceeric.github.io/ociregistry/quickstart-desktop/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../quickstart-kubernetes/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Quick Start (Desktop) - Caching Pull-through OCI Distribution Server</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#quick-start-desktop" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Caching Pull-through OCI Distribution Server" class="md-header__button md-logo" aria-label="Caching Pull-through OCI Distribution Server" data-md-component="logo">
+      
+  <img src="../assets/white-logo-no-background.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Caching Pull-through OCI Distribution Server
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Quick Start (Desktop)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/aceeric/ociregistry" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Caching Pull-through OCI Distribution Server" class="md-nav__button md-logo" aria-label="Caching Pull-through OCI Distribution Server" data-md-component="logo">
+      
+  <img src="../assets/white-logo-no-background.svg" alt="logo">
+
+    </a>
+    Caching Pull-through OCI Distribution Server
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/aceeric/ociregistry" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start (Desktop)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start (Desktop)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#build-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build the server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#curl-an-image-manifest-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Curl an image manifest list
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#curl-an-image-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Curl an image manifest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-the-image-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect the image cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#restart-the-server-and-repeat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restart the Server and Repeat
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observe-the-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe the logs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docker-pull-through-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker pull (through the server)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observe-the-new-log-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe the new log entries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observe-the-image-is-the-docker-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe the image is the Docker cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start (Kubernetes)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuring-the-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring The Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../command-line/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Command Line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../loading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loading And Preloading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pruning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pruning The Image Cache
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concur-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concurrency Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../airgap-considerations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Airgap Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rest-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrative REST API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../systemd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running as a systemd Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../load-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Load Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Driver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#build-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Build the server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#run-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the server
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#curl-an-image-manifest-list" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Curl an image manifest list
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#curl-an-image-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Curl an image manifest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#inspect-the-image-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Inspect the image cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#restart-the-server-and-repeat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Restart the Server and Repeat
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observe-the-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe the logs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#docker-pull-through-the-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docker pull (through the server)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observe-the-new-log-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe the new log entries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#observe-the-image-is-the-docker-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe the image is the Docker cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="quick-start-desktop">Quick Start (Desktop)<a class="headerlink" href="#quick-start-desktop" title="Permanent link">&para;</a></h1>
+<p>The easiest way to understand how the server works is to git clone the repo, then build and run the server locally on your Linux desktop.</p>
+<p>After git-cloning the project:</p>
+<h2 id="build-the-server">Build the server<a class="headerlink" href="#build-the-server" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>make<span class="w"> </span>server
+</code></pre></div>
+<p>This command compiles the server and creates a binary called <code>ociregistry</code> in the <code>bin</code> directory relative to the project root.</p>
+<h2 id="run-the-server">Run the server<a class="headerlink" href="#run-the-server" title="Permanent link">&para;</a></h2>
+<p>You provide a file system location for the image cache with the <code>--image-path</code> arg. If the directory doesn't exist the server will create it. The default is <code>/var/lib/ociregistry</code> but to kick the tires it makes more sense to use the system temp directory. By default the server listens on <code>8080</code>. If you have something already running and bound to that port, specify <code>--port</code>. We'll specify it explicitly here with the default value:</p>
+<div class="highlight"><pre><span></span><code>bin/ociregistry<span class="w"> </span>--image-path<span class="w"> </span>/tmp/images<span class="w"> </span>serve<span class="w"> </span>--port<span class="w"> </span><span class="m">8080</span>
+</code></pre></div>
+<p>Result:
+<div class="highlight"><pre><span></span><code>----------------------------------------------------------------------
+OCI Registry: pull-only, pull-through, caching OCI Distribution Server
+Version: 1.9.6, build date: 2025-10-06T23:35:46.56Z
+Started: 2025-10-06 19:49:57.169081368 -0400 EDT (port 8080)
+Running as (uid:gid) 1000:1000
+Process id: 27010
+Tls: none
+Command line: bin/ociregistry --image-path /tmp/images serve --port 8080
+----------------------------------------------------------------------
+</code></pre></div></p>
+<h2 id="curl-an-image-manifest-list">Curl an image manifest list<a class="headerlink" href="#curl-an-image-manifest-list" title="Permanent link">&para;</a></h2>
+<p>Curl a manifest list using the OCI Distribution Server REST API. Note the <code>ns</code> query parameter in the URL below which tells the server to go to that upstream if the image isn't already locally cached. This is exactly how containerd does it when you configure containerd to mirror:</p>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>localhost:8080/v2/kube-scheduler/manifests/v1.29.1?ns<span class="o">=</span>registry.k8s.io<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+</code></pre></div>
+<p><em>(The server also supports in-path namespaces like <code>localhost:8080/v2/registry.k8s.io/kube-scheduler/manifests/v1.29.1</code>)</em></p>
+<p>Result:
+<div class="highlight"><pre><span></span><code><span class="w">  </span><span class="nt">&quot;schemaVersion&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;mediaType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/vnd.docker.distribution.manifest.list.v2+json&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;manifests&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;mediaType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/vnd.docker.distribution.manifest.v2+json&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2612</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;digest&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;platform&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;architecture&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;amd64&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;os&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;linux&quot;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="err">e</span><span class="kc">t</span><span class="err">c...</span>
+</code></pre></div></p>
+<h2 id="curl-an-image-manifest">Curl an image manifest<a class="headerlink" href="#curl-an-image-manifest" title="Permanent link">&para;</a></h2>
+<p>Pick the first manifest from the list above - the <code>amd64/linux</code> manifest - and curl the manifest by SHA, again using the OCI Distribution Server REST API:</p>
+<div class="highlight"><pre><span></span><code><span class="nv">DIGEST</span><span class="o">=</span>019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
+curl<span class="w"> </span>localhost:8080/v2/kube-scheduler/manifests/sha256:<span class="nv">$DIGEST</span>?ns<span class="o">=</span>registry.k8s.io<span class="w"> </span><span class="p">|</span><span class="w"> </span>jq
+</code></pre></div>
+<p>Result:
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;schemaVersion&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;mediaType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/vnd.docker.distribution.manifest.v2+json&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;config&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;mediaType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/vnd.docker.container.image.v1+json&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2425</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;digest&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sha256:406945b5115423a8c1d1e5cd53222ef2ff0ce9d279ed85badbc4793beebebc6c&quot;</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;layers&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;mediaType&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;application/vnd.docker.image.rootfs.diff.tar.gzip&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">84572</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;digest&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sha256:aba5379b9c6dc7c095628fe6598183d680b134c7f99748649dddf07ff1422846&quot;</span>
+<span class="w">    </span><span class="p">},</span>
+<span class="w">    </span><span class="err">e</span><span class="kc">t</span><span class="err">c...</span>
+</code></pre></div></p>
+<h2 id="inspect-the-image-cache">Inspect the image cache<a class="headerlink" href="#inspect-the-image-cache" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>find<span class="w"> </span>/tmp/images
+</code></pre></div>
+<p>Result:</p>
+<div class="highlight"><pre><span></span><code>/tmp/images
+/tmp/images/blobs
+/tmp/images/blobs/fcb6f6d2c9986d9cd6a2ea3cc2936e5fc613e09f1af9042329011e43057f3265
+/tmp/images/blobs/e5dbef90bae3c9df1dfd4ae7048c56226f6209d538c91f987aff4f54e888f566
+/tmp/images/blobs/e8c73c638ae9ec5ad70c49df7e484040d889cca6b4a9af056579c3d058ea93f0
+etc..
+/tmp/images/img
+/tmp/images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
+/tmp/images/img/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
+</code></pre></div>
+<p>The manifest list was saved in: <code>images/img/a4afe5bf0ee...</code> and the image manifest was saved in: <code>images/img/019d7877d1...</code>.</p>
+<blockquote>
+<p>When you curled the image manifest the server pulled and cached the blobs at the same time and stored them in <code>images/blobs</code></p>
+</blockquote>
+<h2 id="restart-the-server-and-repeat">Restart the Server and Repeat<a class="headerlink" href="#restart-the-server-and-repeat" title="Permanent link">&para;</a></h2>
+<p>Stop the server with CTRL-C. Re-run, this time run with <code>info</code> logging for more visibility into what the server is doing. (The default logging level is <code>error</code>.)</p>
+<div class="highlight"><pre><span></span><code>bin/ociregistry<span class="w"> </span>--image-path<span class="w"> </span>/tmp/images<span class="w"> </span>--log-level<span class="w"> </span>info<span class="w"> </span>serve<span class="w"> </span>--port<span class="w"> </span><span class="m">8080</span>
+</code></pre></div>
+<p>Run the same two curl commands.</p>
+<h2 id="observe-the-logs">Observe the logs<a class="headerlink" href="#observe-the-logs" title="Permanent link">&para;</a></h2>
+<p>You will notice that the manifest list and the image manifest are now being returned from cache. You can see this in the logs:</p>
+<div class="highlight"><pre><span></span><code>INFO[0000] server is running                            
+INFO[0007] serving manifest from cache: &quot;registry.k8s.io/kube-scheduler:v1.29.1&quot; 
+INFO[0007] echo server GET:/v2/kube-scheduler/manifests/v1.29.1?ns=registry.k8s.io status=200 latency=663.938µs host=localhost:8888 ip=::1 
+INFO[0010] serving manifest from cache: &quot;registry.k8s.io/kube-scheduler@sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c&quot; 
+INFO[0010] echo server GET:/v2/kube-scheduler/manifests/sha256:019d7877d1?ns=registry.k8s.io status=200 latency=949.646µs host=localhost:8888 ip=::1 
+</code></pre></div>
+<h2 id="docker-pull-through-the-server">Docker pull (through the server)<a class="headerlink" href="#docker-pull-through-the-server" title="Permanent link">&para;</a></h2>
+<p>If you have Docker (or Podman, or Crane, or your other favorite registry client), you can pull the image through the <em>Ociregistry</em> server. This uses the <em>in-path</em> image url form that both Docker <strong>and</strong> <em>Ociregistry</em> understand:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>pull<span class="w"> </span>localhost:8080/registry.k8s.io/kube-scheduler:v1.29.1
+</code></pre></div>
+<p>Result:</p>
+<div class="highlight"><pre><span></span><code>v1.29.1: Pulling from registry.k8s.io/kube-scheduler
+aba5379b9c6d: Pull complete 
+e5dbef90bae3: Pull complete 
+fbe9343cb4af: Pull complete 
+fcb6f6d2c998: Pull complete 
+e8c73c638ae9: Pull complete 
+1e3d9b7d1452: Pull complete 
+4aa0ea1413d3: Pull complete 
+65efb1cabba4: Pull complete 
+13547472c521: Pull complete 
+53f492e4d27a: Pull complete 
+6523efc24f16: Pull complete 
+Digest: sha256:a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
+Status: Downloaded newer image for localhost:8888/registry.k8s.io/kube-scheduler:v1.29.1
+localhost:8888/registry.k8s.io/kube-scheduler:v1.29.1
+</code></pre></div>
+<h2 id="observe-the-new-log-entries">Observe the new log entries<a class="headerlink" href="#observe-the-new-log-entries" title="Permanent link">&para;</a></h2>
+<p>The <em>Ociregistry</em> server displays new log entries that show the image is being served from cache:</p>
+<div class="highlight"><pre><span></span><code>...
+INFO[0294] get /v2/                                     
+INFO[0294] echo server GET:/v2/ status=200 latency=117.389µs host=localhost:8888 ip=127.0.0.1 
+INFO[0294] serving manifest from cache: &quot;registry.k8s.io/kube-scheduler:v1.29.1&quot; 
+INFO[0294] echo server HEAD:/v2/registry.k8s.io/kube-scheduler/manifests/v1.29.1 status=200 latency=353.63µs host=localhost:8888 ip=127.0.0.1 
+INFO[0294] serving manifest from cache: &quot;registry.k8s.io/kube-scheduler@sha256:a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7&quot; 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/manifests/sha256:a4afe5bf0e status=200 latency=341.107µs host=localhost:8888 ip=127.0.0.1 
+INFO[0294] serving manifest from cache: &quot;registry.k8s.io/kube-scheduler@sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c&quot; 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/manifests/sha256:019d7877d1 status=200 latency=471.765µs host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:406945b511 status=200 latency=458.581µs host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:aba5379b9c status=200 latency=1.187488ms host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:fbe9343cb4 status=200 latency=1.730496ms host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:e5dbef90ba status=200 latency=1.452105ms host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:fcb6f6d2c9 status=200 latency=916.319µs host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:e8c73c638a status=200 latency=855.956µs host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:1e3d9b7d14 status=200 latency=836.118µs host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:4aa0ea1413 status=200 latency=654.022µs host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:65efb1cabb status=200 latency=581.97µs host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:13547472c5 status=200 latency=1.036117ms host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:53f492e4d2 status=200 latency=1.654236ms host=localhost:8888 ip=127.0.0.1 
+INFO[0294] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:6523efc24f status=200 latency=47.179364ms host=localhost:8888 ip=127.0.0.1 
+</code></pre></div>
+<h2 id="observe-the-image-is-the-docker-cache">Observe the image is the Docker cache<a class="headerlink" href="#observe-the-image-is-the-docker-cache" title="Permanent link">&para;</a></h2>
+<p>Running <code>docker image ls</code> should show the newly pulled image:</p>
+<div class="highlight"><pre><span></span><code>REPOSITORY                                      TAG       IMAGE ID       CREATED         SIZE
+localhost:8888/registry.k8s.io/kube-scheduler   v1.29.1   406945b51154   20 months ago   59.5MB
+</code></pre></div>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<p>In this quick start you built the server on your desktop, ran it, and pulled an image through it. You verified that the first pull pulled through the <em>Ociregistry</em> server to the upstream, but a subsequent pull served the manifests and blobs from the <em>Ociregistry</em> server's cache.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Overview
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../quickstart-kubernetes/" class="md-footer__link md-footer__link--next" aria-label="Next: Quick Start (Kubernetes)">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Quick Start (Kubernetes)
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.footer", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

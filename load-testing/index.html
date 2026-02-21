@@ -1,0 +1,1424 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://aceeric.github.io/ociregistry/load-testing/">
+      
+      
+        <link rel="prev" href="../observability/">
+      
+      
+        <link rel="next" href="../test-driver/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Load Testing - Caching Pull-through OCI Distribution Server</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#load-testing" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Caching Pull-through OCI Distribution Server" class="md-header__button md-logo" aria-label="Caching Pull-through OCI Distribution Server" data-md-component="logo">
+      
+  <img src="../assets/white-logo-no-background.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Caching Pull-through OCI Distribution Server
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Load Testing
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/aceeric/ociregistry" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Caching Pull-through OCI Distribution Server" class="md-nav__button md-logo" aria-label="Caching Pull-through OCI Distribution Server" data-md-component="logo">
+      
+  <img src="../assets/white-logo-no-background.svg" alt="logo">
+
+    </a>
+    Caching Pull-through OCI Distribution Server
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/aceeric/ociregistry" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-desktop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start (Desktop)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-kubernetes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start (Kubernetes)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuring-the-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring The Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../command-line/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Command Line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../loading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loading And Preloading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pruning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pruning The Image Cache
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concur-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concurrency Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../airgap-considerations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Airgap Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rest-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrative REST API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../systemd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running as a systemd Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Load Testing
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Load Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#physical-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Topology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#software-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Software Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Software Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prepare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prepare
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execute
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-driver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Driver
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test Driver">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patterns-and-batching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Patterns and Batching
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-preparation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Preparation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Execution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pull-through-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull-Through Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cached-pull-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cached Pull Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Driver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#physical-topology" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physical Topology
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#software-components" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Software Components
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Software Components">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#prepare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prepare
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execute" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execute
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-driver" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Driver
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Test Driver">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#patterns-and-batching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Patterns and Batching
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-preparation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Preparation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#test-execution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test Execution
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Results
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pull-through-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pull-Through Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cached-pull-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cached Pull Results
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="load-testing">Load Testing<a class="headerlink" href="#load-testing" title="Permanent link">&para;</a></h1>
+<p>The project includes tooling in the <a href="https://github.com/aceeric/ociregistry/tree/main/testing/load">testing/load</a> directory to conduct two types of load tests. One load test focuses on concurrent pulls from upstreams and the second focuses on concurrent pulls from cache. Both tests use the same tools and test driver.</p>
+<p>To test concurrent pulls from upstreams, the test driver pulls through the <em>Ociregistry</em> and then immediately prunes all the pulled images, repeating this in a loop. To test concurrent cached pulls the process is the same, omitting the pruning step.</p>
+<h2 id="physical-topology">Physical Topology<a class="headerlink" href="#physical-topology" title="Permanent link">&para;</a></h2>
+<p>The following diagram shows the physical processors used in the tests documented in this section:</p>
+<p><img alt="Test topology" src="../assets/test-hw.jpg" /></p>
+<ol>
+<li>The test driver is a Ubuntu laptop with 32 gigs of memory and Intel Core i7-8700SH x16 processors. It runs the test driver CLI.</li>
+<li>The server is a Ubuntu workstation with 64 gigs of memory and Intel Core i7-8700 x12 processors. It runs the <em>Ociregistry</em> server as a stand-alone executable, and Docker <a href="https://hub.docker.com/_/registry">Registry</a> in a container run by Docker daemon (containerd.)</li>
+<li>Both test driver and server machines are on the same network segment.</li>
+</ol>
+<h2 id="software-components">Software Components<a class="headerlink" href="#software-components" title="Permanent link">&para;</a></h2>
+<p>The following project components implement load testing:</p>
+<p><img alt="Test topology" src="../assets/test-software.jpg" width="100%" /></p>
+<blockquote>
+<p>Some of the shell scripts shown use a tool called <a href="https://github.com/aceeric/imgpull">imgpull</a> which is both a CLI and a library. It's the component that the <em>Ociregistry</em> embeds as a package to pull from upstreams.</p>
+</blockquote>
+<h3 id="prepare">Prepare<a class="headerlink" href="#prepare" title="Permanent link">&para;</a></h3>
+<ol>
+<li>The <code>observability</code> directory has a shell script <code>start-containers</code> that starts Prometheus and Grafana in containers, mounting all the configuration files needed to monitor <em>Ociregistry</em> metrics using the provided dashboards.</li>
+<li>The <code>testing/load</code> directory has the following shell scripts:<ol>
+<li>The <code>maketar</code> script generates many image tarballs with randomized image references like <code>zhymakpdjr-wt379wo54x-0001:v883.998</code>. The first part (<code>zhymakpdjr-wt379wo54x</code>) and the tag (<code>:v883.998</code>) promote uniqueness across the entire test set to be able to generate a large volume of images without name collisions. The middle part (<code>-0001</code>) is to enable batching. Batching enables the test driver to task one goroutine with pulling images matching <code>-0001</code>, the second goroutine pulling <code>-0002</code>, and so on. More on batching below.</li>
+<li>The <code>load-docker-container</code> script starts the Docker Registry in a container, loads image tarballs into the Docker cache, tags them, and then pushes them to the Docker Registry running in the container. At this point, the test is ready to run.</li>
+</ol>
+</li>
+</ol>
+<h3 id="execute">Execute<a class="headerlink" href="#execute" title="Permanent link">&para;</a></h3>
+<ol>
+<li>The <code>testing/load/driver</code> directory actually runs the tests. See the <a href="../test-driver/">Test Driver</a> section details.</li>
+<li>When the test driver starts, it first queries the Registry container for all images (that were loaded by the <code>load-docker-container</code> script.)</li>
+<li>The test driver then pulls from <em>Ociregistry</em> and records the pull rate for the duration of the test.</li>
+<li>And of course the <em>Ociregistry</em> server under test is run on the server, to pull through on <code>:8080</code>, and exposing metrics on <code>:2112/metrics</code>. Both ports are configurable. The <code>/metrics</code> path is not.</li>
+</ol>
+<h2 id="test-driver">Test Driver<a class="headerlink" href="#test-driver" title="Permanent link">&para;</a></h2>
+<p>The test driver scales up - and then down - a number of goroutines to pull from the <em>Ociregistry</em> server concurrently and records the client-side <strong>image</strong> pull rate. This includes pulling the image and blobs and creating a tarball. (There's some overhead here, granted.) The observability stack records server behavior during the test, and then the results are evaluated. The test driver records the client's area of concern: <em>how many <strong>images</strong> can be pulled per second?</em> Fundamentally, this is what <code>containerd</code> will care about.</p>
+<p><img alt="Test topology" src="../assets/test-approach.jpg" width="100%" /></p>
+<h3 id="patterns-and-batching">Patterns and Batching<a class="headerlink" href="#patterns-and-batching" title="Permanent link">&para;</a></h3>
+<p>When testing pull-<strong>through</strong>, the test driver supports running each goroutine with an exclusive set of images using a pattern. The idea of patterns is to chunk the image list into disjoint sets and thereby force a high level of concurrency for pull-through. To elaborate further: if 100 clients were to pull exactly the same image at exactly the same instant from <em>Ociregistry</em>, then only one client will actually pull and the other 99 will be parked by the server and then pull from cache when the first client finishes pulling from the upstream and adds the image to cache.</p>
+<p>Because of this design, having many clients pull the same exact image concurrently doesn't really test pull-through concurrency. (It does test cached pull concurrency.) Having many clients pull disjoint images concurrently actually tests pull-through concurrency (and load.)</p>
+<p>To support this the test driver supports two modes. If the <code>--prune</code> arg is specified then each goroutine will prune the images it pulled on each pass. On the next pass through for that goroutine, the <em>Ociregistry</em> will have to re-pull from the upstream again.  If the <code>--prune</code> arg is <strong>not</strong> specified then each goroutine will simply be pulling from cache which will measure a different behavior in the server.</p>
+<p>Note that since pruning itself introduces locking and load on the server it distorts the pull-through test somewhat but there's no other way to test a large volume of concurrent pulls without loading the upstream with a significant number of images.</p>
+<h2 id="test-preparation">Test Preparation<a class="headerlink" href="#test-preparation" title="Permanent link">&para;</a></h2>
+<p>The preparation steps are:</p>
+<ol>
+<li>Run the <code>maketar</code> script to generate a set of images. These are small images that test concurrency. Each image has five small blobs. So this isn't about testing large blob pulls, network latency, etc. It's purely a concurrency test. The <code>maketar</code> script has logic to generate a defined number of batches. For example: 1000 images in batches of 100 with the batching pattern in the image ref like <code>-0001</code>, <code>-0002</code> and so on.</li>
+<li>Start the Docker Registry container on port 5000.</li>
+<li>Run the <code>load-docker-container</code> script to move the image tarballs into the Docker Registry container.</li>
+<li>Start <em>Ociregistry</em> server on port 8080, exposing metrics on port 2112, on the <code>/metrics</code> path.</li>
+<li>Start Prometheus and Grafana.</li>
+</ol>
+<h2 id="test-execution">Test Execution<a class="headerlink" href="#test-execution" title="Permanent link">&para;</a></h2>
+<ol>
+<li>
+<p>Start the test driver with args that support the batching strategy employed when the <code>maketar</code> script was run.</p>
+<ol>
+<li>To test pull <strong>through</strong>, specify the <code>--prune</code> arg.</li>
+<li>To test <strong>cached</strong> pulls, omit the <code>--prune</code> arg.</li>
+</ol>
+<p>Example (cached pull test):
+<div class="highlight"><pre><span></span><code>go run .\
+  --pullthrough-url=ubuntu.me:8888\
+  --registry-url=ubuntu.me:5000\
+  --patterns=-0001,-0002,-0003\
+  --iteration-seconds=30\
+  --tally-seconds=15
+</code></pre></div></p>
+</li>
+<li>
+<p>The test driver first scales up the goroutines with each goroutine pulling one unique batch (if configured that way).</p>
+</li>
+<li>The test driver then scales the goroutines down to zero, which ends the test.</li>
+<li>The test driver generates pull rate metrics either to a file or to the console depending on command line args.</li>
+</ol>
+<blockquote>
+<p>I considered capturing test driver metrics with Prometheus. Instead, I thought there might be value in a <em>second opinion</em> on calculating the pull rate - especially from the client's perspective. So the test driver metrics are implemented with Golang packages, namely the <a href="https://pkg.go.dev/sync/atomic">atomic</a> and <a href="https://pkg.go.dev/time#Ticker">ticker</a> packages.</p>
+</blockquote>
+<h2 id="results">Results<a class="headerlink" href="#results" title="Permanent link">&para;</a></h2>
+<p>The test results documented below capture a test run with the following parameters:</p>
+<ol>
+<li>Docker Registry populated with 1,500 images each with 5 small blobs.</li>
+<li>Ten batches of 150 images each, enabling 10 client puller goroutines to pull disjoint sets.</li>
+<li>Test driver scales from 1 to 10 puller goroutines and then back down to 1, then stops the test.</li>
+<li>Test driver runs for 60 seconds between adding / stopping puller goroutines resulting in a 20 minute test.</li>
+</ol>
+<p>Each result section below stacks the charts listed in the table below. Since client side metrics were calculated using go (not prometheus) and imported into Excel, the first chart looks different than the Grafana dashboard panels. The reader is directed to the <code>impl/metrics</code> package for details on the go runtime metrics.</p>
+<table>
+<thead>
+<tr>
+<th>Where</th>
+<th>Metric</th>
+<th>Note</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Client side test driver</td>
+<td>Image pulls per second and puller Goroutines</td>
+<td>These are full downloads of an image tar to the file system.</td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Detailed memory statistics</td>
+<td></td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Goroutines and go threads</td>
+<td></td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Heap Bytes</td>
+<td></td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Heap Objects</td>
+<td></td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Garbage collection cycles</td>
+<td></td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Mutex wait</td>
+<td>The server synchronizes shared cache access with a mutex.</td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Network send/receive bytes</td>
+<td></td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Topline resident memory</td>
+<td></td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Manifest pull rate</td>
+<td>Usually each image pull will consist of at least one image list manifest pull and one image manifest pull.</td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Blob pull rate</td>
+<td>The test arbitrarily sets up 5 small blobs per image</td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>Cached or Upstream pull rate by namespace</td>
+<td></td>
+</tr>
+<tr>
+<td>Ociregistry server</td>
+<td>API Error rate</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h3 id="pull-through-results">Pull-Through Results<a class="headerlink" href="#pull-through-results" title="Permanent link">&para;</a></h3>
+<p>The pull-through test pulled through the <em>Ociregistry</em> server to the Docker registry. After each pass through the pull list, the puller goroutine pruned the images it just pulled, forcing the <em>Ociregistry</em> to re-pull them the next time. The prune operation - while  fast - <em>does</em> lock the in-mem cache briefly which certainly impacts performance and therefore taints the test. However, without having the ability to load an upstream registry with literally hundreds of thousands of images, the selected approach was the only feasible way to test pull-through concurrency.</p>
+<p>Topline summary: with 10 client goroutines, the client-side pull rate topped out at about 320 images per second. The rate never peaked so its possible that with more goroutines, a higher pull rate could be acheived. Some aspect of latency is attributable to the "upstream" Docker Registry container but that was not specifically isolated.</p>
+<p><img alt="Client Side" src="../assets/load-test/pullthru-client-side.png" />
+Test driver: Puller goroutines scaling up from 1 to 10 then back down.</p>
+<hr />
+<p><img alt="Mem Stats" src="../assets/load-test/pullthru-runtime-mem.png" />
+Go runtime detailed mem stats. The Green line is memory classes total usage bytes. Yellow (top) is memory classes total bytes (sum of all). The green line is the most relevant</p>
+<hr />
+<p><img alt="Goroutines" src="../assets/load-test/pullthru-runtime-goroutines.png" />
+Go runtime. Yellow is go threads, green is goroutines.</p>
+<hr />
+<p><img alt="Heap Bytes" src="../assets/load-test/pullthru-runtime-heap-bytes.png" />
+Go runtime. Yellow is heap released bytes, green is heap alloc bytes.</p>
+<hr />
+<p><img alt="Heap Objects" src="../assets/load-test/pullthru-runtime-heap-obj.png" />
+Go runtime heap objects. When the server starts this spikes is associated with loading the in-memory cache on startup.</p>
+<hr />
+<p><img alt="Garbage Coll" src="../assets/load-test/pullthru-runtime-gc.png" />
+Go runtime garbage collection cycles.</p>
+<hr />
+<p><img alt="Mutex wait" src="../assets/load-test/pullthru-runtime-mutex.png" />
+Go runtime mutex wait time/sec.</p>
+<hr />
+<p><img alt="Network" src="../assets/load-test/pullthru-runtime-net.png" />
+Go runtime network bytes. Yellow is send. Green is receive.</p>
+<hr />
+<p><img alt="Process Mem" src="../assets/load-test/pullthru-runtime-process-mem.png" />
+Go runtime process memory.</p>
+<hr />
+<p><img alt="Manifest Pull" src="../assets/load-test/pullthru-manifests.png" />
+Ociregistry manifest pull rate (includes image list manifests and image manifests.)</p>
+<hr />
+<p><img alt="Blob Pull" src="../assets/load-test/pullthru-blobs.png" />
+Ociregistry blob pulls: 5 blobs and a config blob for each image pulled.</p>
+<hr />
+<p><img alt="Cache Pull Rate" src="../assets/load-test/pullthru-rate.png" />
+Ociregistry: cached manifest pull.</p>
+<hr />
+<p><img alt="API Err" src="../assets/load-test/pullthru-api-errors.png" />
+Ociregistry: no API errors.</p>
+<h3 id="cached-pull-results">Cached Pull Results<a class="headerlink" href="#cached-pull-results" title="Permanent link">&para;</a></h3>
+<p>The cached pull simply pulls from cache (without pruning.)</p>
+<p>Topline summary: with 10 client goroutines, the client-side pull rate topped out at about 1,800 images per second. Interestingly as the pull load hit 10 puller goroutines, the server suffered some performance degradation. I attribute this to the high mutex wait which is a side-effect of the simple concurrency design which forces all pulls through a mutex so that each pull can update the pull date/time stamp to support pruning by pull recency.</p>
+<p><img alt="Client Side" src="../assets/load-test/cache-pull-client-side.png" />
+Test driver: Puller goroutines scaling up from 1 to 10 then back down.</p>
+<hr />
+<p><img alt="Mem Stats" src="../assets/load-test/cache-pull-runtime-mem.png" />
+Go runtime detailed mem stats. The Green line is memory classes total usage bytes. Yellow (top) is memory classes total bytes (sum of all). The green line is the most relevant</p>
+<hr />
+<p><img alt="Goroutines" src="../assets/load-test/cache-pull-runtime-goroutines.png" />
+Go runtime. Yellow is go threads, green is goroutines.</p>
+<hr />
+<p><img alt="Heap Bytes" src="../assets/load-test/cache-pull-runtime-heap-bytes.png" />
+Go runtime. Yellow is heap released bytes, green is heap alloc bytes.</p>
+<hr />
+<p><img alt="Heap Objects" src="../assets/load-test/cache-pull-runtime-heap-obj.png" />
+Go runtime heap objects. When the server starts there is a spike in heap objects associated with loading the in-memory cache on startup.</p>
+<hr />
+<p><img alt="Garbage Coll" src="../assets/load-test/cache-pull-runtime-gc.png" />
+Go runtime garbage collection cycles.</p>
+<hr />
+<p><img alt="Mutex wait" src="../assets/load-test/cache-pull-runtime-mutex.png" />
+Go runtime mutex wait time/sec.</p>
+<hr />
+<p><img alt="Network" src="../assets/load-test/cache-pull-runtime-net.png" />
+Go runtime network bytes. Yellow is send. Green is receive.</p>
+<hr />
+<p><img alt="Process Mem" src="../assets/load-test/cache-pull-runtime-process-mem.png" />
+Go runtime process memory.</p>
+<hr />
+<p><img alt="Manifest Pull" src="../assets/load-test/cache-pull-manifests.png" />
+Ociregistry manifest pull rate (includes image list manifests and image manifests.)</p>
+<hr />
+<p><img alt="Blob Pull" src="../assets/load-test/cache-pull-blobs.png" />
+Ociregistry blob pulls: 5 blobs and a config blob for each image pulled.</p>
+<hr />
+<p><img alt="Cache Pull Rate" src="../assets/load-test/cache-pull-rate.png" />
+Ociregistry: cached manifest pull.</p>
+<hr />
+<p><img alt="API Err" src="../assets/load-test/cache-pull-api-errors.png" />
+Ociregistry: no API errors.</p>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<p>The load test is an artificial effort to max out concurrency. The test set consists of 1,500 small images. Pulling any one of these images produces a roughly 9K tarball that can be pulled from cache in 7.5 milliseconds:</p>
+<div class="highlight"><pre><span></span><code>$ imgpull localhost:8888/ubuntu.me:5000/a3xuzdp7kd-pmwvzztrob-0010:v339.283 deleteme.tar --scheme http
+image &quot;localhost:8888/a3xuzdp7kd-pmwvzztrob-0010:v339.283&quot; saved to &quot;deleteme.tar&quot; in 7.487947ms
+</code></pre></div>
+<p>Then:
+<div class="highlight"><pre><span></span><code>$ ls -l deleteme.tar
+-rw-rw-r-- 1 foo foo 9216 Dec  5 21:10 deleteme.tar
+</code></pre></div></p>
+<p>Given the huge variance in image sizes, network latency, etc. in the real world, I venture to say a real world load test would be hard to devise. But from the current load test, the project draws the small number of conclusions. (It is worth re-stating the design goals of the server: to be simple, reliable, and performant.)</p>
+<ol>
+<li>The server is reliable. Every image tarball requested by the test driver was returned. The server doesn't appear to leak memory or goroutines.</li>
+<li>The server is performant in its role as an edge distribution sever. Even with 1,500 manifests in the in-mem cache, the memory footprint (&lt; 40Mb) doesn't seem extreme.</li>
+<li>The server is reasonably simple in its operational footprint and design. One clear downside of the simple concurrency design is the dip in throughput under the heaviest load. However, it seems unlikely that the server would ever be loaded in the wild as heavily as it was loaded by the test. Therefore, there seems no compelling reason (other than curiosity) for pursuing design optimizations.</li>
+</ol>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../observability/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Observability">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Observability
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../test-driver/" class="md-footer__link md-footer__link--next" aria-label="Next: Test Driver">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Test Driver
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.footer", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

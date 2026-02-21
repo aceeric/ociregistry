@@ -1,0 +1,1215 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://aceeric.github.io/ociregistry/quickstart-kubernetes/">
+      
+      
+        <link rel="prev" href="../quickstart-desktop/">
+      
+      
+        <link rel="next" href="../configuring-the-server/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.2">
+    
+    
+      
+        <title>Quick Start (Kubernetes) - Caching Pull-through OCI Distribution Server</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#quick-start-kubernetes-in-three-steps" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Caching Pull-through OCI Distribution Server" class="md-header__button md-logo" aria-label="Caching Pull-through OCI Distribution Server" data-md-component="logo">
+      
+  <img src="../assets/white-logo-no-background.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Caching Pull-through OCI Distribution Server
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Quick Start (Kubernetes)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/aceeric/ociregistry" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Caching Pull-through OCI Distribution Server" class="md-nav__button md-logo" aria-label="Caching Pull-through OCI Distribution Server" data-md-component="logo">
+      
+  <img src="../assets/white-logo-no-background.svg" alt="logo">
+
+    </a>
+    Caching Pull-through OCI Distribution Server
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/aceeric/ociregistry" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart-desktop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start (Desktop)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start (Kubernetes)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start (Kubernetes)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-install-the-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) Install the chart
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-configure-containerd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) Configure containerd
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) Verify
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3) Verify">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tail-the-logs-on-the-ociregistry-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tail the logs on the Ociregistry pod:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observe-the-startup-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe the startup logs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-the-hello-world-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the hello-world container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observe-the-new-ociregistry-log-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe the new Ociregistry log entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-the-hello-world-container-again-with-a-different-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the hello-world container again with a different name
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observe-new-ociregistry-log-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe new Ociregistry log entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../configuring-the-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Configuring The Server
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../auth/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Authentication
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../command-line/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The Command Line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../loading/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Loading And Preloading
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../pruning/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pruning The Image Cache
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concur-design/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concurrency Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../airgap-considerations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Airgap Considerations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rest-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Administrative REST API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../systemd/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Running as a systemd Service
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../observability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Observability
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../load-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Load Testing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../test-driver/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Test Driver
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../limitations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Limitations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-install-the-chart" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1) Install the chart
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-configure-containerd" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2) Configure containerd
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-verify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3) Verify
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3) Verify">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tail-the-logs-on-the-ociregistry-pod" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tail the logs on the Ociregistry pod:
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observe-the-startup-logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe the startup logs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-the-hello-world-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the hello-world container
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#result" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Result
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observe-the-new-ociregistry-log-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe the new Ociregistry log entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-the-hello-world-container-again-with-a-different-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Run the hello-world container again with a different name
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observe-new-ociregistry-log-entries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observe new Ociregistry log entries
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="quick-start-kubernetes-in-three-steps">Quick Start (Kubernetes in three steps)<a class="headerlink" href="#quick-start-kubernetes-in-three-steps" title="Permanent link">&para;</a></h1>
+<p>The chart is hosted on <a href="https://artifacthub.io/packages/helm/ociregistry/ociregistry">Artifacthub</a>. For the basic configuration you can install with no <code>values.yaml</code> file.</p>
+<h2 id="1-install-the-chart">1) Install the chart<a class="headerlink" href="#1-install-the-chart" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code><span class="nv">CHARTVER</span><span class="o">=</span>n.n.n
+helm<span class="w"> </span>upgrade<span class="w"> </span>--install<span class="w"> </span>ociregistry<span class="w"> </span>oci://quay.io/appzygy/helm-charts/ociregistry<span class="se">\</span>
+<span class="w">  </span>--version<span class="w"> </span><span class="nv">$CHARTVER</span><span class="se">\</span>
+<span class="w">  </span>--namespace<span class="w"> </span>ociregistry<span class="se">\</span>
+<span class="w">  </span>--create-namespace
+</code></pre></div>
+<p>By default the chart will create a <code>NodePort</code> service on port <code>31080</code> in your cluster for <code>containerd</code> to mirror to. (This is configurable via a values 
+override.) If you recall, a NodePort service enables every node in the cluster to route traffic received on that node and port to the pod bound to that service, regardless of what node is running the pod. We will take advantage of this in the next step.</p>
+<h2 id="2-configure-containerd">2) Configure <code>containerd</code><a class="headerlink" href="#2-configure-containerd" title="Permanent link">&para;</a></h2>
+<p>Configure containerd in your Kubernetes cluster to mirror <strong>all</strong> image pulls to the pull-through registry. (This has been tested with containerd &gt;= <code>v1.7.6</code>):</p>
+<p>First, add a <code>config_path</code> entry to <code>/etc/containerd/config.toml</code> to tell containerd to load all registry mirror configurations from that directory:</p>
+<div class="highlight"><pre><span></span><code><span class="w">   </span><span class="p">...</span>
+<span class="w">   </span><span class="k">[plugins.</span><span class="s2">&quot;io.containerd.grpc.v1.cri&quot;</span><span class="k">.registry]</span>
+<span class="w">      </span><span class="n">config_path</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/etc/containerd/certs.d&quot;</span>
+<span class="w">   </span><span class="p">...</span>
+</code></pre></div>
+<p>Then create a configuration file that tells containerd to pull from the caching pull-through registry server in the cluster. This is an example for <code>_default</code> which indicates to containerd that <strong>all</strong> images should be mirrored. Notice that the configuration simply uses <code>localhost</code> and the NodePort port value:</p>
+<div class="highlight"><pre><span></span><code>mkdir<span class="w"> </span>-p<span class="w"> </span>/etc/containerd/certs.d/_default<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="se">\</span>
+cat<span class="w"> </span><span class="s">&lt;&lt;EOF &gt;| /etc/containerd/certs.d/_default/hosts.toml</span>
+<span class="s">[host.&quot;http://localhost:31080&quot;]</span>
+<span class="s">  capabilities = [&quot;pull&quot;, &quot;resolve&quot;]</span>
+<span class="s">  skip_verify = true</span>
+<span class="s">EOF</span>
+</code></pre></div>
+<p><strong>Key Points:</strong></p>
+<ol>
+<li>The <em>resolve</em> capability tells containerd that a HEAD request to the server with a manifest will return a manifest digest. The <em>pull</em> capability indicates to containerd that the image can be pulled.</li>
+<li>Assuming you installed the caching pull-through OCI registry with the default <code>NodePort</code> service option on port <code>31080</code>, every host on the cluster will route <code>localhost:31080</code> to the Pod running the registry.</li>
+</ol>
+<p>The <code>containerd</code> daemon <em>should</em> detect the change and re-configure itself. If you believe that's not occurring, then <code>systemctl restart containerd</code>.</p>
+<h2 id="3-verify">3) Verify<a class="headerlink" href="#3-verify" title="Permanent link">&para;</a></h2>
+<h3 id="tail-the-logs-on-the-ociregistry-pod">Tail the logs on the <em>Ociregistry</em> pod:<a class="headerlink" href="#tail-the-logs-on-the-ociregistry-pod" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>-n<span class="w"> </span>ociregistry<span class="w"> </span>logs<span class="w"> </span>-f<span class="w"> </span>-l<span class="w"> </span>app.kubernetes.io/name<span class="o">=</span>ociregistry
+</code></pre></div>
+<h3 id="observe-the-startup-logs">Observe the startup logs<a class="headerlink" href="#observe-the-startup-logs" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>time=&quot;2025-04-24T21:11:41Z&quot; level=info msg=&quot;loaded 0 manifest(s) from the file system in 102.136µs&quot;
+----------------------------------------------------------------------
+OCI Registry: pull-only, pull-through, caching OCI Distribution Server
+Version: vZ.Z.Z, build date: 2025-04-23T00:35:28.79Z
+Started: 2025-04-24 21:11:41.727569108 +0000 UTC (port 8080)
+Running as (uid:gid) 65532:65532
+Process id: 1
+Tls: none
+Command line: /ociregistry/server --config-file /var/ociregistry/config/registry-config.yaml serve
+----------------------------------------------------------------------
+time=&quot;2025-04-24T21:11:41Z&quot; level=info msg=&quot;server is running&quot;
+</code></pre></div>
+<h3 id="run-the-hello-world-container">Run the <code>hello-world</code> container<a class="headerlink" href="#run-the-hello-world-container" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>run<span class="w"> </span>hello-world<span class="w"> </span>--image<span class="w"> </span>docker.io/hello-world:latest<span class="w"> </span><span class="o">&amp;&amp;</span><span class="se">\</span>
+<span class="w">  </span>sleep<span class="w"> </span>5s<span class="w"> </span><span class="o">&amp;&amp;</span><span class="se">\</span>
+<span class="w">  </span>kubectl<span class="w"> </span>logs<span class="w"> </span>hello-world
+</code></pre></div>
+<h3 id="result">Result<a class="headerlink" href="#result" title="Permanent link">&para;</a></h3>
+<p><div class="highlight"><pre><span></span><code>Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the &quot;hello-world&quot; image from the Docker Hub.
+    (amd64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+</code></pre></div>
+(remainder redacted for brevity...)</p>
+<h3 id="observe-the-new-ociregistry-log-entries">Observe the <strong>new</strong> Ociregistry log entries<a class="headerlink" href="#observe-the-new-ociregistry-log-entries" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>time=&quot;2025-04-24T21:13:54Z&quot; level=info msg=&quot;pulling manifest from upstream: \&quot;docker.io/library/hello-world:latest\&quot;&quot;
+time=&quot;2025-04-24T21:13:54Z&quot; level=info msg=&quot;echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=501.131286ms host=localhost:31080 ip=10.200.0.232&quot;
+time=&quot;2025-04-24T21:13:54Z&quot; level=info msg=&quot;serving manifest from cache: \&quot;docker.io/library/hello-world@sha256:c41088499908a59aae84b0a49c70e86f4731e588a737f1637e73c8c09d995654\&quot;&quot;
+time=&quot;2025-04-24T21:13:54Z&quot; level=info msg=&quot;echo server GET:/v2/library/hello-world/manifests/sha256:c410884999?ns=docker.io status=200 latency=2.267101ms host=localhost:31080 ip=10.200.0.232&quot;
+time=&quot;2025-04-24T21:13:54Z&quot; level=info msg=&quot;pulling manifest from upstream: \&quot;docker.io/library/hello-world@sha256:03b62250a3cb1abd125271d393fc08bf0cc713391eda6b57c02d1ef85efcc25c\&quot;&quot;
+time=&quot;2025-04-24T21:13:55Z&quot; level=info msg=&quot;echo server GET:/v2/library/hello-world/manifests/sha256:03b62250a3?ns=docker.io status=200 latency=612.467708ms host=localhost:31080 ip=10.200.0.232&quot;
+time=&quot;2025-04-24T21:13:55Z&quot; level=info msg=&quot;echo server GET:/v2/library/hello-world/blobs/sha256:74cc54e27d?ns=docker.io status=200 latency=234.948µs host=localhost:31080 ip=10.200.0.232&quot;
+time=&quot;2025-04-24T21:13:55Z&quot; level=info msg=&quot;echo server GET:/v2/library/hello-world/blobs/sha256:e6590344b1?ns=docker.io status=200 latency=232.113µs host=localhost:31080 ip=10.200.0.232&quot;
+</code></pre></div>
+<h3 id="run-the-hello-world-container-again-with-a-different-name">Run the <code>hello-world</code> container again with a different name<a class="headerlink" href="#run-the-hello-world-container-again-with-a-different-name" title="Permanent link">&para;</a></h3>
+<p>This time, also specify a pull policy to force <code>containerd</code> to pull the image:</p>
+<div class="highlight"><pre><span></span><code>kubectl<span class="w"> </span>run<span class="w"> </span>hello-world-2<span class="w"> </span>--image<span class="w"> </span>docker.io/hello-world:latest<span class="se">\</span>
+<span class="w">  </span>--image-pull-policy<span class="o">=</span>Always
+</code></pre></div>
+<h3 id="observe-new-ociregistry-log-entries">Observe new Ociregistry log entries<a class="headerlink" href="#observe-new-ociregistry-log-entries" title="Permanent link">&para;</a></h3>
+<p>These entries indicate that the <em>Ociregistry</em> server is serving from the image cache instead of re-pulling from DockerHub:</p>
+<div class="highlight"><pre><span></span><code>time=&quot;2025-04-24T21:34:35Z&quot; level=info msg=&quot;serving manifest from cache: \&quot;docker.io/library/hello-world:latest\&quot;&quot;
+time=&quot;2025-04-24T21:34:35Z&quot; level=info msg=&quot;echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=204.413µs host=localhost:31080 ip=10.200.0.232&quot;
+time=&quot;2025-04-24T21:34:36Z&quot; level=info msg=&quot;serving manifest from cache: \&quot;docker.io/library/hello-world:latest\&quot;&quot;
+time=&quot;2025-04-24T21:34:36Z&quot; level=info msg=&quot;echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=358.099µs host=localhost:31080 ip=10.200.0.232&quot;
+time=&quot;2025-04-24T21:34:51Z&quot; level=info msg=&quot;serving manifest from cache: \&quot;docker.io/library/hello-world:latest\&quot;&quot;
+time=&quot;2025-04-24T21:34:51Z&quot; level=info msg=&quot;echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=313.859µs host=localhost:31080 ip=10.200.0.232&quot;
+time=&quot;2025-04-24T21:35:09Z&quot; level=info msg=&quot;serving manifest from cache: \&quot;docker.io/library/hello-world:latest\&quot;&quot;
+time=&quot;2025-04-24T21:35:09Z&quot; level=info msg=&quot;echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=836.294µs host=localhost:31080 ip=10.200.0.232&quot;
+</code></pre></div>
+<h2 id="summary">Summary<a class="headerlink" href="#summary" title="Permanent link">&para;</a></h2>
+<p>In this quick start, you Helm-installed <em>Ociregistry</em> in the cluster bound to a NodePort. You configured all containerd instances in the cluster to mirror to the in-cluster registry. You verified that an initial pull causes the <em>Ociregistry</em> server to pull through to the upstream (Docker Hub in this case) and that subsequent image pulls by containerd were served by the <em>Ociregistry</em> server from its cache, avoiding any subsequent round trips to the upstream.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../quickstart-desktop/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Quick Start (Desktop)">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Quick Start (Desktop)
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../configuring-the-server/" class="md-footer__link md-footer__link--next" aria-label="Next: Configuring The Server">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Configuring The Server
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.footer", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

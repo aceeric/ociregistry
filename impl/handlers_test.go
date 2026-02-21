@@ -67,7 +67,7 @@ func TestManifestGetWithNs(t *testing.T) {
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
 	getCnt := 5
-	for i := 0; i < getCnt; i++ {
+	for range getCnt {
 		r.handleV2ManifestsReference(ctx, "latest", &url, http.MethodGet, "hello-world")
 		if ctx.Response().Status != 200 {
 			t.Fail()
@@ -109,7 +109,7 @@ func TestNeverCacheLatest(t *testing.T) {
 	ctx := e.NewContext(req, rec)
 	getCnt := 5
 	expectCnt := getCnt * 2
-	for i := 0; i < getCnt; i++ {
+	for range getCnt {
 		r.handleV2ManifestsReference(ctx, "latest", &url, http.MethodGet, "hello-world")
 		if ctx.Response().Status != 200 {
 			t.Fail()

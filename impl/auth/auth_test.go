@@ -402,25 +402,23 @@ func TestTokenProviderConcurrency(t *testing.T) {
 	errors := make(chan error, 100)
 
 	// Start multiple readers
-	for i := 0; i < 50; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for j := 0; j < 10; j++ {
+	for range 50 {
+		wg.Go(func() {
+			for range 10 {
 				tp.RLock()
 				_ = tp.token
 				tp.RUnlock()
 				time.Sleep(time.Millisecond)
 			}
-		}()
+		})
 	}
 
 	// Start multiple writers
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			for j := 0; j < 5; j++ {
+			for j := range 5 {
 				tp.Lock()
 				tp.token = fmt.Sprintf("token-%d-%d", id, j)
 				tp.Unlock()

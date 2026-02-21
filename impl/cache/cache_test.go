@@ -153,7 +153,7 @@ func setupTestLoad(mts []imgpull.ManifestType) (string, error) {
 				return "", err
 			}
 		case imgpull.V2dockerManifest:
-			if err := json.Unmarshal([]byte(fmt.Sprintf(v2dockerManifest, digests[0], digests[1], digests[2])), &mh.V2dockerManifest); err != nil {
+			if err := json.Unmarshal(fmt.Appendf(nil, v2dockerManifest, digests[0], digests[1], digests[2]), &mh.V2dockerManifest); err != nil {
 				return "", err
 			}
 		case imgpull.V1ociIndex:
@@ -161,7 +161,7 @@ func setupTestLoad(mts []imgpull.ManifestType) (string, error) {
 				return "", err
 			}
 		case imgpull.V1ociManifest:
-			if err := json.Unmarshal([]byte(fmt.Sprintf(v1ociManifest, digests[0], digests[1], digests[2])), &mh.V1ociManifest); err != nil {
+			if err := json.Unmarshal(fmt.Appendf(nil, v1ociManifest, digests[0], digests[1], digests[2]), &mh.V1ociManifest); err != nil {
 				return "", err
 			}
 		}
@@ -215,15 +215,13 @@ func TestConcurrentGet(t *testing.T) {
 	var wg sync.WaitGroup
 	var errs atomic.Int32
 	expectCnt := int32(2)
-	for i := 0; i < 3; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 3 {
+		wg.Go(func() {
 			const twoSeconds = 2000
 			if _, err := GetManifest(pr, td, twoSeconds, false); err != nil {
 				errs.Add(1)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	if upstreamPulls.Load() != expectCnt || errs.Load() != 0 {
@@ -249,7 +247,7 @@ func TestReplace(t *testing.T) {
 	}
 
 	// first test - should create a manifest since the cache is empty
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		os.WriteFile(filepath.Join(td, globals.BlobPath, digests[i]), []byte(digests[i]), 0777)
 	}
 	firstDigest := "1111111111111111111111111111111111111111111111111111111111111123"

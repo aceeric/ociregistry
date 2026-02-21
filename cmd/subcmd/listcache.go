@@ -16,7 +16,7 @@ import (
 func ListCache() error {
 	listCfg := config.GetListConfig()
 	srchs := []*regexp.Regexp{}
-	for _, ref := range strings.Split(listCfg.Expr, ",") {
+	for ref := range strings.SplitSeq(listCfg.Expr, ",") {
 		if exp, err := regexp.Compile(ref); err == nil {
 			srchs = append(srchs, exp)
 		} else {

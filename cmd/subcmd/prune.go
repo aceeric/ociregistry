@@ -93,7 +93,7 @@ func dateHandler(date string) (serialize.CacheEntryHandler, error) {
 // E.g.: 'cilium,coredns'.
 func patternHandler(pattern string) (serialize.CacheEntryHandler, error) {
 	srchs := []*regexp.Regexp{}
-	for _, ref := range strings.Split(pattern, ",") {
+	for ref := range strings.SplitSeq(pattern, ",") {
 		fmt.Printf("Compiling search regex: %q\n", ref)
 		if exp, err := regexp.Compile(ref); err == nil {
 			srchs = append(srchs, exp)

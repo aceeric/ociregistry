@@ -350,7 +350,7 @@ func TestWalkTheCache(t *testing.T) {
 	td, _ := os.MkdirTemp("", "")
 	defer os.RemoveAll(td)
 	CreateDirs(td, true)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		digest := fmt.Sprintf("%d", i)
 		mh := imgpull.ManifestHolder{
 			Type:     imgpull.Undefined,

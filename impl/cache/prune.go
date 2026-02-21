@@ -156,7 +156,7 @@ func ParseCriteria(cfg config.PruneConfig) (ManifestComparer, error) {
 		}, nil
 	case patternType:
 		srchs := []*regexp.Regexp{}
-		for _, ref := range strings.Split(cfg.Expr, ",") {
+		for ref := range strings.SplitSeq(cfg.Expr, ",") {
 			if exp, err := regexp.Compile(ref); err == nil {
 				srchs = append(srchs, exp)
 			} else {

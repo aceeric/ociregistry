@@ -87,13 +87,14 @@ func (mhr *MHReader) Read(b []byte) (n int, err error) {
 	if len(dgst) == 2 {
 		url = strings.Replace(url, dgst[1], dgst[1][:10], 1)
 	}
-	line := fmt.Sprintf("%s%s %s  %s %s\n", hdr, url, mh.Digest, mh.Created, mh.Pulled)
+	var line strings.Builder
+	line.WriteString(fmt.Sprintf("%s%s %s  %s %s\n", hdr, url, mh.Digest, mh.Created, mh.Pulled))
 	if len(digests) > 0 {
 		for _, digest := range digests {
-			line += fmt.Sprintf("- %s\n", digest)
+			line.WriteString(fmt.Sprintf("- %s\n", digest))
 		}
 	}
-	n = copy(b, line)
+	n = copy(b, line.String())
 	mhr.idx++
 	return n, nil
 }

@@ -97,7 +97,7 @@ func (r *OciRegistry) CmdPrune(ctx echo.Context, params models.CmdPruneParams) e
 func makeComparer(pattern *string, digest *string) (cache.ManifestComparer, error) {
 	if pattern != nil {
 		srchs := []*regexp.Regexp{}
-		for _, ref := range strings.Split(*pattern, ",") {
+		for ref := range strings.SplitSeq(*pattern, ",") {
 			if exp, err := regexp.Compile(ref); err == nil {
 				srchs = append(srchs, exp)
 			} else {

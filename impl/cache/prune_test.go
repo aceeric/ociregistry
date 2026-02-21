@@ -91,7 +91,7 @@ func TestPrune(t *testing.T) {
 			t.Fail()
 		}
 	}
-	if err := json.Unmarshal([]byte(fmt.Sprintf(v1ociManifest, digests[0], digests[1], digests[2])), &mh.V1ociManifest); err != nil {
+	if err := json.Unmarshal(fmt.Appendf(nil, v1ociManifest, digests[0], digests[1], digests[2]), &mh.V1ociManifest); err != nil {
 		t.Fail()
 	}
 	pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
@@ -123,7 +123,7 @@ func TestPrune(t *testing.T) {
 // and calls the comparer.
 func TestGetManifestsToPrune(t *testing.T) {
 	ResetCache()
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		pr, err := pullrequest.NewPullRequestFromUrl(fmt.Sprintf("foo.io/my-image:%d", i))
 		if err != nil {
 			t.Fail()
@@ -220,7 +220,7 @@ func setupPrune() (string, error) {
 	td, _ := os.MkdirTemp("", "")
 	serialize.CreateDirs(td, true)
 	curDt := time.Now()
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		mhDate := curDt.AddDate(0, 0, -(i * 2))
 		mh := imgpull.ManifestHolder{
 			Type: imgpull.V1ociManifest,

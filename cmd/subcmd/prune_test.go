@@ -182,12 +182,12 @@ func makeTestFiles(cnt int) (string, string, []imgpull.ManifestHolder, error) {
 
 	manifestDigests := make([]string, cnt)
 	mhs := make([]imgpull.ManifestHolder, cnt)
-	for i := 0; i < cnt; i++ {
+	for i := range cnt {
 		r := fmt.Sprintf("%d", rand.Uint64())
 		manifestDigests[i] = digest.FromBytes([]byte(r)).Hex()
 		// create 2 unique blob digests for the manifest
 		blobDigests := make([]string, 2)
-		for bd := 0; bd < 2; bd++ {
+		for bd := range 2 {
 			r := fmt.Sprintf("%d", rand.Uint64())
 			blobDigests[bd] = digest.FromBytes([]byte(r)).Hex()
 			if err := os.WriteFile(filepath.Join(dir, globals.BlobPath, blobDigests[bd]), []byte("foo"), 0777); err != nil {

@@ -42,7 +42,7 @@ func TestTls(t *testing.T) {
 	}
 	defer os.RemoveAll(td)
 	cfgFile := filepath.Join(td, "testcfg.yaml")
-	os.WriteFile(cfgFile, []byte(fmt.Sprintf(serverTlsConfig, td)), 0700)
+	os.WriteFile(cfgFile, fmt.Appendf(nil, serverTlsConfig, td), 0700)
 	if config.Load(cfgFile) != nil {
 		t.Fail()
 	}
@@ -79,7 +79,7 @@ func TestMissingTls(t *testing.T) {
 	}
 	defer os.RemoveAll(td)
 	cfgFile := filepath.Join(td, "testcfg.yaml")
-	os.WriteFile(cfgFile, []byte(fmt.Sprintf(serverTlsConfig, td)), 0700)
+	os.WriteFile(cfgFile, fmt.Appendf(nil, serverTlsConfig, td), 0700)
 	if config.Load(cfgFile) != nil {
 		t.Fail()
 	}

@@ -148,7 +148,7 @@ func setupTests() (string, error) {
 		ImagePath:   td,
 		PullTimeout: 1000,
 	})
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		md := fmt.Sprintf(manifestDigest, i)
 		mfst := fmt.Sprintf(manifest, md, orgs[i])
 		if err = os.WriteFile(filepath.Join(td, globals.ImgPath, md), []byte(mfst), 0777); err != nil {

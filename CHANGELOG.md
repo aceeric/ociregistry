@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.12.5
+
+02-Mar-2026
+
+1. Module updates: aws-sdk-go-v2/config v1.32.10, aws-sdk-go-v2/service/ecr v1.55.3, labstack/echo/v4 v4.15.1, oapi-codegen/runtime v1.2.0, urfave/cli/v3 v3.7.0
+
 ## 1.12.4
 
 20-Feb-2026

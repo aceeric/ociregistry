@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 1.12.6
+
+07-Mar-2026
+
+1. Go from 1.26.0 to 1.26.1
+2. aws-sdk-go-v2/config v1.32.11, aws-sdk-go-v2/service/ecr v1.55.4
+
 ## 1.12.5
 
 02-Mar-2026

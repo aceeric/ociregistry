@@ -102,10 +102,10 @@ The key components of the API scaffolding supported by OAPI-Codegen are shown be
 │   │   └──models.gen.go   (generated)
 │   ├── models.cfg.yaml    (modeled from pet store)
 │   ├── ociregistry.gen.go (generated)
+│   ├── ociregistry.yaml   (the openapi spec built initially with swagger)
 │   └── server.cfg.yaml    (modeled from pet store)
-├── cmd
-│   └── ociregistry.go     (this is the server - which embeds the Echo server)
-└── ociregistry.yaml       (the openapi spec built with swagger)
+└── cmd
+    └── ociregistry.go     (this is the server - which embeds the Echo server)
 ```
 
 I elected to use the [Echo](https://echo.labstack.com/) option to run the API. The **Echo** server is started by the [serve](https://github.com/aceeric/ociregistry/blob/main/cmd/subcmd/serve.go) sub-command of the _Ociregistry_ server.

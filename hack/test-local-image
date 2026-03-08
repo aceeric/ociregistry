@@ -4,20 +4,27 @@
 #
 set -e
 
-if [[ -z "$1" ]]; then
-  echo "need version in arg 1. E.g. 'test-local-image 1.2.0'"
+if [[ "$#" -ne 2 ]] && [[ "$#" -ne 3 ]]; then
+  echo "usage: test-local-image <tag> <port> <optional path>"
+  echo "e.g.: test-local-image 1.12.6 8080"
+  echo "or:"
+  echo "e.g.: test-local-image 1.12.6 8080 /tmp/images"
   exit 1
 fi
 
-image_dir=$(mktemp -d)
+if [[ -z "$3" ]]; then
+  image_dir=$(mktemp -d)
+else 
+  image_dir=$3
+fi
 docker run\
   --detach\
   --name    ociregistry\
-  --publish 8888:8080\
+  --publish $2:8080\
   --user    $(id -u):$(id -g)\
   --volume  $image_dir:/var/lib/ociregistry\
   --entrypoint=/ociregistry/server\
-  quay.io/appzygy/ociregistry:$1 --log-level debug serve
+  quay.io/appzygy/ociregistry:$1 --log-level info serve
 
 echo "tail the logs: docker logs ociregistry -f"
 echo "when done: docker stop ociregistry && docker container rm ociregistry && rm -rf $image_dir"

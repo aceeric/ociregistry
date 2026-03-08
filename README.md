@@ -22,34 +22,49 @@ And because of this design, the entire image store can be tarred up, copied to a
 
 Full documentation is available on the [GitHub Pages](https://aceeric.github.io/ociregistry) site. As you can also see in the badges above, a Helm chart is available on [Artifacthub](https://artifacthub.io/packages/search?repo=ociregistry) for running the registry as a Kubernetes workload.
 
-## Quick Start - Desktop
+## Quick Start
 
-After git cloning the project:
+Git clone the project. Then you have two ways to run the server. 1) Run the container, or 2) build the server and run the binary. These are now explained:
 
-## Build the Server
+### Run the container
+
+The `hack` directory has a script to run the container. You supply three args: the server version, the port to serve on, and the image cache path:
+
+```shell
+hack/test-local-image 1.12.6 8080 /tmp/images
+```
+
+Tail the logs: `docker logs ociregistry -f`.
+
+### From Source
+
+Build the Server:
+
 ```shell
 make server
 ```
 
-This command compiles the server and creates a binary called `ociregistry` in the `bin` directory relative to the project root.
+This command compiles the server and creates a binary `bin/ociregistry` relative to the project root.
 
-## Run the Server
-
-You provide an image storage location with the `--image-path` arg. If the directory doesn't exist the server will create it. The default is `/var/lib/ociregistry` but to kick the tires it makes more sense to use the system temp directory. By default the server listens on `8080`. If you have something running that is already bound to that port, specify `--port`. We'll specify it explicitly here with the default value:
+Run the Server:
 
 ```shell
 bin/ociregistry --log-level info --image-path /tmp/images serve --port 8080
 ```
 
+The `--image-path` option is the image cache path. By default the server listens on `8080` but we'll specify it explicitly with the `--port` option.
+
 ## Server startup logs
+
+Depending on whether you run the container, or the local binary, you will see slight differences in the startup banner:
 
 ```shell
 ----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
-Version: 1.9.7, build date: 2025-10-06T23:35:46.56Z
-Started: 2025-10-06 19:49:57.169081368 -0400 EDT (port 8080)
+Version: v1.12.6, build date: 2026-03-07T23:34:41.00Z
+Started: 2026-03-08 00:32:00.287358959 +0000 UTC (port 8080)
 Running as (uid:gid) 1000:1000
-Process id: 95070
+Process id: 1
 Tls: none
 Command line: bin/ociregistry --log-level info --image-path /tmp/images serve --port 8080
 ----------------------------------------------------------------------
@@ -58,7 +73,7 @@ INFO[0000] server is running
 
 ## Pull through the server
 
-Assuming you have Docker (or Podman, or Crane, or your other favorite registry client), you can pull images through the _Ociregistry_ server. This uses the _in-path_ image url form that both Docker **and** _Ociregistry_ understand. Run this command in another console window:
+Assuming you have Docker (or Podman, or Crane, or your other favorite registry client), you can pull images through the _Ociregistry_ server. The example below uses the _in-path_ image url form that both Docker **and** _Ociregistry_ understand. Run this command in another console window:
 
 ```shell
 docker pull localhost:8080/registry.k8s.io/kube-scheduler:v1.29.1
@@ -111,7 +126,9 @@ INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:53f49
 INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:6523efc24f status=200 latency=70.020159ms host=localhost:8080 ip=127.0.0.1 
 ```
 
-Note the occurrence of `pulling manifest from upstream` in the logs above. Stop the server with CTRL-C and simply re-run it with the same command. In your other console window, remove the image from Docker's cache so that on the next pull, Docker has to go back through the _Ociregistry_.
+Note the occurrence of `pulling manifest from upstream` in the logs above.
+
+Stop the server with CTRL-C if running the binary or `docker stop` if running the container. Then simply re-run the server with the same command. In your other console window, remove the image from Docker's cache so that on the next pull, Docker has to go back through the _Ociregistry_.
 
 ```shell
 docker images --format "{{.ID}}" localhost:8080/registry.k8s.io/kube-scheduler:v1.29.1\
@@ -143,7 +160,7 @@ You can see that `pulling manifest from upstream` from the first pull has been r
 
 ## The image store
 
-To view the image store: `find /tmp/images`. There you will see the manifests and blobs comprising the cache. To clean up, simply stop the server (CTRL-C) and `rm -rf /tmp/images`. Everything the server persisted to the file system is under that one directory.
+To view the image store: `find /tmp/images`. There you will see the manifests and blobs comprising the cache. To clean up, simply stop the server and `rm -rf /tmp/images`. Everything the server persisted to the file system is under that one directory.
 
 ## Full Documentation
 

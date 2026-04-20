@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 1.12.7
+
+20-Apr-2026
+
+1. Go from 1.26.1 to 1.26.2
+2. Module updates: aws-sdk-go-v2/config v1.32.16, aws/aws-sdk-go-v2/service/ecr v1.57.1, getkin/kin-openapi v0.135.0, oapi-codegen/runtime v1.4.0, urfave/cli/v3 v3.8.0
+
 ## 1.12.6
 
 07-Mar-2026

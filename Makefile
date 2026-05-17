@@ -34,6 +34,8 @@ coverage:
 .PHONY: update-modules
 update-modules:
 	go get -u ./...
+	rm go.sum
+	sed -i '/\/\/ indirect/d' go.mod
 	go mod tidy
 
 .PHONY: coverage-rpt

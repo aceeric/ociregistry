@@ -1,4 +1,4 @@
-SERVER_VERSION ?= 1.12.7
+SERVER_VERSION ?= 1.13.0
 GO_VERSION     ?= 1.26.3
 DATETIME       := $(shell date -u +%Y-%m-%dT%T.%2NZ)
 REGISTRY       := quay.io

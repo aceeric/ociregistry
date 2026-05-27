@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#
+# Examines action versions in GitHub workflows dir. Shows current version and
+# latest tag in the associated GitHub repo. Output as of May 2026:
+#
+# Action        Current  Latest
+# checkout      v6       v6.0.2
+# setup-python  v6       v6.2.0
+# cache         v5       v5.0.5
+# setup-go      v6       v6.4.0
+#
+
+declare -A seen
+
+{
+    echo "Action Current Latest"
+
+    while IFS= read -r line; do
+        action_ver=$(echo "$line" | grep -oP 'actions/\K[^@]+@v\d+')
+        [ -z "$action_ver" ] && continue
+
+        action=$(echo "$action_ver" | cut -d@ -f1)
+        current=$(echo "$action_ver" | cut -d@ -f2)
+        key="${action}${current}"
+
+        [ "${seen[$key]+set}" ] && continue
+        seen[$key]=1
+
+        latest=$(curl -s "https://api.github.com/repos/actions/${action}/tags" | \
+            jq -r '[.[].name | select(test("^v[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(split(".") | map(ltrimstr("v") | tonumber)) | last')
+
+        echo "$action $current $latest"
+
+    done < <(grep -h 'actions/' .github/workflows/*)
+
+} | column -t

@@ -64,6 +64,9 @@ func NewPullRequest(regHdr string, ns *string, defaultNs string, reference strin
 	default:
 		return pr, fmt.Errorf("unable to extract remote from segments: %v", segments)
 	}
+	if frst >= len(segments) {
+		return pr, fmt.Errorf("no image name after namespace: %s", pr.Remote)
+	}
 	if strings.Contains(segments[frst], ".") {
 		return pr, fmt.Errorf("two namespaces: %s and %s", pr.Remote, segments[frst])
 

@@ -118,3 +118,21 @@ func TestAltDockerUrl(t *testing.T) {
 		}
 	}
 }
+
+// Simulates RESTler sending a single path segment that contains a dot
+// e.g. GET /v2/ubuntu.me/manifests/latest
+// segments[0] = "ubuntu.me" matches the "." case, sets frst=1
+// then segments[1] panics because slice length is 1
+func TestNewPullRequestPanicSingleSegmentWithDot(t *testing.T) {
+	_, err := NewPullRequest(
+		"",          // regHdr - empty
+		nil,         // ns - nil
+		"",          // defaultNs - empty
+		"latest",    // reference
+		"ubuntu.me", // segments - only one element, but contains a dot
+	)
+	// Should return an error, not panic
+	if err == nil {
+		t.Error("expected error for single segment with dot, got nil")
+	}
+}

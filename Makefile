@@ -1,5 +1,5 @@
 SERVER_VERSION ?= 1.13.0
-GO_VERSION     ?= 1.26.3
+GO_VERSION     ?= 1.26.4
 DATETIME       := $(shell date -u +%Y-%m-%dT%T.%2NZ)
 REGISTRY       := quay.io
 ORG            := appzygy

@@ -1,12 +1,12 @@
 module github.com/aceeric/ociregistry
 
-go 1.26.4
+go 1.26.5
 
 require (
 	github.com/aceeric/imgpull v1.14.0
-	github.com/aws/aws-sdk-go-v2/config v1.32.28
+	github.com/aws/aws-sdk-go-v2/config v1.32.29
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.59.0
-	github.com/getkin/kin-openapi v0.140.0
+	github.com/getkin/kin-openapi v0.142.0
 	github.com/labstack/echo/v4 v4.15.4
 	github.com/oapi-codegen/echo-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.4.2
@@ -21,14 +21,14 @@ require github.com/opencontainers/go-digest v1.0.0
 require (
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.42.1 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.27 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.28 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.31 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.30 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.3.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.4.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sso v1.32.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.37.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.44.0 // indirect
@@ -43,8 +43,8 @@ require (
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/oasdiff/yaml v0.1.0 // indirect
-	github.com/oasdiff/yaml3 v0.0.13 // indirect
+	github.com/oasdiff/yaml v0.1.1 // indirect
+	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect

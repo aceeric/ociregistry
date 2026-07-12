@@ -1,11 +1,18 @@
 # CHANGELOG
 
+## 1.15.0
+
+12-Jul-2026
+
+1. Go from 1.26.4 to 1.26.5
+2. Module updates: aws/aws-sdk-go-v2/config v1.32.29, getkin/kin-openapi v0.142.0
+
 ## 1.14.0
 
 07-Jul-2026
 
-1.Go from 1.26.3 to 1.26.4
-2. Module updates: aceeric/imgpull v1.14.0, aws-sdk-go-v2/config v1.32.28, aws/aws-sdk-go-v2/service/ecr v1.59.0, getkin/kin-openapi v0.140.0, labstack/echo/v4 v4.15.4,  oapi-codegen/runtime v1.4.2, urfave/cli/v3 v3.10.1, yaml/v4 v4.0.0-rc.6
+1. Go from 1.26.3 to 1.26.4
+2. Module updates: aceeric/imgpull v1.14.0, aws-sdk-go-v2/config v1.32.28, aws/aws-sdk-go-v2/service/ecr v1.59.0, getkin/kin-openapi v0.140.0, labstack/echo/v4 v4.15.4, oapi-codegen/runtime v1.4.2, urfave/cli/v3 v3.10.1, yaml/v4 v4.0.0-rc.6
 
 ## 1.13.0
 

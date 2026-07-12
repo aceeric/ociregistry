@@ -85,6 +85,7 @@ type Configuration struct {
 	ImagePath        string           `yaml:"imagePath"`
 	PreloadImages    string           `yaml:"preloadImages"`
 	ImageFile        string           `yaml:"imageFile"`
+	ResolveRef       string           `yaml:"resolveRef"`
 	Port             int              `yaml:"port"`
 	Os               string           `yaml:"os"`
 	Arch             string           `yaml:"arch"`
@@ -113,6 +114,7 @@ type FromCmdLine struct {
 	ImagePath        bool
 	PreloadImages    bool
 	ImageFile        bool
+	ResolveRef       bool
 	Port             bool
 	Os               bool
 	Arch             bool
@@ -168,6 +170,15 @@ func SetPreloadImages(newVal string) {
 
 func GetImageFile() string {
 	return config.ImageFile
+}
+
+// GetResolveRef returns the ref to use (via preload.RefResolver) when
+// loading a single-image tarball that the operator knows was exported
+// without a usable tag - e.g. `crane pull --format tarball <ref>@sha256:...`
+// writes a placeholder tag like "...:i-was-a-digest" rather than a real one.
+// Empty string means no override was configured.
+func GetResolveRef() string {
+	return config.ResolveRef
 }
 
 func GetPort() int {

@@ -18,6 +18,7 @@ logLevel: error
 logFile: /foo/bar/baz.log
 preloadImages: /foo/bar
 imageFile: /bar/baz
+resolveRef: registry.host/repo:tag
 port: 8080
 os: linux
 arch: amd64
@@ -47,6 +48,7 @@ var expectConfig = Configuration{
 	LogFile:          "/foo/bar/baz.log",
 	PreloadImages:    "/foo/bar",
 	ImageFile:        "/bar/baz",
+	ResolveRef:       "registry.host/repo:tag",
 	Port:             8080,
 	Os:               "linux",
 	Arch:             "amd64",
@@ -248,6 +250,7 @@ func TestGetters(t *testing.T) {
 	tImagePath := ""
 	tPreloadImages := ""
 	tImageFile := ""
+	tResolveRef := ""
 	tPort := 1
 	tOs := ""
 	tArch := ""
@@ -265,6 +268,7 @@ func TestGetters(t *testing.T) {
 		ImagePath:        tImagePath,
 		PreloadImages:    tPreloadImages,
 		ImageFile:        tImageFile,
+		ResolveRef:       tResolveRef,
 		Port:             tPort,
 		Os:               tOs,
 		Arch:             tArch,
@@ -296,6 +300,9 @@ func TestGetters(t *testing.T) {
 		t.FailNow()
 	}
 	if GetImageFile() != tImageFile {
+		t.FailNow()
+	}
+	if GetResolveRef() != tResolveRef {
 		t.FailNow()
 	}
 	if GetPort() != tPort {

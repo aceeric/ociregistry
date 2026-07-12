@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/pullrequest"
 
 	"github.com/urfave/cli/v3"
 )
@@ -230,6 +231,21 @@ var cmds = &cli.Command{
 					},
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.ImageFile = true
+						return nil
+					},
+				},
+				&cli.StringFlag{
+					Name:        "resolve-ref",
+					Usage:       "Image ref to use when --image-file is a single-image tarball with no usable tag",
+					Destination: &cfg.ResolveRef,
+					Validator: func(ref string) error {
+						if _, err := pullrequest.NewPullRequestFromUrl(ref); err != nil {
+							return fmt.Errorf("must be a fully-qualified image ref, e.g. registry.host/repo:tag")
+						}
+						return nil
+					},
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.ResolveRef = true
 						return nil
 					},
 				},

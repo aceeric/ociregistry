@@ -58,6 +58,59 @@ func TestParseServe(t *testing.T) {
 	}
 }
 
+// Test that the parser detects when defaults are overridden on the command line for the load command
+func TestParseLoad(t *testing.T) {
+	ClearParse()
+	td, err := os.MkdirTemp("", "")
+	if err != nil {
+		t.Fail()
+	}
+	defer os.RemoveAll(td)
+	afile := filepath.Join(td, "foo")
+	os.WriteFile(afile, []byte("foo"), 0755)
+
+	os.Args = []string{"bin/ociregistry", "load", "--image-file", afile, "--resolve-ref", "registry.host/repo:tag", "--os", "linux", "--arch", "amd64", "--pull-timeout", "123"}
+	fromCmdline, cfg, err := Parse()
+	if err != nil {
+		t.Fail()
+	}
+	if fromCmdline.Command != "load" {
+		t.Fail()
+	}
+	switch {
+	case !fromCmdline.ImageFile:
+		t.Fail()
+	case !fromCmdline.ResolveRef:
+		t.Fail()
+	case !fromCmdline.Os:
+		t.Fail()
+	case !fromCmdline.Arch:
+		t.Fail()
+	case !fromCmdline.PullTimeout:
+		t.Fail()
+	case cfg.ImageFile != afile:
+		t.Fail()
+	case cfg.ResolveRef != "registry.host/repo:tag":
+		t.Fail()
+	case cfg.Os != "linux":
+		t.Fail()
+	case cfg.Arch != "amd64":
+		t.Fail()
+	case cfg.PullTimeout != 123:
+		t.Fail()
+	}
+}
+
+// Test that --resolve-ref rejects a value that doesn't parse as a
+// fully-qualified image ref
+func TestParseLoadResolveRefValidation(t *testing.T) {
+	ClearParse()
+	os.Args = []string{"bin/ociregistry", "load", "--resolve-ref", "not-a-valid-ref"}
+	if _, _, err := Parse(); err == nil {
+		t.Fail()
+	}
+}
+
 // Test that the parser detects when defaults are overridden on the command line for the prune command
 func TestParsePrune(t *testing.T) {
 	ClearParse()
@@ -91,6 +144,7 @@ logLevel: test1
 logFile: /foo/bar/baz.log
 preloadImages: /foo/bar
 imageFile: /bar/baz
+resolveRef: registry.host/repo:tag
 port: 8888
 os: red
 arch: yellow
@@ -108,6 +162,7 @@ var expectConfig = config.Configuration{
 	LogFile:          "/foo/bar/baz.log",
 	PreloadImages:    "/foo/bar",
 	ImageFile:        "/bar/baz",
+	ResolveRef:       "registry.host/repo:tag",
 	Port:             8888,
 	Os:               "red",
 	Arch:             "yellow",

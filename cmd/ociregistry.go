@@ -68,7 +68,7 @@ func realMain() int {
 
 	switch command {
 	case loadCmd:
-		if err := preload.Load(config.GetImageFile()); err != nil {
+		if err := preload.Load(config.GetImageFile(), config.GetResolveRef()); err != nil {
 			fmt.Fprintf(os.Stderr, "error loading images: %s\n", err)
 			return 1
 		}

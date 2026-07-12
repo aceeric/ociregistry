@@ -46,7 +46,7 @@ var listener net.Listener
 // or via the command REST API.
 func Serve(buildVer string, buildDtm string) error {
 	if config.GetPreloadImages() != "" {
-		if err := preload.Load(config.GetPreloadImages()); err != nil {
+		if err := preload.Load(config.GetPreloadImages(), config.GetResolveRef()); err != nil {
 			return fmt.Errorf("error pre-loading images: %s", err)
 		}
 	}

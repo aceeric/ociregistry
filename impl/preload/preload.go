@@ -17,10 +17,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// Load loads the manifest and blob file system cache for the images listed in the
-// passed file. If an image is already present in cache, it is skipped. Otherwise the
-// image is pulled from the upstream using the upstream registry encoded into the file
-// entry.  Here is a example of what one entry in the image list file should look like.
+// LoadFromListFile loads the manifest and blob file system cache for the images listed
+// in the passed file. If an image is already present in cache, it is skipped. Otherwise
+// the image is pulled from the upstream using the upstream registry encoded into the file
+// entry. Here is a example of what one entry in the image list file should look like.
 // It's a standard repository URL. If you can 'docker pull' it, then it should be valid
 // in the file:
 //
@@ -31,7 +31,7 @@ import (
 // list manifest, which is also downloaded. So each url in the file can pull either an image,
 // or a manifest list and  an image. IMPORTANT: each item in the list MUST begin with a remote
 // registry ref - i.e. to the left of the first forward slash (docker.io is not inferred.)
-func Load(imageListFile string) error {
+func LoadFromListFile(imageListFile string) error {
 	imagePath := config.GetImagePath()
 	platformArch := config.GetArch()
 	platformOs := config.GetOs()

@@ -27,6 +27,9 @@ func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 	if fromCmdline.ImageFile || config.ImageFile == "" {
 		config.ImageFile = cfg.ImageFile
 	}
+	if fromCmdline.ResolveRef || config.ResolveRef == "" {
+		config.ResolveRef = cfg.ResolveRef
+	}
 	if fromCmdline.Port || (config.Port == 0) {
 		config.Port = cfg.Port
 	}

@@ -211,6 +211,29 @@ func ensurePlainTar(tarPath string) (string, func(), error) {
 // real directory, not an archive) and hands it to go-containerregistry's
 // layout package, which understands index.json and content-addressed
 // blobs/sha256/* directly.
+// refFromAnnotations extracts the best available ref from an OCI-layout
+// manifest descriptor's annotations.
+//
+// Real producers disagree about what goes in the OCI spec's own
+// "org.opencontainers.image.ref.name" annotation. Per spec it's just a
+// "reference name" - historically meant for local lookup via an OCI
+// layout's refs/ directory, not necessarily a fully-qualified pull ref -
+// and Docker's containerd-backed `docker save` populates it with exactly
+// that: a bare tag like "3.10.2", which pullrequest.NewPullRequestFromUrl
+// will reject outright (no registry host). Docker adds its own
+// "io.containerd.image.name" annotation alongside it, carrying the real
+// fully-qualified ref (e.g. "registry.k8s.io/pause:3.10.2") - so that's
+// preferred when present. containerd's own `ctr image export`, by
+// contrast, conventionally does put the full ref directly in the spec
+// annotation (no io.containerd.image.name at all), so that remains the
+// fallback rather than being dropped.
+func refFromAnnotations(annotations map[string]string) string {
+	if v := annotations["io.containerd.image.name"]; v != "" {
+		return v
+	}
+	return annotations["org.opencontainers.image.ref.name"]
+}
+
 func loadOciLayoutTarball(tarPath string, resolveRef RefResolver, imagePath string, platformOs string, platformArch string) (int, error) {
 	dir, err := extractTar(tarPath)
 	if err != nil {
@@ -232,7 +255,7 @@ func loadOciLayoutTarball(tarPath string, resolveRef RefResolver, imagePath stri
 
 	itemcnt := 0
 	for _, desc := range im.Manifests {
-		ref := resolveOrDefault(desc.Annotations["org.opencontainers.image.ref.name"], desc.Digest.String(), resolveRef)
+		ref := resolveOrDefault(refFromAnnotations(desc.Annotations), desc.Digest.String(), resolveRef)
 		if ref == "" {
 			log.Infof("skipping image (digest %s): no usable ref", desc.Digest)
 			continue

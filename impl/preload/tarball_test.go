@@ -399,7 +399,7 @@ func TestLoadTarball_DockerSave_RefResolverRejectedForMultiImageTarball(t *testi
 // buildOciLayoutTar hand-builds a tarball shaped like `ctr image export`
 // output: the oci-layout marker, index.json, and content-addressed blobs
 // under blobs/sha256/.
-func buildOciLayoutTar(t *testing.T, dir string, ref string) string {
+func buildOciLayoutTar(t *testing.T, dir string, annotations map[string]string) string {
 	t.Helper()
 
 	_, gzLayer := gzipLayer(t, "hello world")
@@ -437,12 +437,10 @@ func buildOciLayoutTar(t *testing.T, dir string, ref string) string {
 		"schemaVersion": 2,
 		"manifests": []map[string]any{
 			{
-				"mediaType": "application/vnd.oci.image.manifest.v1+json",
-				"digest":    "sha256:" + manifestDigestHex,
-				"size":      len(manifestBytes),
-				"annotations": map[string]string{
-					"org.opencontainers.image.ref.name": ref,
-				},
+				"mediaType":   "application/vnd.oci.image.manifest.v1+json",
+				"digest":      "sha256:" + manifestDigestHex,
+				"size":        len(manifestBytes),
+				"annotations": annotations,
 			},
 		},
 	}
@@ -469,7 +467,11 @@ func TestLoadTarball_OciLayout(t *testing.T) {
 	workDir := t.TempDir()
 	ref := "test.example.io/hello:v1"
 
-	tarPath := buildOciLayoutTar(t, workDir, ref)
+	// This shape - the OCI spec annotation carrying the full ref directly -
+	// is what `ctr image export` conventionally produces.
+	tarPath := buildOciLayoutTar(t, workDir, map[string]string{
+		"org.opencontainers.image.ref.name": ref,
+	})
 
 	if err := LoadTarball(tarPath, nil); err != nil {
 		t.Fatalf("LoadTarball: %s", err)
@@ -487,5 +489,43 @@ func TestLoadTarball_OciLayout(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected a cached manifest for %q, found none", ref)
+	}
+}
+
+// TestLoadTarball_OciLayout_DockerContainerdStoreAnnotations reproduces the
+// real annotation shape a modern `docker save` (containerd image store
+// backend) tarball actually carries: the OCI spec's own
+// "org.opencontainers.image.ref.name" annotation holding just the bare tag
+// (not a fully-qualified ref, so it fails pullrequest.NewPullRequestFromUrl
+// on its own), alongside Docker's "io.containerd.image.name" extension
+// annotation holding the real fully-qualified ref. Without refFromAnnotations
+// preferring the containerd key, this image would be silently skipped -
+// LoadTarball would return success having loaded nothing, not an error.
+func TestLoadTarball_OciLayout_DockerContainerdStoreAnnotations(t *testing.T) {
+	imagePath := setupImagePath(t)
+	workDir := t.TempDir()
+	fullRef := "registry.k8s.io/pause:3.10.2"
+
+	tarPath := buildOciLayoutTar(t, workDir, map[string]string{
+		"io.containerd.image.name":          fullRef,
+		"org.opencontainers.image.ref.name": "3.10.2", // bare tag, as real docker save writes it
+	})
+
+	if err := LoadTarball(tarPath, nil); err != nil {
+		t.Fatalf("LoadTarball: %s", err)
+	}
+
+	found := false
+	err := serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
+		if mh.ImageUrl == fullRef {
+			found = true
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("WalkTheCache: %s", err)
+	}
+	if !found {
+		t.Fatalf("expected a cached manifest for %q, found none - image was likely silently skipped due to the bare-tag spec annotation", fullRef)
 	}
 }

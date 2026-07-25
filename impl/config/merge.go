@@ -54,6 +54,12 @@ func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 	if fromCmdline.HelloWorld || !config.HelloWorld {
 		config.HelloWorld = cfg.HelloWorld
 	}
+	if fromCmdline.DefaultNs || config.DefaultNs == "" {
+		config.DefaultNs = cfg.DefaultNs
+	}
+	if fromCmdline.Host || config.Host == "" {
+		config.Host = cfg.Host
+	}
 	if fromCmdline.PruneConfig || config.PruneConfig == (PruneConfig{}) {
 		config.PruneConfig = cfg.PruneConfig
 	}

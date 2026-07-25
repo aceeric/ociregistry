@@ -28,6 +28,7 @@ alwaysPullLatest: false
 airGapped: false
 helloWorld: false
 defaultNs: testing.123.com
+host: 1.1.1.1
 registries:
   - name: localhost:8080
     description: server running on the desktop
@@ -57,6 +58,7 @@ var expectConfig = Configuration{
 	AirGapped:        false,
 	HelloWorld:       false,
 	DefaultNs:        "testing.123.com",
+	Host:             "1.1.1.1",
 	Registries: []RegistryConfig{
 		{
 			Name:        "localhost:8080",
@@ -257,6 +259,7 @@ func TestGetters(t *testing.T) {
 	tAirGapped := true
 	tHelloWorld := true
 	tDefaultNs := ""
+	tHost := ""
 
 	c := Configuration{
 		LogLevel:         tLogLevel,
@@ -274,6 +277,7 @@ func TestGetters(t *testing.T) {
 		AirGapped:        tAirGapped,
 		HelloWorld:       tHelloWorld,
 		DefaultNs:        tDefaultNs,
+		Host:             tHost,
 		Registries:       rc,
 		PruneConfig:      pc,
 		ListConfig:       lc,
@@ -323,6 +327,9 @@ func TestGetters(t *testing.T) {
 		t.FailNow()
 	}
 	if GetDefaultNs() != tDefaultNs {
+		t.FailNow()
+	}
+	if GetHost() != tHost {
 		t.FailNow()
 	}
 	if GetRegistries()[0] != rc[0] {

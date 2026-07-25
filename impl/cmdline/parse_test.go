@@ -20,7 +20,7 @@ func TestParseServe(t *testing.T) {
 	afile := filepath.Join(td, "foo")
 	os.WriteFile(afile, []byte("foo"), 0755)
 
-	os.Args = []string{"bin/ociregistry", "--image-path", td, "--log-level", "info", "--config-file", afile, "serve", "--port", "22", "--os", "linux", "--arch", "amd64", "--preload-images", afile, "--pull-timeout", "123", "--air-gapped", "--hello-world", "--always-pull-latest", "--health", "9876", "--default-ns", "abc.io"}
+	os.Args = []string{"bin/ociregistry", "--image-path", td, "--log-level", "info", "--config-file", afile, "serve", "--port", "22", "--os", "linux", "--arch", "amd64", "--preload-images", afile, "--pull-timeout", "123", "--air-gapped", "--hello-world", "--always-pull-latest", "--health", "9876", "--default-ns", "abc.io", "--host", "1.2.3.4"}
 	fromCmdline, _, err := Parse()
 	if err != nil {
 		t.Fail()
@@ -54,6 +54,8 @@ func TestParseServe(t *testing.T) {
 	case !fromCmdline.HelloWorld:
 		t.Fail()
 	case !fromCmdline.DefaultNs:
+		t.Fail()
+	case !fromCmdline.Host:
 		t.Fail()
 	}
 }
@@ -100,6 +102,7 @@ airGapped: true
 health: 9876
 helloWorld: true
 defaultNs: abc.io
+host: 2.3.4.5
 `
 
 var expectConfig = config.Configuration{
@@ -117,6 +120,7 @@ var expectConfig = config.Configuration{
 	Health:           9876,
 	HelloWorld:       true,
 	DefaultNs:        "abc.io",
+	Host:             "2.3.4.5",
 }
 
 // Test that a command line with nothing specified does not overwrite any part of

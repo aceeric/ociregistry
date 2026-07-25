@@ -109,7 +109,7 @@ func Serve(buildVer string, buildDtm string) error {
 
 	// start the API server
 	go func() {
-		addr := net.JoinHostPort("0.0.0.0", strconv.Itoa(int(config.GetPort())))
+		addr := net.JoinHostPort(config.GetHost(), strconv.Itoa(int(config.GetPort())))
 		if tlsCfg != nil {
 			s := http.Server{
 				Addr:      addr,

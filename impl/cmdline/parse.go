@@ -206,6 +206,16 @@ var cmds = &cli.Command{
 						return nil
 					},
 				},
+				&cli.StringFlag{
+					Name:        "host",
+					Value:       "0.0.0.0",
+					Usage:       "The host to serve on",
+					Destination: &cfg.Host,
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.Host = true
+						return nil
+					},
+				},
 			},
 		},
 		{

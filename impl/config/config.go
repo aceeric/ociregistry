@@ -95,6 +95,7 @@ type Configuration struct {
 	AirGapped        bool             `yaml:"airGapped"`
 	HelloWorld       bool             `yaml:"helloWorld"`
 	DefaultNs        string           `yaml:"defaultNs"`
+	Host             string           `yaml:"host"`
 	Registries       []RegistryConfig `yaml:"registries"`
 	PruneConfig      PruneConfig      `yaml:"pruneConfig"`
 	ListConfig       ListConfig       `yaml:"listConfig"`
@@ -123,12 +124,13 @@ type FromCmdLine struct {
 	AirGapped        bool
 	HelloWorld       bool
 	DefaultNs        bool
+	Host             bool
 	PruneConfig      bool
 	ListConfig       bool
 }
 
 var (
-	// config is the gloal configuration, accessed through getters and setters
+	// config is the global configuration, accessed through getters and setters
 	// below
 	config    Configuration
 	emptyAuth = authCfg{User: "", Password: "", PasswordFromEnv: "", Token: TokenAuth{}}
@@ -212,6 +214,10 @@ func GetHelloWorld() bool {
 
 func GetDefaultNs() string {
 	return config.DefaultNs
+}
+
+func GetHost() string {
+	return config.Host
 }
 
 func GetRegistries() []RegistryConfig {

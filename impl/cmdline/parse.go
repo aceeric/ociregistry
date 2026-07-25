@@ -303,6 +303,16 @@ var cmds = &cli.Command{
 						return nil
 					},
 				},
+				&cli.BoolFlag{
+					Name:        "short-digest",
+					Value:       false,
+					Usage:       "Displays truncated digests to conserve horizontal space",
+					Destination: &cfg.ListConfig.ShortDigest,
+					Action: func(ctx context.Context, cmd *cli.Command, _ bool) error {
+						fromCmdline.ListConfig = true
+						return nil
+					},
+				},
 			},
 		},
 		{

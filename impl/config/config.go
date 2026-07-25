@@ -73,8 +73,9 @@ type PruneConfig struct {
 
 // ListConfig configures the list sub-command
 type ListConfig struct {
-	Header bool   `yaml:"header"`
-	Expr   string `yaml:"expr"`
+	Header      bool   `yaml:"header"`
+	Expr        string `yaml:"expr"`
+	ShortDigest bool   `yaml:"shortDigest"`
 }
 
 // Configuration represents the totality of configuration knobs and dials for the server.

@@ -241,8 +241,9 @@ func TestGetters(t *testing.T) {
 		DryRun:   true,
 	}
 	lc := ListConfig{
-		Header: true,
-		Expr:   "n",
+		Header:      true,
+		Expr:        "n",
+		ShortDigest: true,
 	}
 	tLogLevel := ""
 	tLogFile := ""

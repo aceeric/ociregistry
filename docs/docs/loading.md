@@ -4,26 +4,10 @@ Loading and Pre-loading supports the air-gapped use case of populating the regis
 
 You can pre-load the cache two ways:
 
-1. As a startup task before running the service: `bin/ociregistry serve --preload-images <file>`. The server will load the image cache and then serve.
-2. By using the binary as a CLI: `bin/ociregistry load --image-file <file>`. The executable will load the cache and then exit back to the command prompt.
+1. As a startup task before running the service: `bin/ociregistry serve --preload-images ...`. The server will load the image cache and then serve.
+2. By using the binary as a CLI: `bin/ociregistry load --image-file ...`. The executable will load the cache and then exit back to the command prompt.
 
-In both cases, you create a file with a list of image references. Example:
-
-```shell
-cat <<EOF >| imagelist
-quay.io/jetstack/cert-manager-cainjector:v1.11.2
-quay.io/jetstack/cert-manager-controller:v1.11.2
-quay.io/jetstack/cert-manager-webhook:v1.11.2
-registry.k8s.io/metrics-server/metrics-server:v0.6.2
-registry.k8s.io/ingress-nginx/controller:v1.8.1
-registry.k8s.io/pause:3.8
-docker.io/kubernetesui/dashboard-api:v1.0.0
-docker.io/kubernetesui/metrics-scraper:v1.0.9
-docker.io/kubernetesui/dashboard-web:v1.0.0
-EOF
-```
-
-Since the entirety of the image cache consists of files and sub-directories under the image cache directory, you can tar that directory up at any time, copy it somewhere, untar it, and start an _Ociregistry_ server instance there pointing to the copied directory and it will _just work_.
+More details are presented in the [Loading Images](configuring-the-server.md#loading-images) section of the  _Configuring The Server_ page. Since the entirety of the image cache consists of files and sub-directories under the image cache directory, you can tar that directory up at any time, copy it somewhere, untar it, and start an _Ociregistry_ server instance there pointing to the copied directory and it will _just work_.
 
 ## Image Store
 

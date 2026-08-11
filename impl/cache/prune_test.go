@@ -177,9 +177,10 @@ func TestComparer(t *testing.T) {
 		t := time.Now()
 		d, _ := time.ParseDuration(dur)
 		t = t.Add(d)
-		return t.Format(dateFormat)
+		return t.Format(globals.DateFormat)
 	}
 	type parseTest struct {
+		id            int
 		cfg           config.PruneConfig
 		mh            imgpull.ManifestHolder
 		shouldPrune   bool
@@ -190,16 +191,16 @@ func TestComparer(t *testing.T) {
 	present := timeStr("0h")
 
 	parseTests := []parseTest{
-		{config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: present}, false, "not earlier"},
-		{config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: threeDaysAgo}, true, ""},
-		{config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: oneDayAgo}, false, "not earlier"},
-		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: present}, false, "not earlier"},
-		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: threeDaysAgo}, true, ""},
-		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: oneDayAgo}, false, "not earlier"},
-		{config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{}, false, "no date to compare"},
-		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{}, false, "no date to compare"},
-		{config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: "foobar"}, false, "un-parseable date"},
-		{config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: "foobar"}, false, "un-parseable date"},
+		{1, config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: present}, false, "not earlier"},
+		{2, config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: threeDaysAgo}, true, ""},
+		{3, config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: oneDayAgo}, false, "not earlier"},
+		{4, config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: present}, false, "not earlier"},
+		{5, config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: threeDaysAgo}, true, ""},
+		{6, config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: oneDayAgo}, false, "not earlier"},
+		{7, config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{}, false, "no date to compare"},
+		{8, config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{}, false, "no date to compare"},
+		{9, config.PruneConfig{Duration: "2d", Type: "created"}, imgpull.ManifestHolder{Created: "foobar"}, false, "un-parseable date"},
+		{10, config.PruneConfig{Duration: "2d", Type: "accessed"}, imgpull.ManifestHolder{Pulled: "foobar"}, false, "un-parseable date"},
 	}
 	for _, parseTest := range parseTests {
 		comparer, err := ParseCriteria(parseTest.cfg)
@@ -227,7 +228,7 @@ func setupPrune() (string, error) {
 			//Digest:   strconv.Itoa(int(imgpull.V1ociManifest)),
 			Digest:   fmt.Sprintf("000000000000000000000000000000000000000000000000000000000000000%d", i),
 			ImageUrl: fmt.Sprintf("docker.io/test/manifest:v1.2.%d", i),
-			Created:  mhDate.Format(dateFormat),
+			Created:  mhDate.Format(globals.DateFormat),
 		}
 		pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
 		if err != nil {

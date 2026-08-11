@@ -92,18 +92,11 @@ var cmds = &cli.Command{
 				return nil
 			},
 			Flags: []cli.Flag{
+				// validation at point of use
 				&cli.StringFlag{
 					Name:        "preload-images",
 					Usage:       "Preloads images from a file containing a list of image refs",
 					Destination: &cfg.PreloadImages,
-					Validator: func(path string) error {
-						if fi, err := os.Stat(path); err != nil {
-							return fmt.Errorf("file not found")
-						} else if fi.IsDir() {
-							return fmt.Errorf("not a file")
-						}
-						return nil
-					},
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.PreloadImages = true
 						return nil
@@ -227,18 +220,11 @@ var cmds = &cli.Command{
 				return nil
 			},
 			Flags: []cli.Flag{
+				// validation at point of use
 				&cli.StringFlag{
 					Name:        "image-file",
 					Usage:       "Loads images from a file containing a list of image refs",
 					Destination: &cfg.ImageFile,
-					Validator: func(path string) error {
-						if fi, err := os.Stat(path); err != nil {
-							return fmt.Errorf("file not found")
-						} else if fi.IsDir() {
-							return fmt.Errorf("not a file")
-						}
-						return nil
-					},
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.ImageFile = true
 						return nil

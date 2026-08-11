@@ -59,8 +59,8 @@ serverTlsConfig: {}
 |`imagePath` | Path spec | /var/lib/ociregistry | `--image-path` | The base path for the image cache. The server will create sub-directories under this for blobs and manifests. |
 |`logLevel` | keyword | error | `--log-level` | Error level logging. See help for valid values. |
 |`logFile` | Path spec | - | `--log-file` | Empty means log to stderr. If you specify a file, the logging is directed to the file. |
-|`preloadImages` | Path spec | - | `--preload-images` | If the `serve` subcommand is specified, then this is the file containing a list of images to pre-load before starting the server. |
-|`imageFile` | Path spec | - | `--image-file` | If the `load` subcommand is specified, then this is the file containing a list of images to load. |
+|`preloadImages` | Path spec | - | `--preload-images` | Used by the `serve` subcommand to pre-load images before starting the server. See "Loading Images" below. |
+|`imageFile` | Path spec | - | `--image-file` | Used by the `load` subcommand to load images while the server is not running (expects exclusive access to the image cache.) See "Loading Images" below. |
 |`port` | Integer | 8080 | `--port` | The port to serve on |
 |`os` | keyword | runtime.GOOS | `--os` | If loading or preloading, the OS and arch. If empty, then defaults to the host running the server. So usually comment these out. |
 |`arch` | keyword | runtime.GOARCH | `--arch` | " |
@@ -75,6 +75,37 @@ serverTlsConfig: {}
 |`registries` | List of dictionary | `[]` | n/a | Upstream registries configuration. See further down for registry configuration. |
 |`pruneConfig` | Dictionary | see below | n/a | Prune configuration. Pruning is disabled by default. See further down for prune configuration. |
 |`serverTlsConfig` | Dictionary | `{}` | n/a | Configures TLS with downstream (client) pullers, e.g. containerd. By default, serves over HTTP. See server tls configuration further down. |
+
+## Loading Images
+
+The following methods are supported to load the server with images.
+
+1. By specifying a plain text file containing a list of image urls. The server reads the file and pulls each image from the upstream.
+2. By specifying an image tarball created by `docker save`, `ctr images export`, etc. The server extracts all images from the tarball into cache.
+
+The `--preload-images` and `--image-file` arg values are as follows:
+
+1. A single filename like `foo.txt` or `bar.tar`
+2. A glob expression **enclosed in single quotes to prevent shell expansion**, e.g. `'*.tar'`, or `'image-list-*.txt'`
+3. A comma-separated expression containing all of the above. E.g.: `'foo.txt,bar.tar,image-list*.txt',multi*.tar`
+
+The `load` command also supports `--resolve-ref` which is an edge-case arg. If you are loading a **single-image tarball** and you know that the image ref is not correct you can override the image ref like `--resolve-ref docker.io/theright/repo:v1.2.3`.
+
+Here is an example of an image list file:
+
+```shell
+cat <<EOF >| imagelist
+quay.io/jetstack/cert-manager-cainjector:v1.11.2
+quay.io/jetstack/cert-manager-controller:v1.11.2
+quay.io/jetstack/cert-manager-webhook:v1.11.2
+registry.k8s.io/metrics-server/metrics-server:v0.6.2
+registry.k8s.io/ingress-nginx/controller:v1.8.1
+registry.k8s.io/pause:3.8
+docker.io/kubernetesui/dashboard-api:v1.0.0
+docker.io/kubernetesui/metrics-scraper:v1.0.9
+docker.io/kubernetesui/dashboard-web:v1.0.0
+EOF
+```
 
 ## Registry Configuration
 

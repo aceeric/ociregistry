@@ -79,7 +79,7 @@ func ListCache() error {
 		if img.size == 0 {
 			size = "n/a"
 		}
-		fmt.Printf("%s %s %s %s %s %s\n", img.image, img.tagOrDigest, img.manifestType, img.created, img.pulled, size)
+		fmt.Printf("%s %s %s %s %s %s\n", img.image, img.tagOrDigest, img.manifestType, dash(img.created), dash(img.pulled), size)
 	}
 	return nil
 }
@@ -104,4 +104,11 @@ func splitImageRef(ref string) (repo string, tagOrDigest string) {
 
 	// no tag or digest present
 	return ref, ""
+}
+
+func dash(val string) string {
+	if val == "" {
+		return "-"
+	}
+	return val
 }

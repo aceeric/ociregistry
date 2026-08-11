@@ -2,7 +2,7 @@
 
 # On deck
 
-- Refactor tests to use `t.TempDir()`
+- Refactor tests to use `t.TempDir()` and `t.Helper()`
 
 # Parked
 

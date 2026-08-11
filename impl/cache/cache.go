@@ -18,10 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// dateFormat has magic numbers from 'format.go' in package 'time' that
-// support date parsing
-const dateFormat = "2006-01-02T15:04:05"
-
 // Type concurrentPulls handles the case where multiple goroutines request a manifest from
 // an upstream concurrently. When that happens, the first-in goroutine will actually do
 // the pull and all other goroutines will wait on the first puller. The thing to know is
@@ -161,8 +157,8 @@ func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolde
 	if err != nil {
 		return emptyManifestHolder, err
 	}
-	mh.Created = curTime()
-	mh.Pulled = curTime()
+	mh.Created = globals.CurTime()
+	mh.Pulled = globals.CurTime()
 	if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
 		return emptyManifestHolder, err
 	}
@@ -478,7 +474,7 @@ func getManifestFromCache(pr pullrequest.PullRequest, imagePath string) (imgpull
 		}
 	}
 	if exists {
-		mh.Pulled = curTime()
+		mh.Pulled = globals.CurTime()
 		if pr.IsLatest() {
 			mc.latest[url] = mh
 		} else {
@@ -527,9 +523,4 @@ func signalWaiters(url string) {
 		}
 		delete(cp.pulls, url)
 	}
-}
-
-// curTime gets the current time as YYYY-MM-DDTHH:MM:SS
-func curTime() string {
-	return time.Now().Format(dateFormat)
 }

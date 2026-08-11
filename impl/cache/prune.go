@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/helpers"
 	"github.com/aceeric/ociregistry/impl/metrics"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
@@ -134,7 +135,7 @@ func ParseCriteria(cfg config.PruneConfig) (ManifestComparer, error) {
 				log.Debugf("comparer - manifest has no create date, skipping %q", mh.ImageUrl)
 				return false
 			}
-			manifestCreateDt, err := time.Parse(dateFormat, mh.Created)
+			manifestCreateDt, err := globals.ParseTime(mh.Created)
 			if err != nil {
 				log.Errorf("comparer - error parsing manifest create date %q for manifest %q", mh.Created, mh.ImageUrl)
 				return false
@@ -147,7 +148,7 @@ func ParseCriteria(cfg config.PruneConfig) (ManifestComparer, error) {
 				log.Debugf("comparer - manifest has no pull date, skipping %q", mh.ImageUrl)
 				return false
 			}
-			manifestPullDt, err := time.Parse(dateFormat, mh.Pulled)
+			manifestPullDt, err := globals.ParseTime(mh.Pulled)
 			if err != nil {
 				log.Errorf("comparer - error parsing parse manifest pull date %q for manifest %q", mh.Pulled, mh.ImageUrl)
 				return false

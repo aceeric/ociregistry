@@ -85,17 +85,20 @@ var cmds = &cli.Command{
 	},
 	Commands: []*cli.Command{
 		{
-			Name:  "serve",
-			Usage: "Runs the server",
+			Name: "serve",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "serve"
 				return nil
 			},
+			Description: "Runs the pull-through registry. The --preload-images arg accepts the following: the name of\n" +
+				"a plain text file containing an image list, the name of a tarball, a glob expression for either of the\n" +
+				"above, or all of the above comma-separated. Glob expressions must be single-quote enclosed to prevent shell\n" +
+				"expansion. Complex example: --preload-images 'foo*.tar,myimagelist.txt,myotherlist.txt,frobozz*.tgz'",
 			Flags: []cli.Flag{
 				// validation at point of use
 				&cli.StringFlag{
 					Name:        "preload-images",
-					Usage:       "Preloads images from a file containing a list of image refs",
+					Usage:       "Preloads images from file(s) containing a list of image refs, or from tarball(s)",
 					Destination: &cfg.PreloadImages,
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.PreloadImages = true
@@ -213,17 +216,21 @@ var cmds = &cli.Command{
 			},
 		},
 		{
-			Name:  "load",
-			Usage: "Loads the image cache",
+			Name: "load",
+			//Usage: "Loads the image cache",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "load"
 				return nil
 			},
+			Description: "Loads the image cache using the server as a cli. The --image-file arg accepts the following: the\n" +
+				"name of a plain text file containing an image list, the name of a tarball, a glob expression for either of the\n" +
+				"above, or all of the above comma-separated. Glob expressions must be single-quote enclosed to prevent shell\n" +
+				"expansion. Complex example: --image-file 'foo*.tar,myimagelist.txt,myotherlist.txt,frobozz*.tgz'",
 			Flags: []cli.Flag{
 				// validation at point of use
 				&cli.StringFlag{
 					Name:        "image-file",
-					Usage:       "Loads images from a file containing a list of image refs",
+					Usage:       "Loads images from file(s) containing a list of image refs, or from tarball(s)",
 					Destination: &cfg.ImageFile,
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.ImageFile = true
@@ -278,12 +285,14 @@ var cmds = &cli.Command{
 			},
 		},
 		{
-			Name:  "list",
-			Usage: "Lists the cache as it is on the file system",
+			Name: "list",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "list"
 				return nil
 			},
+			Description: "Lists the cache as it is on the file system. Output is compact horizontally and unsorted.\n" +
+				"Use linux tools to format and sort. E.g.:\n" +
+				"bin/ociregistry list --header --short-digest | awk 'NR==1; NR>1 {print | \"sort -k1,1n\"}' | column -t",
 			Flags: []cli.Flag{
 				&cli.BoolFlag{
 					Name:        "header",
@@ -318,12 +327,14 @@ var cmds = &cli.Command{
 			},
 		},
 		{
-			Name:  "prune",
-			Usage: "Prunes the cache on the filesystem (server should not be running)",
+			Name: "prune",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "prune"
 				return nil
 			},
+			Description: "Prunes the cache on the filesystem (server should not be running). Important: --dry-run\n" +
+				"defaults to false so typically specify --dry-run until results are as expected, then remove to\n" +
+				"actually prune. Important: the date format must be exactly as shown in the --date arg help below.",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:        "pattern",
@@ -358,12 +369,12 @@ var cmds = &cli.Command{
 			},
 		},
 		{
-			Name:  "version",
-			Usage: "Displays the version",
+			Name: "version",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "version"
 				return nil
 			},
+			Description: "Displays the server version.",
 		},
 	},
 }

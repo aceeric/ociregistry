@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.16.0
+
+11-Aug-2026
+
+1. Support the ability to load from image tarballs (e.g. `docker save`, `ctr export`, etc.)
+
 ## 1.15.0
 
 12-Jul-2026

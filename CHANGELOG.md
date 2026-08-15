@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 1.17.0
+
+11-Aug-2026
+
+1. Go from 1.26.5 to 1.26.6
+2. Module updates: aws/aws-sdk-go-v2/config v1.32.37, aws/aws-sdk-go-v2/service/ecr v1.60.6, getkin/kin-openapi v0.146.0, oapi-codegen/echo-middleware v1.1.0, oapi-codegen/runtime v1.6.0, prometheus/client_golang v1.24.1, sirupsen/logrus v1.10.0
+
 ## 1.16.0
 
 11-Aug-2026

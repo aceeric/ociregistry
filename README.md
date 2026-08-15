@@ -30,7 +30,7 @@ Git clone the project. Then you have two ways to run the server. 1) Run the cont
 The `hack` directory has a script to run the container. You supply three args: the server version, the port to serve on, and the image cache path:
 
 ```shell
-hack/test-local-image 1.12.6 8080 /tmp/images
+hack/test-local-image n.nn.n 8080 /tmp/images
 ```
 
 Tail the logs: `docker logs ociregistry -f`.
@@ -60,7 +60,7 @@ Depending on whether you run the container, or the local binary, you will see sl
 ```shell
 ----------------------------------------------------------------------
 OCI Registry: pull-only, pull-through, caching OCI Distribution Server
-Version: v1.12.6, build date: 2026-03-07T23:34:41.00Z
+Version: vn.nn.n, build date: 2026-03-07T23:34:41.00Z
 Started: 2026-03-08 00:32:00.287358959 +0000 UTC (port 8080)
 Running as (uid:gid) 1000:1000
 Process id: 1

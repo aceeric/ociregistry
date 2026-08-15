@@ -6,9 +6,9 @@ set -e
 
 if [[ "$#" -ne 2 ]] && [[ "$#" -ne 3 ]]; then
   echo "usage: test-local-image <tag> <port> <optional path>"
-  echo "e.g.: test-local-image 1.12.6 8080"
+  echo "e.g.: test-local-image n.nn.n 8080"
   echo "or:"
-  echo "e.g.: test-local-image 1.12.6 8080 /tmp/images"
+  echo "e.g.: test-local-image n.nn.n 8080 /tmp/images"
   exit 1
 fi
 

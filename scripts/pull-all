@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#
+# Pulls all the cached images from the server running locally.
+# Just a sanity-check. Uses https://github.com/aceeric/imgpull
+# as the puller CLI.
+#
+
+set -u
+
+count=0
+curl http://localhost:8080/cmd/manifest/list?count=-1 |\
+  awk '{print $1}' | grep -v @sha256 | while read ref; do
+  # have to skip the non-optional header
+  ((count++))
+  if [[ $count -gt 1 ]]; then
+   imgpull --scheme http localhost:8080/$ref deleteme.tar
+  fi
+done

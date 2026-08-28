@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 1.18.0
+
+28-Aug-2026
+
+1. Go from 1.26.6 to 1.27.0
+2. Module updates: aceeric/imgpull v1.15.1, aws/aws-sdk-go-v2/config v1.33.1, aws/aws-sdk-go-v2/service/ecr v1.62.1, getkin/kin-openapi v0.149.0, oapi-codegen/runtime v1.7.0, opencontainers/go-digest v1.0.0, sirupsen/logrus v1.10.2, urfave/cli/v3 v3.11.0
+
 ## 1.17.0
 
 11-Aug-2026

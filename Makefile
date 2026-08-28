@@ -1,5 +1,5 @@
 SERVER_VERSION ?= 1.17.0
-GO_VERSION     ?= 1.26.6
+GO_VERSION     ?= 1.27.0
 DATETIME       := $(shell date -u +%Y-%m-%dT%T.%2NZ)
 REGISTRY       := quay.io
 ORG            := appzygy
@@ -10,11 +10,18 @@ CHART_VERSION  := $(shell grep '^version:' ${ROOT}/charts/ociregistry/Chart.yaml
 all:
 	@echo Run 'make help' to see a list of available targets
 
-.PHONY : vartest
+.PHONY: vartest
 vartest:
 	@echo SERVER_VERSION=$(SERVER_VERSION)
 	@echo GO_VERSION=$(GO_VERSION)
 	@echo CHART_VERSION=$(CHART_VERSION)
+
+.PHONY: go-install
+go-install:
+	go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
+	go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
+	go install github.com/vladopajic/go-test-coverage/v2@latest
+	go install golang.org/x/vuln/cmd/govulncheck@latest
 
 .PHONY: oapi-codegen # requires go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest
 oapi-codegen:
@@ -110,6 +117,8 @@ This make file provides the following targets:
 test              Runs the unit tests.
 
 vet               Runs go vet.
+
+go-install        Runs go install for components needed locally.
 
 vulncheck         Runs govulncheck.
                   Requires 'go install golang.org/x/vuln/cmd/govulncheck@latest'.

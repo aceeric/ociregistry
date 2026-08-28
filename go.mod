@@ -1,6 +1,6 @@
 module github.com/aceeric/ociregistry
 
-go 1.26.6
+go 1.27.0
 
 require (
 	github.com/aws/aws-sdk-go-v2/config v1.32.37

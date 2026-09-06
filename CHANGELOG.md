@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 1.19.0
+
+06-Sep-2026
+
+1. Go from 1.27.0 to 1.27.1
+2. Module updates: aws/aws-sdk-go-v2/config v1.33.3, aws/aws-sdk-go-v2/service/ecr v1.64.0
+
 ## 1.18.0
 
 28-Aug-2026

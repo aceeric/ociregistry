@@ -15,7 +15,7 @@ _Ociregistry_ is a **pull-only**, **pull-through**, **caching** OCI Distribution
 
 The goal of the project is to build a performant, simple, reliable edge OCI Distribution server for Kubernetes. One of the overriding goals was simplicity: only one binary is needed to run the server, and all state is persisted as simple files on the file system under one subdirectory. These files can easily be used to inspect the server cache using well-known tools like `grep`, `find`, `jq` and so on.
 
-And because of this design, the entire image store can be tarred up, copied to another location, and un-tarred. And then simply starting the server in that remote location with the `--image-file` arg pointing to the copied directory will serve exactly the same image cache.
+And because of this design, the entire image store can be tarred up, copied to another location, and un-tarred. And then simply starting the server in that remote location with the `--image-path` arg pointing to the copied directory will serve exactly the same image cache.
 
 ## Detailed Documentation
 

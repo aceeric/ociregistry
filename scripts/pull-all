@@ -5,13 +5,13 @@
 # as the puller CLI.
 #
 
-set -u
+set -e
 
 count=0
-curl http://localhost:8080/cmd/manifest/list?count=-1 |\
+curl -s http://localhost:8080/cmd/manifest/list?count=-1 |\
   awk '{print $1}' | grep -v @sha256 | while read ref; do
   # have to skip the non-optional header
-  ((count++))
+  ((++count))
   if [[ $count -gt 1 ]]; then
    imgpull --scheme http localhost:8080/$ref deleteme.tar
   fi

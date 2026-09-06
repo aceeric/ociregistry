@@ -35,7 +35,7 @@ func (r *OciRegistry) handleV2ManifestsReference(ctx echo.Context, reference str
 	if err != nil {
 		log.Errorf("error getting manifest for %q: %s", pr.Url(), err)
 		metrics.IncApiErrorResults()
-		return ctx.NoContent(http.StatusInternalServerError)
+		return ctx.NoContent(http.StatusNotFound)
 	}
 	ctx.Response().Header().Add("Content-Length", strconv.Itoa(len(mh.Bytes)))
 	ctx.Response().Header().Add("Docker-Content-Digest", "sha256:"+mh.Digest)
@@ -63,7 +63,7 @@ func (r *OciRegistry) handleV2BlobsDigest(ctx echo.Context, digest string, repoS
 	if err != nil {
 		log.Errorf("blob not on the file system for %q, digest %q", strings.Join(repoSegments, "/"), digest)
 		metrics.IncApiErrorResults()
-		return ctx.JSON(http.StatusInternalServerError, "")
+		return ctx.JSON(http.StatusNotFound, "")
 	}
 	// if the Range header is set in the request then by omitting the Content-Length header
 	// in the response, the underlying http library automatically supports chunked transfer

@@ -1,9 +1,9 @@
-SERVER_VERSION ?= 1.19.0
-GO_VERSION     ?= 1.27.1
+ROOT           := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+SERVER_VERSION ?= $(shell git -C $(ROOT) describe --tags --always --dirty 2>/dev/null || echo dev)
+GO_VERSION     := $(shell awk '/^go /{print $$2}' ${ROOT}/go.mod)
 DATETIME       := $(shell date -u +%Y-%m-%dT%T.%2NZ)
 REGISTRY       := quay.io
 ORG            := appzygy
-ROOT           := $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 CHART_VERSION  := $(shell grep '^version:' ${ROOT}/charts/ociregistry/Chart.yaml | awk '{print $$2}')
 
 .PHONY : all
@@ -44,6 +44,8 @@ update-modules:
 	rm go.sum
 	sed -i '/\/\/ indirect/d' go.mod
 	go mod tidy
+	go build ./...
+	$(MAKE) test
 
 .PHONY: coverage-rpt
 coverage-rpt: # requires go install github.com/vladopajic/go-test-coverage/v2@latest
@@ -128,7 +130,8 @@ gocyclo           Runs gocyclo.
 coverage          Runs 'go tool cover' to show coverage of the most recent test run in a browser
                   window. (Does not run the unit tests.)
 
-update-modules    Runs 'go get -u' and 'go mod tidy'
+update-modules    Runs 'go get -u' and 'go mod tidy' and does a validation build/test to ensure
+                  nothing about the module updates broke the server.
 
 coverage-rpt      Creates a coverage report of the most recent test run. (Does not run the unit tests.)
                   Requires 'go install github.com/vladopajic/go-test-coverage/v2@latest'

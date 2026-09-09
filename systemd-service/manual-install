@@ -7,14 +7,16 @@
 # mirror to my desktop.
 #
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 if [[ $(id -u) -ne 0 ]]; then
   echo "must run as root"
   exit  1
 fi
 
 systemctl stop ociregistry || echo  "ociregistry is not running"
-cp bin/ociregistry /bin/ociregistry-server
+cp $script_dir/../bin/ociregistry /bin/ociregistry-server
 if [[ ! -f /etc/systemd/system/ociregistry.service ]]; then
-  cp systemd-service/ociregistry.service /etc/systemd/system/
+  cp $script_dir/ociregistry.service /etc/systemd/system/
 fi
 systemctl enable --now ociregistry

@@ -68,6 +68,10 @@ server:
 	CGO_ENABLED=0 go build -ldflags "-X 'main.buildVer=$(SERVER_VERSION)' -X 'main.buildDtm=$(DATETIME)'"\
 	 -a -o $(ROOT)/bin/ociregistry $(ROOT)/cmd/*.go
 
+.PHONY: server-install
+server-install:
+	$(ROOT)/systemd-service/manual-install
+
 .PHONY: image
 image:
 	docker buildx inspect ociregistry > /dev/null 2>&1 && docker buildx rm ociregistry || :
@@ -108,6 +112,22 @@ helm-artifacthub:
 	 --config /dev/null:application/vnd.cncf.artifacthub.config.v1+yaml\
 	 $(ROOT)/charts/artifacthub-repo.yml:application/vnd.cncf.artifacthub.repository-metadata.layer.v1.yaml
 
+.PHONY: update-go
+update-go:
+	@$(ROOT)/scripts/update-golang
+
+.PHONY: bump-go
+bump-go:
+	@test -n "$(GO_VERSION)" || (echo "GO_VERSION required, e.g. make bump-go GO_VERSION=1.27.2"; exit 1)
+	sed -i "s/^go .*/go $(GO_VERSION)/" $(ROOT)/go.mod
+	go build ./...
+	$(MAKE) test
+
+.PHONY: bump-chart
+bump-chart:
+	@test -n "$(CHART_VERSION_NEW)" || (echo "CHART_VERSION_NEW required, e.g. make bump-chart CHART_VERSION_NEW=1.20.0"; exit 1)
+	sed -i "s/^version:.*/version: $(CHART_VERSION_NEW)/" $(ROOT)/charts/ociregistry/Chart.yaml
+
 .PHONY : help
 help:
 	@echo "$$HELPTEXT"
@@ -115,6 +135,15 @@ help:
 export HELPTEXT
 define HELPTEXT
 This make file provides the following targets:
+
+update-go         Pulls down and installs the latest golang. Must run as sudo. E.g.
+                  'sudo make update-go'.
+
+bump-go           Updates the go version in go.mod, builds (with no binary output - just a test
+                  build, and runs the unit tests.) E.g.: 'make bump-go GO_VERSION=n.nn.n'
+
+bump-chart        Updates the chart version in charts/ociregistry/Chart.yaml. E.g.:
+                  'make bump-chart CHART_VERSION_NEW=n.nn.n'
 
 test              Runs the unit tests.
 
@@ -143,6 +172,9 @@ oapi-codegen      Generates go code in the 'api' directory from the 'ociregistry
 server            Builds the server binary on your desktop. After building then run the server
                   on your desktop: 'bin/ociregistry --help' for testing. You can also run the server
                   binary as a systemd service. See the 'systemd-service' directory for more details.
+
+server-install    Runs systemd-service/manual-install to install the server as a systemd service.
+                  Requires sudo. E.g.: 'sudo make server-install'
 
 image             Builds the server '$(SERVER_VERSION)' OCI image and and pushes it to the
                   '$(REGISTRY)' OCI distribution server, in the '$(ORG)' user/org.

@@ -127,6 +127,7 @@ bump-go:
 bump-chart:
 	@test -n "$(CHART_VERSION_NEW)" || (echo "CHART_VERSION_NEW required, e.g. make bump-chart CHART_VERSION_NEW=1.20.0"; exit 1)
 	sed -i "s/^version:.*/version: $(CHART_VERSION_NEW)/" $(ROOT)/charts/ociregistry/Chart.yaml
+	sed -i "s/^appVersion:.*/appVersion: $(CHART_VERSION_NEW)/" $(ROOT)/charts/ociregistry/Chart.yaml
 
 .PHONY : help
 help:

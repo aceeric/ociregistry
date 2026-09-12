@@ -1,0 +1,130 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:145.0) Gecko/20100101 Firefox/145.0" version="29.1.1">
+  <diagram name="Page-1" id="FGEVR-zmVwjK8BXDQP24">
+    <mxGraphModel dx="938" dy="503" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="GtfMr252oslhpPtrpdyK-14" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="29" width="80" x="615" y="339" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-13" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="29" width="80" x="610" y="333" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="&lt;div&gt;Docker (containerd)&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="110" width="121" x="419" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Test driver" vertex="1">
+          <mxGeometry height="50" width="80" x="100" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Ociregistry" vertex="1">
+          <mxGeometry height="50" width="80" x="287" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Registry" vertex="1">
+          <mxGeometry height="50" width="81" x="439" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-6" edge="1" parent="1" source="GtfMr252oslhpPtrpdyK-1" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="GtfMr252oslhpPtrpdyK-3" value="&amp;nbsp;query for test set&amp;nbsp;">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="140" y="480" />
+              <mxPoint x="480" y="480" />
+            </Array>
+            <mxPoint x="440" y="490" as="sourcePoint" />
+            <mxPoint x="490" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-7" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;" value="&amp;nbsp;pull&amp;nbsp;">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="180" y="374" as="sourcePoint" />
+            <mxPoint x="280" y="374" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-8" edge="1" parent="1" style="endArrow=classic;html=1;rounded=0;" value="&amp;nbsp;prune (optional)&amp;nbsp;">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="180" y="390" as="sourcePoint" />
+            <mxPoint x="280" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-9" edge="1" parent="1" source="GtfMr252oslhpPtrpdyK-2" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="GtfMr252oslhpPtrpdyK-3" value="&amp;nbsp;pull&amp;nbsp;">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="440" y="490" as="sourcePoint" />
+            <mxPoint x="490" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="load-docker-container" vertex="1">
+          <mxGeometry height="50" width="130" x="590" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="maketar" vertex="1">
+          <mxGeometry height="50" width="80" x="605" y="234" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-12" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="image tarballs" vertex="1">
+          <mxGeometry height="29" width="80" x="605" y="328" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-15" edge="1" parent="1" source="GtfMr252oslhpPtrpdyK-11" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="GtfMr252oslhpPtrpdyK-12" value="generate">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="455" y="460" as="sourcePoint" />
+            <mxPoint x="505" y="410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-16" edge="1" parent="1" source="GtfMr252oslhpPtrpdyK-10" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" target="GtfMr252oslhpPtrpdyK-14" value="read">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="440" y="460" as="sourcePoint" />
+            <mxPoint x="490" y="410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-17" edge="1" parent="1" source="GtfMr252oslhpPtrpdyK-10" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="GtfMr252oslhpPtrpdyK-3" value="push">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="560" y="435" />
+              <mxPoint x="560" y="385" />
+            </Array>
+            <mxPoint x="440" y="460" as="sourcePoint" />
+            <mxPoint x="490" y="410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-20" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;fontStyle=3;strokeWidth=2;" value="&amp;nbsp;E X E C U T E&amp;nbsp;">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="90" y="520" as="sourcePoint" />
+            <mxPoint x="550" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-21" edge="1" parent="1" style="endArrow=none;html=1;rounded=0;fontStyle=3;strokeWidth=2;" value="&amp;nbsp;P R E P A R E&amp;nbsp;">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="580" y="520" as="sourcePoint" />
+            <mxPoint x="730" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-22" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="pull metrics" vertex="1">
+          <mxGeometry height="26" width="80" x="100" y="284" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-23" edge="1" parent="1" source="GtfMr252oslhpPtrpdyK-1" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=0;exitDx=0;exitDy=0;" target="GtfMr252oslhpPtrpdyK-22" value="generate">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="440" y="440" as="sourcePoint" />
+            <mxPoint x="490" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-24" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Prometheus / Grafana" vertex="1">
+          <mxGeometry height="50" width="80" x="286" y="260" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-25" edge="1" parent="1" source="GtfMr252oslhpPtrpdyK-24" style="endArrow=classic;html=1;rounded=0;" target="GtfMr252oslhpPtrpdyK-2" value="observe">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="440" y="440" as="sourcePoint" />
+            <mxPoint x="490" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="start-containers" vertex="1">
+          <mxGeometry height="50" width="105" x="605" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="GtfMr252oslhpPtrpdyK-27" edge="1" parent="1" source="GtfMr252oslhpPtrpdyK-26" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="GtfMr252oslhpPtrpdyK-24" value="&amp;nbsp;start&amp;nbsp;">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="326" y="195" />
+            </Array>
+            <mxPoint x="440" y="430" as="sourcePoint" />
+            <mxPoint x="490" y="380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

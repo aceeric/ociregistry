@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.20.0
+
+11-Sep-2026
+
+1. Manually bump `golang.org/x/crypto` to latest since `labstack/echo/v4` has not yet done so. (Artifacthub complains.)
+
 ## 1.19.0
 
 06-Sep-2026

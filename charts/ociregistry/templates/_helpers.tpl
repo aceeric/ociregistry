@@ -66,7 +66,7 @@ Image URL
 */}}
 {{- define "ociregistry.image" -}}
 {{- $sep := ":" }}
-{{- $ref := .img.tag }}
+{{- $ref := .img.tag | default .appVersion }}
 {{- if ne (default "" .img.digest) "" }}
 {{- $sep = "@" }}
 {{- $ref = .img.digest }}

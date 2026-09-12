@@ -71,7 +71,7 @@ spec:
         {{- end }}
         securityContext:
           {{- toYaml .Values.securityContext | nindent 10 }}
-        image: {{ include "ociregistry.image" (dict "img" .Values.image.ociregistry) }}
+        image: {{ include "ociregistry.image" (dict "img" .Values.image.ociregistry "appVersion" .Chart.AppVersion) }}
         imagePullPolicy: {{ .Values.image.ociregistry.pullPolicy }}
         ports:
         - name: http

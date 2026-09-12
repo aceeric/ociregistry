@@ -6,8 +6,8 @@ image:
     registry: quay.io
     # -- The image repository
     repository: appzygy/ociregistry
-    # -- The image tag
-    tag: 1.19.0
+    # -- The image tag - default to chart appVersion if unset
+    tag: ""
     # -- Specify a digest to use instead of the tag
     digest:
     # -- The image pull policy

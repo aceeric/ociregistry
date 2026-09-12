@@ -4,7 +4,7 @@
 |-------------------------------------------------------------------|--------------------------------------------|
 | Download and install latest go version                            | `sudo make update-go`                      |
 | Update golang if new go version is available                      | `make bump-go GO_VERSION=n.nn.n`           |
-| Update dependencies                                               | `make update-deps`                         |
+| Update dependencies                                               | `make update-modules`                      |
 | Bump chart version                                                | `make bump-chart CHART_VERSION_NEW=n.nn.n` |
 | Update changelog                                                  | manual                                     |
 | Commit to main                                                    | manual                                     |

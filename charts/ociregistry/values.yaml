@@ -310,6 +310,7 @@ serverConfig:
     #arch: amd64
     pullTimeout: 60000
     alwaysPullLatest: false
+    alwaysPullManifest: false
     airGapped: false
     helloWorld: false
     health: 8081

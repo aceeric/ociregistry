@@ -174,6 +174,16 @@ var cmds = &cli.Command{
 					},
 				},
 				&cli.BoolFlag{
+					Name:        "always-pull-manifest",
+					Value:       false,
+					Usage:       "Always pulls manifests from the upstream. Useful if mutable tags are used",
+					Destination: &cfg.AlwaysPullLatest,
+					Action: func(ctx context.Context, cmd *cli.Command, _ bool) error {
+						fromCmdline.AlwaysPullManifest = true
+						return nil
+					},
+				},
+				&cli.BoolFlag{
 					Name:        "hello-world",
 					Value:       false,
 					Usage:       "Only serves docker.io/hello-world:latest using built-in files without pulling - for testing",

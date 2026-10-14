@@ -144,6 +144,12 @@ func (pr *PullRequest) IsLatest() bool {
 	return strings.ToLower(pr.Reference) == "latest"
 }
 
+// IsDigest returns if the pull is by digest.
+// Used to determine if the artefact is immutable and a cached pull can be used
+func (pr *PullRequest) IsDigest() bool {
+	return typeFromRef(pr.Reference) == ByDigest
+}
+
 // typeFromRef looks at the passed 'ref' and if it's a digest ref then returns
 // 'ByDigest' else returns 'ByTag'.
 func typeFromRef(ref string) PullType {

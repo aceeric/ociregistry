@@ -80,28 +80,29 @@ type ListConfig struct {
 
 // Configuration represents the totality of configuration knobs and dials for the server.
 type Configuration struct {
-	LogLevel         string           `yaml:"logLevel"`
-	LogFile          string           `yaml:"logFile"`
-	ConfigFile       string           `yaml:"configFile"`
-	ImagePath        string           `yaml:"imagePath"`
-	PreloadImages    string           `yaml:"preloadImages"`
-	ImageFile        string           `yaml:"imageFile"`
-	ResolveRef       string           `yaml:"resolveRef"`
-	Port             int              `yaml:"port"`
-	Os               string           `yaml:"os"`
-	Arch             string           `yaml:"arch"`
-	PullTimeout      int              `yaml:"pullTimeout"`
-	Health           int              `yaml:"health"`
-	Metrics          int              `yaml:"metrics"`
-	AlwaysPullLatest bool             `yaml:"alwaysPullLatest"`
-	AirGapped        bool             `yaml:"airGapped"`
-	HelloWorld       bool             `yaml:"helloWorld"`
-	DefaultNs        string           `yaml:"defaultNs"`
-	Host             string           `yaml:"host"`
-	Registries       []RegistryConfig `yaml:"registries"`
-	PruneConfig      PruneConfig      `yaml:"pruneConfig"`
-	ListConfig       ListConfig       `yaml:"listConfig"`
-	ServerTlsCfg     ServerTlsCfg     `yaml:"serverTlsConfig"`
+	LogLevel           string           `yaml:"logLevel"`
+	LogFile            string           `yaml:"logFile"`
+	ConfigFile         string           `yaml:"configFile"`
+	ImagePath          string           `yaml:"imagePath"`
+	PreloadImages      string           `yaml:"preloadImages"`
+	ImageFile          string           `yaml:"imageFile"`
+	ResolveRef         string           `yaml:"resolveRef"`
+	Port               int              `yaml:"port"`
+	Os                 string           `yaml:"os"`
+	Arch               string           `yaml:"arch"`
+	PullTimeout        int              `yaml:"pullTimeout"`
+	Health             int              `yaml:"health"`
+	Metrics            int              `yaml:"metrics"`
+	AlwaysPullLatest   bool             `yaml:"alwaysPullLatest"`
+	AlwaysPullManifest bool             `yaml:"alwaysPullManifest"`
+	AirGapped          bool             `yaml:"airGapped"`
+	HelloWorld         bool             `yaml:"helloWorld"`
+	DefaultNs          string           `yaml:"defaultNs"`
+	Host               string           `yaml:"host"`
+	Registries         []RegistryConfig `yaml:"registries"`
+	PruneConfig        PruneConfig      `yaml:"pruneConfig"`
+	ListConfig         ListConfig       `yaml:"listConfig"`
+	ServerTlsCfg       ServerTlsCfg     `yaml:"serverTlsConfig"`
 }
 
 // FromCmdLine has a flag for every command-line option. The parsing code
@@ -109,27 +110,28 @@ type Configuration struct {
 // line by the user. This supports merging command line config into
 // file-based config.
 type FromCmdLine struct {
-	Command          string
-	LogLevel         bool
-	LogFile          bool
-	ConfigFile       bool
-	ImagePath        bool
-	PreloadImages    bool
-	ImageFile        bool
-	ResolveRef       bool
-	Port             bool
-	Os               bool
-	Arch             bool
-	PullTimeout      bool
-	Health           bool
-	Metrics          bool
-	AlwaysPullLatest bool
-	AirGapped        bool
-	HelloWorld       bool
-	DefaultNs        bool
-	Host             bool
-	PruneConfig      bool
-	ListConfig       bool
+	Command            string
+	LogLevel           bool
+	LogFile            bool
+	ConfigFile         bool
+	ImagePath          bool
+	PreloadImages      bool
+	ImageFile          bool
+	ResolveRef         bool
+	Port               bool
+	Os                 bool
+	Arch               bool
+	PullTimeout        bool
+	Health             bool
+	Metrics            bool
+	AlwaysPullLatest   bool
+	AlwaysPullManifest bool
+	AirGapped          bool
+	HelloWorld         bool
+	DefaultNs          bool
+	Host               bool
+	PruneConfig        bool
+	ListConfig         bool
 }
 
 var (
@@ -210,6 +212,10 @@ func GetMetrics() int {
 
 func GetAlwaysPullLatest() bool {
 	return config.AlwaysPullLatest
+}
+
+func AlwaysPullManifest() bool {
+	return config.AlwaysPullManifest
 }
 
 func GetAirGapped() bool {

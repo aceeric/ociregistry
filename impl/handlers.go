@@ -30,7 +30,7 @@ func (r *OciRegistry) handleV2ManifestsReference(ctx echo.Context, reference str
 		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	forcePull := r.alwaysPullLatest && pr.Reference == "latest"
+	forcePull := (r.alwaysPullLatest && pr.Reference == "latest") || (r.alwaysPullManifest && !pr.IsDigest()) // Only pull named tags. Objects identified by Digests are immutable by design and can still be cached
 	mh, err := cache.GetManifest(pr, r.imagePath, r.pullTimeout, forcePull)
 	if err != nil {
 		log.Errorf("error getting manifest for %q: %s", pr.Url(), err)

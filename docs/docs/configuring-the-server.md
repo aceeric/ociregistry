@@ -40,6 +40,7 @@ port: 8080
 #arch: omit to use the server architecture
 pullTimeout: 60000
 alwaysPullLatest: false
+alwaysPullManifest: false
 airGapped: false
 helloWorld: false
 defaultNs:
@@ -66,6 +67,7 @@ serverTlsConfig: {}
 |`arch` | keyword | runtime.GOARCH | `--arch` | " |
 |`pullTimeout` | Integer | 60000 | `--pull-timeout` | Number of milliseconds before a pull from an upstream will time out. |
 | `alwaysPullLatest` {: .nowrap-column } | Boolean | false | `--always-pull-latest` | If true, then whenever a latest tag is pulled, the server will always pull from the upstream - in other words it acts like a basic proxy. Useful when supporting dev environments where latest is frequently changing. |
+| `alwaysPullManifest` {: .nowrap-column } | Boolean | false | n/a | If true, then every manifest request (any tag or digest) is pulled from the upstream and replaces the cached manifest. Blobs are still served from the cache. Useful for registries with mutable tags other than `latest`. See "About mutable tags" in Loading Images. |
 |`airGapped` | Boolean | false | `--air-gapped` | If true, will not attempt to pull from an upstream when an image is requested that is not cached. |
 |`helloWorld` | Boolean | false | `--hello-world` | For testing. Only serves 'docker.io/hello-world:latest' from embedded blobs and manifests |
 |`defaultNs` | String | Empty | `--default-ns` | Allows pulling without an explicit namespace. Otherise, a namespace is required either in-path (`docker pull ociregistry:8080/docker.io/hello-world`) or as a query param the way `containerd` does it when registry mirroring is configured in the `containerd` `config.toml`. E.g. if `--default-ns=docker.io` then `docker pull ociregistry:8080/hello-world` will pull from `docker.io`, otherwise it is an error. |

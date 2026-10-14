@@ -128,7 +128,7 @@ func ServerWithCallback(params MockParams, callback *func(string)) (*httptest.Se
 				w.Header().Set("Content-Type", "application/json")
 				w.Write([]byte(`{"token":"FROBOZZ"}`))
 			}
-		} else if p == "/v2/hello-world/manifests/latest" {
+		} else if p == "/v2/hello-world/manifests/latest" || p == "/v2/hello-world/manifests/pr-test" {
 			w.Header().Set("Content-Length", strconv.Itoa(len(manifestList))) // 9125
 			w.Header().Set("Content-Type", "application/vnd.oci.image.index.v1+json")
 			w.Header().Set("Date", time.Now().In(gmtTimeLoc).Format(http.TimeFormat))

@@ -58,3 +58,18 @@ Internally, `latest`-tagged images are stored side-by-side with non-latest image
 |-|-|-|
 | Pull `foo:latest` | `false` (the default) | The image is pulled exactly once. All subsequent pulls return the same image regardless of what happens in the upstream. |
 | Pull `foo:latest` {: .nowrap-column } | `true` | The image is pulled from the upstream on each pull from the pull-through server **for each client**. Each pull completely replaces the prior pull. In other words - for latest images the server is a stateless proxy. (This could consume a fair bit of network bandwidth.) |
+
+## About mutable tags
+
+`--always-pull-latest` only covers the `latest` tag. If the upstream re-pushes other tags as well (for example `pr-123` or `nightly`), set `alwaysPullManifest: true` in the config file:
+
+```yaml
+alwaysPullManifest: true
+```
+
+With this setting the server pulls **every** manifest request from the upstream, whatever the tag, and replaces the cached copy. Blobs are still cached, so a re-pushed tag downloads only the layers that changed.
+
+Keep in mind:
+
+- This also applies to pulls by digest, so each manifest request costs one upstream round trip.
+- If the upstream is unreachable, manifest pulls fail. The server does not fall back to the cached manifest.

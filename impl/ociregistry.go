@@ -6,6 +6,7 @@ package impl
 
 import (
 	"net/http"
+	"regexp"
 
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/config"
@@ -24,8 +25,8 @@ type OciRegistry struct {
 	pullTimeout int
 	// if true then always pull images with tag 'latest' (act like a simple proxy)
 	alwaysPullLatest bool
-	// always pull manifest to deal with mutable tags other than latest. Layers will still be cached
-	alwaysPullManifest bool
+	// pull image manifest without cache if it matches the expression
+	noCache *regexp.Regexp
 	// if air-gapped, we can't pull so don't try just return 404
 	airGapped bool
 	// supports pull thru like 'docker pull ociregistry:8080/hello-word' (i.e. no namespace so assume docker.io)
@@ -40,13 +41,13 @@ type OciRegistry struct {
 // which is generated from the api/ociregistry.yaml openapi spec for the distribution server.
 func NewOciRegistry(ch chan bool) *OciRegistry {
 	return &OciRegistry{
-		imagePath:          config.GetImagePath(),
-		pullTimeout:        int(config.GetPullTimeout()),
-		alwaysPullLatest:   config.GetAlwaysPullLatest(),
-		alwaysPullManifest: config.AlwaysPullManifest(),
-		airGapped:          config.GetAirGapped(),
-		defaultNs:          config.GetDefaultNs(),
-		shutdownCh:         ch,
+		imagePath:        config.GetImagePath(),
+		pullTimeout:      int(config.GetPullTimeout()),
+		alwaysPullLatest: config.GetAlwaysPullLatest(),
+		noCache:          config.GetNoCache(),
+		airGapped:        config.GetAirGapped(),
+		defaultNs:        config.GetDefaultNs(),
+		shutdownCh:       ch,
 	}
 }
 

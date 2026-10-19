@@ -20,7 +20,7 @@ func TestParseServe(t *testing.T) {
 	afile := filepath.Join(td, "foo")
 	os.WriteFile(afile, []byte("foo"), 0755)
 
-	os.Args = []string{"bin/ociregistry", "--image-path", td, "--log-level", "info", "--config-file", afile, "serve", "--port", "22", "--os", "linux", "--arch", "amd64", "--preload-images", afile, "--pull-timeout", "123", "--air-gapped", "--hello-world", "--always-pull-latest", "--health", "9876", "--default-ns", "abc.io", "--host", "1.2.3.4"}
+	os.Args = []string{"bin/ociregistry", "--image-path", td, "--log-level", "info", "--config-file", afile, "serve", "--port", "22", "--os", "linux", "--arch", "amd64", "--preload-images", afile, "--pull-timeout", "123", "--air-gapped", "--hello-world", "--always-pull-latest", "--no-cache", "example.com/image:pr-.*", "--health", "9876", "--default-ns", "abc.io", "--host", "1.2.3.4"}
 	fromCmdline, _, err := Parse()
 	if err != nil {
 		t.Fail()
@@ -48,6 +48,8 @@ func TestParseServe(t *testing.T) {
 	case !fromCmdline.Health:
 		t.Fail()
 	case !fromCmdline.AlwaysPullLatest:
+		t.Fail()
+	case !fromCmdline.NoCache:
 		t.Fail()
 	case !fromCmdline.AirGapped:
 		t.Fail()

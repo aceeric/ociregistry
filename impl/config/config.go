@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
@@ -80,29 +81,29 @@ type ListConfig struct {
 
 // Configuration represents the totality of configuration knobs and dials for the server.
 type Configuration struct {
-	LogLevel           string           `yaml:"logLevel"`
-	LogFile            string           `yaml:"logFile"`
-	ConfigFile         string           `yaml:"configFile"`
-	ImagePath          string           `yaml:"imagePath"`
-	PreloadImages      string           `yaml:"preloadImages"`
-	ImageFile          string           `yaml:"imageFile"`
-	ResolveRef         string           `yaml:"resolveRef"`
-	Port               int              `yaml:"port"`
-	Os                 string           `yaml:"os"`
-	Arch               string           `yaml:"arch"`
-	PullTimeout        int              `yaml:"pullTimeout"`
-	Health             int              `yaml:"health"`
-	Metrics            int              `yaml:"metrics"`
-	AlwaysPullLatest   bool             `yaml:"alwaysPullLatest"`
-	AlwaysPullManifest bool             `yaml:"alwaysPullManifest"`
-	AirGapped          bool             `yaml:"airGapped"`
-	HelloWorld         bool             `yaml:"helloWorld"`
-	DefaultNs          string           `yaml:"defaultNs"`
-	Host               string           `yaml:"host"`
-	Registries         []RegistryConfig `yaml:"registries"`
-	PruneConfig        PruneConfig      `yaml:"pruneConfig"`
-	ListConfig         ListConfig       `yaml:"listConfig"`
-	ServerTlsCfg       ServerTlsCfg     `yaml:"serverTlsConfig"`
+	LogLevel         string           `yaml:"logLevel"`
+	LogFile          string           `yaml:"logFile"`
+	ConfigFile       string           `yaml:"configFile"`
+	ImagePath        string           `yaml:"imagePath"`
+	PreloadImages    string           `yaml:"preloadImages"`
+	ImageFile        string           `yaml:"imageFile"`
+	ResolveRef       string           `yaml:"resolveRef"`
+	Port             int              `yaml:"port"`
+	Os               string           `yaml:"os"`
+	Arch             string           `yaml:"arch"`
+	PullTimeout      int              `yaml:"pullTimeout"`
+	Health           int              `yaml:"health"`
+	Metrics          int              `yaml:"metrics"`
+	AlwaysPullLatest bool             `yaml:"alwaysPullLatest"`
+	NoCache          string           `yaml:"noCache"`
+	AirGapped        bool             `yaml:"airGapped"`
+	HelloWorld       bool             `yaml:"helloWorld"`
+	DefaultNs        string           `yaml:"defaultNs"`
+	Host             string           `yaml:"host"`
+	Registries       []RegistryConfig `yaml:"registries"`
+	PruneConfig      PruneConfig      `yaml:"pruneConfig"`
+	ListConfig       ListConfig       `yaml:"listConfig"`
+	ServerTlsCfg     ServerTlsCfg     `yaml:"serverTlsConfig"`
 }
 
 // FromCmdLine has a flag for every command-line option. The parsing code
@@ -110,34 +111,35 @@ type Configuration struct {
 // line by the user. This supports merging command line config into
 // file-based config.
 type FromCmdLine struct {
-	Command            string
-	LogLevel           bool
-	LogFile            bool
-	ConfigFile         bool
-	ImagePath          bool
-	PreloadImages      bool
-	ImageFile          bool
-	ResolveRef         bool
-	Port               bool
-	Os                 bool
-	Arch               bool
-	PullTimeout        bool
-	Health             bool
-	Metrics            bool
-	AlwaysPullLatest   bool
-	AlwaysPullManifest bool
-	AirGapped          bool
-	HelloWorld         bool
-	DefaultNs          bool
-	Host               bool
-	PruneConfig        bool
-	ListConfig         bool
+	Command          string
+	LogLevel         bool
+	LogFile          bool
+	ConfigFile       bool
+	ImagePath        bool
+	PreloadImages    bool
+	ImageFile        bool
+	ResolveRef       bool
+	Port             bool
+	Os               bool
+	Arch             bool
+	PullTimeout      bool
+	Health           bool
+	Metrics          bool
+	AlwaysPullLatest bool
+	NoCache          bool
+	AirGapped        bool
+	HelloWorld       bool
+	DefaultNs        bool
+	Host             bool
+	PruneConfig      bool
+	ListConfig       bool
 }
 
 var (
 	// config is the global configuration, accessed through getters and setters
 	// below
 	config    Configuration
+	noCacheRe *regexp.Regexp
 	emptyAuth = authCfg{User: "", Password: "", PasswordFromEnv: "", Token: TokenAuth{}}
 	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", InsecureSkipVerify: false}
 	emptyOpts = imgpull.PullerOpts{}
@@ -214,8 +216,24 @@ func GetAlwaysPullLatest() bool {
 	return config.AlwaysPullLatest
 }
 
-func AlwaysPullManifest() bool {
-	return config.AlwaysPullManifest
+// GetNoCache returns the compiled noCache expression, or nil if none was configured
+func GetNoCache() *regexp.Regexp {
+	return noCacheRe
+}
+
+// CompileNoCache compiles the noCache expression from the current configuration. Must
+// be called whenever the configuration changes so GetNoCache returns the current value.
+func CompileNoCache() error {
+	noCacheRe = nil
+	if config.NoCache == "" {
+		return nil
+	}
+	re, err := regexp.Compile(config.NoCache)
+	if err != nil {
+		return fmt.Errorf("invalid noCache expression %q: %s", config.NoCache, err)
+	}
+	noCacheRe = re
+	return nil
 }
 
 func GetAirGapped() bool {
@@ -285,7 +303,7 @@ func SetConfigFromStr(configBytes []byte) error {
 	} else {
 		config = cfg
 	}
-	return nil
+	return CompileNoCache()
 }
 
 // ConfigFor looks for an upstream registry configuration entry keyed by the passed 'registry'

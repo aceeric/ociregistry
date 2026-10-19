@@ -51,6 +51,9 @@ func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 	if fromCmdline.AlwaysPullLatest || !config.AlwaysPullLatest {
 		config.AlwaysPullLatest = cfg.AlwaysPullLatest
 	}
+	if fromCmdline.NoCache || config.NoCache == "" {
+		config.NoCache = cfg.NoCache
+	}
 	if fromCmdline.AirGapped || !config.AirGapped {
 		config.AirGapped = cfg.AirGapped
 	}

@@ -58,3 +58,21 @@ Internally, `latest`-tagged images are stored side-by-side with non-latest image
 |-|-|-|
 | Pull `foo:latest` | `false` (the default) | The image is pulled exactly once. All subsequent pulls return the same image regardless of what happens in the upstream. |
 | Pull `foo:latest` {: .nowrap-column } | `true` | The image is pulled from the upstream on each pull from the pull-through server **for each client**. Each pull completely replaces the prior pull. In other words - for latest images the server is a stateless proxy. (This could consume a fair bit of network bandwidth.) |
+
+## About mutable tags
+
+`--always-pull-latest` only covers the `latest` tag. If the upstream re-pushes other tags as well (for example `pr-123` or `nightly`), set `noCache` in the config file (or `--no-cache` on the command line) to a regular expression matching those images:
+
+```yaml
+noCache: ':(nightly|pr-[0-9]+)$'
+```
+
+The expression is matched against the full image ref in the form `registry/repository:tag`, for example `docker.io/library/nginx:nightly`. It is unanchored, so it matches if any part of the ref matches. Use `^` and `$` to match the whole ref.
+
+With this setting the server pulls every manifest request whose ref matches from the upstream, and replaces the cached copy. Blobs are still cached, so a re-pushed tag downloads only the layers that changed.
+
+Keep in mind:
+
+- Pulls by digest are never affected because digests are immutable. They are always served from the cache.
+- Each matching manifest request costs one upstream round trip.
+- If the upstream is unreachable, manifest pulls fail. The server does not fall back to the cached manifest.

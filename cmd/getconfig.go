@@ -31,5 +31,8 @@ func getCfg() (string, error) {
 	} else {
 		config.Set(cfg)
 	}
+	if err := config.CompileNoCache(); err != nil {
+		return "", err
+	}
 	return fromCmdline.Command, nil
 }

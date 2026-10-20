@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
@@ -94,6 +95,7 @@ type Configuration struct {
 	Health           int              `yaml:"health"`
 	Metrics          int              `yaml:"metrics"`
 	AlwaysPullLatest bool             `yaml:"alwaysPullLatest"`
+	NoCache          string           `yaml:"noCache"`
 	AirGapped        bool             `yaml:"airGapped"`
 	HelloWorld       bool             `yaml:"helloWorld"`
 	DefaultNs        string           `yaml:"defaultNs"`
@@ -124,6 +126,7 @@ type FromCmdLine struct {
 	Health           bool
 	Metrics          bool
 	AlwaysPullLatest bool
+	NoCache          bool
 	AirGapped        bool
 	HelloWorld       bool
 	DefaultNs        bool
@@ -136,6 +139,7 @@ var (
 	// config is the global configuration, accessed through getters and setters
 	// below
 	config    Configuration
+	noCacheRe *regexp.Regexp
 	emptyAuth = authCfg{User: "", Password: "", PasswordFromEnv: "", Token: TokenAuth{}}
 	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", InsecureSkipVerify: false}
 	emptyOpts = imgpull.PullerOpts{}
@@ -212,6 +216,26 @@ func GetAlwaysPullLatest() bool {
 	return config.AlwaysPullLatest
 }
 
+// GetNoCache returns the compiled noCache expression, or nil if none was configured
+func GetNoCache() *regexp.Regexp {
+	return noCacheRe
+}
+
+// CompileNoCache compiles the noCache expression from the current configuration. Must
+// be called whenever the configuration changes so GetNoCache returns the current value.
+func CompileNoCache() error {
+	noCacheRe = nil
+	if config.NoCache == "" {
+		return nil
+	}
+	re, err := regexp.Compile(config.NoCache)
+	if err != nil {
+		return fmt.Errorf("invalid noCache expression %q: %s", config.NoCache, err)
+	}
+	noCacheRe = re
+	return nil
+}
+
 func GetAirGapped() bool {
 	return config.AirGapped
 }
@@ -279,7 +303,7 @@ func SetConfigFromStr(configBytes []byte) error {
 	} else {
 		config = cfg
 	}
-	return nil
+	return CompileNoCache()
 }
 
 // ConfigFor looks for an upstream registry configuration entry keyed by the passed 'registry'

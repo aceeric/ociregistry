@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -170,6 +171,19 @@ var cmds = &cli.Command{
 					Destination: &cfg.AlwaysPullLatest,
 					Action: func(ctx context.Context, cmd *cli.Command, _ bool) error {
 						fromCmdline.AlwaysPullLatest = true
+						return nil
+					},
+				},
+				&cli.StringFlag{
+					Name:        "no-cache",
+					Usage:       "Always pulls manifests for image refs matching the provided regex from the upstream. Useful if mutable tags are used",
+					Destination: &cfg.NoCache,
+					Validator: func(expr string) error {
+						_, err := regexp.Compile(expr)
+						return err
+					},
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.NoCache = true
 						return nil
 					},
 				},

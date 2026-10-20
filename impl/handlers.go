@@ -30,7 +30,7 @@ func (r *OciRegistry) handleV2ManifestsReference(ctx echo.Context, reference str
 		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	forcePull := r.alwaysPullLatest && pr.Reference == "latest"
+	forcePull := r.isForcePull(pr)
 	mh, err := cache.GetManifest(pr, r.imagePath, r.pullTimeout, forcePull)
 	if err != nil {
 		log.Errorf("error getting manifest for %q: %s", pr.Url(), err)
@@ -112,4 +112,18 @@ func (r *OciRegistry) x_registry_hdr(ctx echo.Context) string {
 		return hdr[0]
 	}
 	return ""
+}
+
+// Implements logic for force pulling. Server can be configured to always re-pull latest, and
+// always re-pull based on an image regex. If either condition satisfied then returns true else
+// returns false.
+func (r *OciRegistry) isForcePull(pr pullrequest.PullRequest) bool {
+	switch {
+	case r.alwaysPullLatest && pr.Reference == "latest":
+		return true
+	case r.noCache != nil && r.noCache.MatchString(pr.Url()) && !pr.IsDigest():
+		return true
+	default:
+		return false
+	}
 }

@@ -29,10 +29,15 @@ var serverCfg = `
 imagePath: %s
 pullTimeout: %d
 alwaysPullLatest: %t
+noCache: %q
 registries:
   - name: %s
     scheme: http
 `
+
+func templateServerCfg(imagePath string, pullTimeout int, alwaysPullLatest bool, noCache string, registry string) string {
+	return fmt.Sprintf(serverCfg, imagePath, pullTimeout, alwaysPullLatest, noCache, registry)
+}
 
 // Gets a manifest from the ociregistry server with the mock distribution
 // server as the upstream to pull from. Ensures the default behavior which is
@@ -55,7 +60,7 @@ func TestManifestGetWithNs(t *testing.T) {
 		}
 	}
 	server, url := mock.ServerWithCallback(mock.NewMockParams(mock.NONE, mock.HTTP), &callback)
-	cfg := fmt.Sprintf(serverCfg, td, 1000, false, url)
+	cfg := templateServerCfg(td, 1000, false, "", url)
 	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
 		t.Fail()
 	}
@@ -96,7 +101,7 @@ func TestNeverCacheLatest(t *testing.T) {
 		}
 	}
 	server, url := mock.ServerWithCallback(mock.NewMockParams(mock.NONE, mock.HTTP), &callback)
-	cfg := fmt.Sprintf(serverCfg, td, 1000, true, url)
+	cfg := templateServerCfg(td, 1000, true, "", url)
 	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
 		t.Fail()
 	}
@@ -120,6 +125,58 @@ func TestNeverCacheLatest(t *testing.T) {
 	}
 }
 
+// Test proxy mode for image refs matching noCache. In this mode, all pulls of matching
+// refs go to the upstream, and non-matching refs are cached.
+func TestNeverCacheManifestOnNoCache(t *testing.T) {
+	tests := []struct {
+		name      string
+		noCache   string
+		expectCnt int
+	}{
+		{"matching", "hello-world:pr-.*", 10},
+		{"not matching", "hello-world:nightly", 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			td, err := os.MkdirTemp("", "")
+			if err != nil {
+				t.Fail()
+			}
+			defer os.RemoveAll(td)
+			serialize.CreateDirs(td, true)
+			cnt := 0
+			callback := func(url string) {
+				// each pull from the upstream accesses this url two times: once to HEAD
+				// for auth check and a second to pull the manifest
+				if url == "/v2/hello-world/manifests/pr-test" {
+					cnt++
+				}
+			}
+			server, url := mock.ServerWithCallback(mock.NewMockParams(mock.NONE, mock.HTTP), &callback)
+			cfg := templateServerCfg(td, 1000, false, tt.noCache, url)
+			if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
+				t.Fail()
+			}
+			defer server.Close()
+
+			r := NewOciRegistry(nil)
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+			ctx := e.NewContext(req, rec)
+			for range 5 {
+				r.handleV2ManifestsReference(ctx, "pr-test", &url, http.MethodGet, "hello-world")
+				if ctx.Response().Status != 200 {
+					t.Fail()
+				}
+			}
+			if cnt != tt.expectCnt {
+				t.Errorf("expected %d upstream calls, got %d", tt.expectCnt, cnt)
+			}
+		})
+	}
+}
+
 // Tests getting a blob. Since no manifests have been pulled thru a 404
 // should be returned.
 func TestBlobGetFails(t *testing.T) {
@@ -129,7 +186,7 @@ func TestBlobGetFails(t *testing.T) {
 	}
 	defer os.RemoveAll(td)
 	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
-	cfg := fmt.Sprintf(serverCfg, td, 1000, false, url)
+	cfg := templateServerCfg(td, 1000, false, "", url)
 	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
 		t.Fail()
 	}
@@ -155,7 +212,7 @@ func TestPullImageAndBlob(t *testing.T) {
 	defer os.RemoveAll(td)
 	serialize.CreateDirs(td, true)
 	server, url := mock.Server(mock.NewMockParams(mock.NONE, mock.HTTP))
-	cfg := fmt.Sprintf(serverCfg, td, 1000, false, url)
+	cfg := templateServerCfg(td, 1000, false, "", url)
 	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
 		t.Fail()
 	}

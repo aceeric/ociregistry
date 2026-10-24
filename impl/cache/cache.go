@@ -27,7 +27,7 @@ import (
 // more efficiently utilizing system resources.
 type concurrentPulls struct {
 	sync.Mutex
-	pulls map[string][]chan bool
+	pulls map[string]chan struct{}
 }
 
 // Type manifestCache is the in-mem representation of the manifest cache. The key of each
@@ -39,6 +39,19 @@ type manifestCache struct {
 	manifests map[string]imgpull.ManifestHolder
 	latest    map[string]imgpull.ManifestHolder
 }
+
+// Type enqueueResult disambiguates the three-valued return from getting a manifest from cache:
+//
+//	cacheHit - found in cache
+//	mustPull - not found - caller must pull
+//	mustWait - not found - caller must wait for puller
+type enqueueResult int
+
+const (
+	cacheHit enqueueResult = iota
+	mustPull
+	mustWait
+)
 
 // Type blobCache is the in-mem representation of the blob cache. The key is a digest, and the value
 // is a ref count. The ref count is the number of image manifests that reference that particular
@@ -53,13 +66,12 @@ type blobCache struct {
 
 var (
 	// cp has pulls in progress. Will only have entries when a pull from an upstream is actively
-	// ocurring otherwise empty. The key is a manifest url, and the value is a map of channels for
-	// parked goroutines waiting for the image to be pulled by a pulling goroutine. If only the
-	// pulling goroutine is running then the map of channels is empty. The instant any other goroutine
-	// concurrently requests the image, a channel is created for that goroutine and added to the map
-	// and each parked goroutine will wait to be signaled on its channel.
+	// ocurring otherwise empty. The key is a manifest url, and the value is a channel for parked
+	// goroutines to be signaled on by a pulling goroutine when the pull is complete. The instant
+	// any other goroutine concurrently requests the image, the channel is provided to that
+	// goroutine to wait on.
 	cp concurrentPulls = concurrentPulls{
-		pulls: make(map[string][]chan bool),
+		pulls: make(map[string]chan struct{}),
 	}
 	// mc is the manifest in-mem cache, keyed by url. When a manifest is pulled by tag
 	// it is placed in the map twice for efficient retrieval - once by tag and a second
@@ -79,9 +91,9 @@ var (
 // GetManifest returns a manifest from the in-mem cache matching the URL of the passed PullRequest.
 // If no manifest is cached then a pull is performed from an upstream OCI distribution server. The
 // function blocks until the pull is complete and then the manifest is added to the in-mem cache and
-// returned. An error is returned if the manifest can't be pulled or times out. If an *image* manifest
-// is requested and it is not already cached, then all the blobs for the image will also be pulled from
-// the upstream and added to the blob cache.
+// returned. An error is returned if the manifest can't be pulled or times out. If an image manifest
+// is requested and it is not already cached, then all the blobs for the image will also be pulled
+// from the upstream and added to the blob cache.
 //
 // If multiple goroutines request to pull the same image at the same time, then only the first goroutine
 // will actually perform the pull, and all other goroutines will wait for the first goroutine to complete
@@ -89,11 +101,13 @@ var (
 // from the cache entry created by the first goroutine.
 func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, forcePull bool) (imgpull.ManifestHolder, error) {
 	url := pr.Url()
-	if mh, ch, exists := getManifestOrEnqueue(pr, imagePath, forcePull); exists {
+	mh, ch, er := getManifestOrEnqueue(pr, imagePath, forcePull)
+	switch er {
+	case cacheHit:
 		log.Infof("serving manifest from cache: %q", url)
 		metrics.IncCachedPullsByNs(pr.Remote)
 		return mh, nil
-	} else if ch == nil {
+	case mustPull:
 		log.Infof("pulling manifest from upstream: %q", url)
 		defer signalWaiters(url)
 		mh, err := doPull(pr, imagePath)
@@ -111,7 +125,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 			}
 		}
 		return mh, nil
-	} else {
+	case mustWait:
 		select {
 		case <-ch:
 			log.Infof("serving manifest from cache (after wait): %q", url)
@@ -124,6 +138,8 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 		case <-time.After(time.Duration(pullTimeout) * time.Millisecond):
 			return emptyManifestHolder, fmt.Errorf("timeout exceeded (%d millis) waiting for signal on %q", pullTimeout, url)
 		}
+	default:
+		return emptyManifestHolder, fmt.Errorf("unknown enqueueResult %d from getManifestOrEnqueue", er)
 	}
 }
 
@@ -242,7 +258,7 @@ func IsCached(pr pullrequest.PullRequest) bool {
 // ResetCache supports unit tests
 func ResetCache() {
 	cp = concurrentPulls{
-		pulls: make(map[string][]chan bool),
+		pulls: make(map[string]chan struct{}),
 	}
 	mc = manifestCache{
 		manifests: map[string]imgpull.ManifestHolder{},
@@ -405,46 +421,37 @@ func addBlobsToCache(mh imgpull.ManifestHolder, imagePath string) error {
 // getManifestOrEnqueue looks in the in-mem manifest cache for the passed manifest URL. If found,
 // then the manifest holder is returned. If not in cache, then the function enqueues a pull for
 // the manifest from the upstream. In that case, then the return values are to be handled by the
-// caller in specific ways as follows:
-//
-// 1) If the current goroutine is the first to enqueue a pull, then a nil channel is returned. This
-// means the caller must pull the image and signal any other goroutines waiting for the pull
-// to complete.
-//
-// 2) If a non-nil channel is returned, it means another goroutine is already doing the pull for the
-// requested url so the caller in *this* goroutine should wait to be signaled on the non-nil
-// channel. (The pulling go routine will signal all waiters when the image has been added to cache.)
-//
-// In summary, the return values from the function are interpreted as follows:
+// caller based on the value of enqueueResult:
 //
 // Manifest in cache:
 //
+//	enqueueResult: cacheHit
 //	ManifestHolder: The manifest
-//	channel: nil
-//	bool: true
+//	channel: ignored
 //
 // Manifest NOT in cache, and NO other goroutine is already pulling from the upstream
 //
-//	ManifestHolder: Empty
-//	channel: nil - caller must pull and then signal waiting goroutines after pull
-//	bool: false
+//	enqueueResult: mustPull
+//	ManifestHolder: ignored
+//	channel: Caller must pull and then signal waiting goroutines on this channel after pull
 //
 // Manifest NOT in cache, and another goroutine IS already pulling from the upstream
 //
-//	ManifestHolder: Empty
-//	channel: non-nil - this channel will be signaled when the pulling goroutine finishes
-//	bool: false
+//	enqueueResult: mustWait
+//	ManifestHolder: ignored
+//	channel: Caller will be signaled on this channel when the pulling goroutine finishes
 //
 // As a final bit of complexity, if forcePull is true then the manifest is always enqueued.
-// In this case the server acts like a simple proxy meaning it will always pull from the
-// upstream.
-func getManifestOrEnqueue(pr pullrequest.PullRequest, imagePath string, forcePull bool) (imgpull.ManifestHolder, chan bool, bool) {
+// In this case the server acts like a simple proxy meaning it will always pull a manifest
+// from the upstream.
+func getManifestOrEnqueue(pr pullrequest.PullRequest, imagePath string, forcePull bool) (imgpull.ManifestHolder, chan struct{}, enqueueResult) {
 	if !forcePull {
 		if mh, exists := getManifestFromCache(pr, imagePath); exists {
-			return mh, nil, true
+			return mh, nil, cacheHit
 		}
 	}
-	return emptyManifestHolder, enqueuePull(pr), false
+	ch, er := enqueuePull(pr)
+	return emptyManifestHolder, ch, er
 }
 
 // fromCache is a low-level function that checks the non-latest in-mem cache and the
@@ -490,37 +497,27 @@ func getManifestFromCache(pr pullrequest.PullRequest, imagePath string) (imgpull
 	return emptyManifestHolder, false
 }
 
-// enqueuePull enqueues a pull request from the upstream. A return value of nil means
-// the pull request has not already been enqueued by another goroutine. Non-nil means another
-// goroutine HAS already enqueued the pull and the caller must wait on the returned
-// channel to be signalled when the pull completes by the pulling goroutine.
-func enqueuePull(pr pullrequest.PullRequest) chan bool {
+// enqueuePull returns the channel for the url and whether the caller is the puller (mustPull) or
+// the waiter (mustWait) via enqueueResult.
+func enqueuePull(pr pullrequest.PullRequest) (chan struct{}, enqueueResult) {
 	cp.Lock()
 	defer cp.Unlock()
 	url := pr.Url()
-	if chans, exists := cp.pulls[url]; exists {
-		ch := make(chan bool)
-		cp.pulls[url] = append(chans, ch)
-		return ch
+	if ch, exists := cp.pulls[url]; exists {
+		return ch, mustWait
 	}
-	cp.pulls[url] = []chan bool{}
-	return nil
+	ch := make(chan struct{})
+	cp.pulls[url] = ch
+	return ch, mustPull
 }
 
 // signalWaiters signals any goroutines waiting on the passed url to be pulled. (Which could
-// be none.)
+// be none.) Closing the channel simultaneously unblocks all waiters.
 func signalWaiters(url string) {
 	cp.Lock()
 	defer cp.Unlock()
-	if chans, exists := cp.pulls[url]; exists {
-		for _, ch := range chans {
-			defer func() {
-				if err := recover(); err != nil {
-					log.Errorf("attempt to write to closed channel for url %q", url)
-				}
-			}()
-			ch <- true
-		}
+	if ch, exists := cp.pulls[url]; exists {
+		close(ch)
 		delete(cp.pulls, url)
 	}
 }

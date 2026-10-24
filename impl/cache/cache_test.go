@@ -13,6 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
@@ -473,5 +474,30 @@ func TestLatestChangesTagAlignment(t *testing.T) {
 	// two latest (same reason)
 	if mc.len() != 6 {
 		t.FailNow()
+	}
+}
+
+func TestSignalAfterWaiterTimeout(t *testing.T) {
+	ResetCache()
+	pr, _ := pullrequest.NewPullRequestFromUrl("docker.io/foo/bar:v1")
+	if _, er := enqueuePull(pr); er != mustPull {
+		t.Fatal("expected puller")
+	}
+	if _, er := enqueuePull(pr); er != mustWait {
+		t.Fatal("expected waiter")
+	}
+	// the waiter never receives - simulates a timed-out waiter
+	done := make(chan struct{})
+	go func() { signalWaiters(pr.Url()); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("signalWaiters blocked")
+	}
+	if pullsInProgress() != 0 {
+		t.Fatal("pull not cleared")
+	}
+	if _, er := enqueuePull(pr); er != mustPull {
+		t.Fatal("expected new puller after signal")
 	}
 }

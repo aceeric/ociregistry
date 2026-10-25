@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/aceeric/ociregistry/impl/globals"
+
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )
 
@@ -382,5 +384,169 @@ func TestWalkTheCache(t *testing.T) {
 	}
 	if totVal != expVal {
 		t.FailNow()
+	}
+}
+
+// tmpFiles returns any *.tmp files in the passed directory.
+func tmpFiles(t *testing.T, dir string) []string {
+	t.Helper()
+	m, err := filepath.Glob(filepath.Join(dir, "*.tmp"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return m
+}
+
+// Tests that MhToFilesystem writes atomically: the manifest round-trips, a replace
+// overwrites it, no temp files are left behind, and the file has 0644 permissions.
+func TestMhToFilesystemAtomic(t *testing.T) {
+	td := t.TempDir()
+	CreateDirs(td, true)
+	mh := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociManifest,
+		Digest:   "a1fbaea309fa27bad418200539a69cffb4c9336fe1a6b0af23874cd15293c8f8",
+		ImageUrl: "quay.io/coreos/etcd:v3.5.18",
+		Pulled:   "first",
+	}
+	if err := MhToFilesystem(mh, td, false); err != nil {
+		t.Fatal(err)
+	}
+	mh.Pulled = "second"
+	if err := MhToFilesystem(mh, td, true); err != nil {
+		t.Fatal(err)
+	}
+	mhIn, found := MhFromFilesystem(mh.Digest, false, td)
+	if !found || mhIn.Pulled != "second" {
+		t.Fatalf("expected replaced manifest, got found=%t pulled=%q", found, mhIn.Pulled)
+	}
+	imgDir := filepath.Join(td, globals.ImgPath)
+	if m := tmpFiles(t, imgDir); len(m) != 0 {
+		t.Fatalf("temp files left behind: %v", m)
+	}
+	fi, err := os.Stat(filepath.Join(imgDir, mh.Digest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fi.Mode().Perm() != 0644 {
+		t.Fatalf("expected mode 0644, got %v", fi.Mode().Perm())
+	}
+}
+
+// Tests that with replace=false an existing manifest file is left unchanged.
+func TestMhToFilesystemNoReplace(t *testing.T) {
+	td := t.TempDir()
+	CreateDirs(td, true)
+	mh := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociManifest,
+		Digest:   "a1fbaea309fa27bad418200539a69cffb4c9336fe1a6b0af23874cd15293c8f8",
+		ImageUrl: "quay.io/coreos/etcd:v3.5.18",
+		Pulled:   "first",
+	}
+	if err := MhToFilesystem(mh, td, false); err != nil {
+		t.Fatal(err)
+	}
+	mh.Pulled = "second"
+	if err := MhToFilesystem(mh, td, false); err != nil {
+		t.Fatal(err)
+	}
+	if mhIn, _ := MhFromFilesystem(mh.Digest, false, td); mhIn.Pulled != "first" {
+		t.Fatalf("expected original manifest, got pulled=%q", mhIn.Pulled)
+	}
+}
+
+// Tests that WalkTheCache skips unparseable files and temp files without stopping
+// the walk, and still delivers every valid manifest in both manifest directories.
+func TestWalkTheCacheSkipsBadFiles(t *testing.T) {
+	td := t.TempDir()
+	CreateDirs(td, true)
+	write := func(sub, name string, b []byte) {
+		t.Helper()
+		if err := os.WriteFile(filepath.Join(td, sub, name), b, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	valid := func(digest, url string) []byte {
+		t.Helper()
+		b, err := json.Marshal(imgpull.ManifestHolder{Type: imgpull.Undefined, Digest: digest, ImageUrl: url})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	// names sort so the bad files are visited before the second valid one in img
+	write(globals.ImgPath, "0-bad", []byte("{not json"))
+	write(globals.ImgPath, "1-empty", []byte{})
+	write(globals.ImgPath, "2-good", valid("2-good", "zed.io/foo:v1"))
+	write(globals.ImgPath, "3-good.abc123.tmp", valid("tmp", "zed.io/foo:tmp")) // valid content, must still be skipped
+	write(globals.LtsPath, "4-good", valid("4-good", "zed.io/foo:latest"))
+
+	seen := map[string]bool{}
+	err := WalkTheCache(td, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
+		seen[mh.Digest] = true
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk should not fail on bad files: %s", err)
+	}
+	if len(seen) != 2 || !seen["2-good"] || !seen["4-good"] {
+		t.Fatalf("expected exactly the two valid manifests, got %v", seen)
+	}
+}
+
+// Tests that an error returned by the handler still stops the walk and is returned.
+func TestWalkTheCacheHandlerError(t *testing.T) {
+	td := t.TempDir()
+	CreateDirs(td, true)
+	b, _ := json.Marshal(imgpull.ManifestHolder{Type: imgpull.Undefined, Digest: "x", ImageUrl: "zed.io/foo:v1"})
+	if err := os.WriteFile(filepath.Join(td, globals.ImgPath, "x"), b, 0644); err != nil {
+		t.Fatal(err)
+	}
+	want := fmt.Errorf("handler failed")
+	if err := WalkTheCache(td, func(imgpull.ManifestHolder, os.FileInfo) error { return want }); err != want {
+		t.Fatalf("expected handler error, got %v", err)
+	}
+}
+
+// Tests that RemoveTempFiles deletes *.tmp files from all three cache directories
+// and leaves regular manifest and blob files alone.
+func TestRemoveTempFiles(t *testing.T) {
+	td := t.TempDir()
+	CreateDirs(td, true)
+	subs := []string{globals.LtsPath, globals.ImgPath, globals.BlobPath}
+	for _, sub := range subs {
+		if err := os.WriteFile(filepath.Join(td, sub, "leftover.123.tmp"), []byte("x"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	keep := filepath.Join(td, globals.BlobPath, "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a")
+	if err := os.WriteFile(keep, []byte("blob"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := RemoveTempFiles(td); err != nil {
+		t.Fatal(err)
+	}
+	for _, sub := range subs {
+		if m := tmpFiles(t, filepath.Join(td, sub)); len(m) != 0 {
+			t.Fatalf("temp files not removed from %s: %v", sub, m)
+		}
+	}
+	if _, err := os.Stat(keep); err != nil {
+		t.Fatalf("regular blob was removed: %s", err)
+	}
+}
+
+// Tests that GetAllBlobs ignores temp files in the blob directory.
+func TestGetAllBlobsSkipsTempFiles(t *testing.T) {
+	td := t.TempDir()
+	CreateDirs(td, true)
+	blob := "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a"
+	for _, name := range []string{blob, blob + ".123.tmp"} {
+		if err := os.WriteFile(filepath.Join(td, globals.BlobPath, name), []byte("x"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	blobs := GetAllBlobs(td)
+	if _, ok := blobs[blob]; len(blobs) != 1 || !ok {
+		t.Fatalf("expected only %q, got %v", blob, blobs)
 	}
 }

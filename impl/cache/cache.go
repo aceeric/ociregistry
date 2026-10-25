@@ -196,13 +196,15 @@ func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolde
 func Load(imagePath string) error {
 	start := time.Now()
 	log.Infof("load in-mem cache from file system")
+	if err := serialize.RemoveTempFiles(imagePath); err != nil {
+		return err
+	}
 	itemcnt := 0
-	var outerErr error
-	serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, fi os.FileInfo) error {
+	err := serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, fi os.FileInfo) error {
 		pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
 		if err != nil {
-			outerErr = err
-			return err
+			log.Errorf("load: manifest url %q can't be parsed - will not be cached: %s", mh.ImageUrl, err)
+			return nil
 		}
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
 		if err := addToCache(pr, mh, imagePath); err != nil {
@@ -214,7 +216,7 @@ func Load(imagePath string) error {
 		return nil
 	})
 	log.Infof("loaded %d manifest(s) from the file system in %s", itemcnt, time.Since(start))
-	return outerErr
+	return err
 }
 
 // WaitPulls waits 60 seconds for any in-progress pulls to complete and then

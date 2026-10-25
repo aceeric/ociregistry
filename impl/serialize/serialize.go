@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/helpers"
@@ -45,19 +46,16 @@ func MhFromFilesystem(digest string, isLatest bool, imagePath string) (imgpull.M
 
 // MhToFilesystem writes the passed ManifestHolder to the file system if the 'replace'
 // arg is true. If the 'replace' arg is false then the function checks the file system first
-// and if the manifest already exists, nothing is done. The manifests aren't compared.
-// Its a simple "file exists" check. If the manifest does not exist it is written.
+// and if the manifest already exists, nothing is done. The write is atomic: the file holds
+// either the previous content or the new content, never a partial write.
 func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) error {
-	existingMfstBytes := 0
 	isLatest, err := mh.IsLatest()
 	if err != nil {
 		return err
 	}
-	subDir := subDirs[isLatest]
-	fname := filepath.Join(imagePath, subDir, mh.Digest)
-	fi, err := os.Stat(fname)
-	if err == nil {
-		// already exists
+	fname := filepath.Join(imagePath, subDirs[isLatest], mh.Digest)
+	existingMfstBytes := 0
+	if fi, err := os.Stat(fname); err == nil {
 		if !replace {
 			log.Infof("manifest already in cache %q", fname)
 			return nil
@@ -69,7 +67,7 @@ func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) e
 		log.Errorf("error marshalling manifest for %q, error: %q", mh.ImageUrl, err)
 		return err
 	}
-	if err := os.WriteFile(fname, mb, 0755); err != nil {
+	if err := writeFileAtomic(fname, mb, 0644); err != nil {
 		log.Errorf("error serializing manifest for %q, error: %q", mh.ImageUrl, err)
 		return err
 	}
@@ -78,7 +76,8 @@ func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) e
 }
 
 // WalkTheCache walks the image cache and provides each de-serialized ManifestHolder
-// to the passed function.
+// to the passed function. Files that can't be read or parsed are logged and skipped
+// so one bad file doesn't prevent the rest of the cache from loading.
 func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 	for _, subpath := range []string{globals.LtsPath, globals.ImgPath} {
 		mfpath := filepath.Join(imagePath, subpath)
@@ -86,26 +85,41 @@ func WalkTheCache(imagePath string, handler CacheEntryHandler) error {
 			if err != nil {
 				return err
 			}
-			if info.IsDir() {
+			if info.IsDir() || strings.HasSuffix(path, ".tmp") {
 				return nil
 			}
 			b, err := os.ReadFile(path)
 			if err != nil {
-				return err
+				log.Errorf("skipping unreadable manifest file %q: %s", path, err)
+				return nil
 			}
 			mh := imgpull.ManifestHolder{}
-			err = json.Unmarshal(b, &mh)
-			if err != nil {
-				return err
+			if err := json.Unmarshal(b, &mh); err != nil {
+				log.Errorf("skipping invalid manifest file %q: %s", path, err)
+				return nil
 			}
-			err = handler(mh, info)
-			if err != nil {
-				return err
-			}
-			return nil
+			return handler(mh, info)
 		})
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// RemoveTempFiles deletes temp files left by interrupted atomic writes in the manifest
+// and blob directories. Call it at startup, before loading the cache or serving requests.
+func RemoveTempFiles(imagePath string) error {
+	for _, sub := range []string{globals.LtsPath, globals.ImgPath, globals.BlobPath} {
+		matches, err := filepath.Glob(filepath.Join(imagePath, sub, "*.tmp"))
+		if err != nil {
+			return err
+		}
+		for _, m := range matches {
+			if err := os.Remove(m); err != nil {
+				return err
+			}
+			log.Infof("removed leftover temp file %q", m)
 		}
 	}
 	return nil
@@ -157,7 +171,9 @@ func GetAllBlobs(imagePath string) map[string]int {
 		return nil
 	} else {
 		for _, entry := range entries {
-			blobMap[entry.Name()] = 0
+			if !strings.HasSuffix(entry.Name(), ".tmp") {
+				blobMap[entry.Name()] = 0
+			}
 		}
 	}
 	return blobMap
@@ -182,4 +198,29 @@ func CreateDirs(root string, writeable bool) error {
 		}
 	}
 	return nil
+}
+
+// writeFileAtomic writes data to a temp file in the same directory as fname, then renames
+// it to fname. On any error the temp file is removed and fname is left untouched.
+func writeFileAtomic(fname string, data []byte, perm os.FileMode) (err error) {
+	tmp, err := os.CreateTemp(filepath.Dir(fname), filepath.Base(fname)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			tmp.Close()
+			os.Remove(tmp.Name())
+		}
+	}()
+	if _, err = tmp.Write(data); err != nil {
+		return err
+	}
+	if err = tmp.Chmod(perm); err != nil {
+		return err
+	}
+	if err = tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmp.Name(), fname)
 }

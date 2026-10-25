@@ -17,6 +17,7 @@ import (
 	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
+	"github.com/aceeric/imgpull/pkg/imgpull/v1oci"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -99,8 +100,7 @@ func TestPrune(t *testing.T) {
 		t.Fail()
 	}
 
-	addManifestToCache(pr, mh)
-	err = addBlobsToCache(mh, td)
+	err = addToCache(pr, mh, td)
 	if err != nil {
 		t.Fail()
 	}
@@ -222,19 +222,32 @@ func setupPrune() (string, error) {
 	serialize.CreateDirs(td, true)
 	curDt := time.Now()
 	for i := range 3 {
+		digest := fmt.Sprintf("000000000000000000000000000000000000000000000000000000000000000%d", i)
+		if err := os.WriteFile(filepath.Join(td, globals.BlobPath, digest), []byte(digest), 0755); err != nil {
+			return "", err
+		}
 		mhDate := curDt.AddDate(0, 0, -(i * 2))
 		mh := imgpull.ManifestHolder{
 			Type: imgpull.V1ociManifest,
 			//Digest:   strconv.Itoa(int(imgpull.V1ociManifest)),
-			Digest:   fmt.Sprintf("000000000000000000000000000000000000000000000000000000000000000%d", i),
+			Digest:   digest,
 			ImageUrl: fmt.Sprintf("docker.io/test/manifest:v1.2.%d", i),
 			Created:  mhDate.Format(globals.DateFormat),
+			V1ociManifest: v1oci.Manifest{
+				Config: v1oci.Descriptor{
+					Digest: digest,
+					Size:   64,
+				},
+			},
 		}
 		pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
 		if err != nil {
 			return "", err
 		}
-		addToCache(pr, mh, td)
+		err = addToCache(pr, mh, td)
+		if err != nil {
+			return "", err
+		}
 	}
 	cfg := config.Configuration{
 		// prune everything created older than a day ago, run every 100 milliseconds

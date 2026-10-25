@@ -155,8 +155,8 @@ func GetBlob(digest string) int {
 
 // doPull gets an image list manifest - or image manifest - from an upstream OCI distribution
 // server. If an image manifest is pulled, then all the blobs for the image manifest are
-// also pulled. On return, the pulled manifest will have been serialized to the file system by
-// the function (along with blobs, if an image manifest.)
+// also pulled. On return, the blobs and the pulled manifest will have been serialized to the
+// file system.
 func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, error) {
 	metrics.IncUpstreamPullsByNs(pr.Remote)
 	opts, err := config.ConfigFor(pr.Remote)
@@ -173,18 +173,15 @@ func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolde
 	if err != nil {
 		return emptyManifestHolder, err
 	}
-	mh.Created = globals.CurTime()
-	mh.Pulled = globals.CurTime()
-	if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
-		return emptyManifestHolder, err
-	}
 	if mh.IsImageManifest() {
-		blobDir := filepath.Join(imagePath, globals.BlobPath)
-		err = puller.PullBlobs(mh, blobDir)
-		if err != nil {
-			log.Error(err)
+		if err := puller.PullBlobs(mh, filepath.Join(imagePath, globals.BlobPath)); err != nil {
 			return emptyManifestHolder, err
 		}
+	}
+	mh.Created = globals.CurTime()
+	mh.Pulled = mh.Created
+	if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
+		return emptyManifestHolder, err
 	}
 	return mh, nil
 }
@@ -208,13 +205,12 @@ func Load(imagePath string) error {
 			return err
 		}
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
-		if canAdd(mh, imagePath) {
-			metrics.DeltaManifestBytesOnDisk(float64(fi.Size()))
-			addToCache(pr, mh, imagePath)
-			itemcnt++
-		} else {
-			log.Errorf("load: manifest %q missing blobs - will not be cached", mh.ImageUrl)
+		if err := addToCache(pr, mh, imagePath); err != nil {
+			log.Errorf("load: %s - will not be cached", err)
+			return nil
 		}
+		metrics.DeltaManifestBytesOnDisk(float64(fi.Size()))
+		itemcnt++
 		return nil
 	})
 	log.Infof("loaded %d manifest(s) from the file system in %s", itemcnt, time.Since(start))
@@ -289,20 +285,21 @@ func (mc *manifestCache) len() int {
 	return len(mc.manifests) + len(mc.latest)
 }
 
-// canAdd checks to see if all the blobs referenced by the passed manifest exist on the file
-// system (and can therefore be served.) If all blobs exist then true is returned, else
-// false.
-func canAdd(mh imgpull.ManifestHolder, imagePath string) bool {
-	canAdd := true
+// checkBlobs verifies all blobs for a manifest exist and have correct size. Returns true
+// if so, else false. Manifest lists have no layers so always pass.
+func checkBlobs(mh imgpull.ManifestHolder, imagePath string) bool {
+	ok := true
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)
-		if exists, _ := serialize.BlobExists(imagePath, digest); !exists {
-			canAdd = false
-			// don't break - display all the errors
-			log.Debugf("load: blob %q referenced by manifest %q not found on the filesystem", digest, mh.ImageUrl)
+		if exists, size := serialize.BlobExists(imagePath, digest); !exists {
+			ok = false
+			log.Errorf("manifest %q: blob %q not found", mh.ImageUrl, digest)
+		} else if size != layer.Size {
+			ok = false
+			log.Errorf("manifest %q: blob %q: expected %d bytes, found %d", mh.ImageUrl, digest, layer.Size, size)
 		}
 	}
-	return canAdd
+	return ok
 }
 
 // pullsInProgress returns the count of in-progress pulls from any upstream
@@ -313,68 +310,46 @@ func pullsInProgress() int {
 	return len(cp.pulls)
 }
 
-// addToCache adds the passed ManifestHolder to the in-mem manifest cache. If the manifest is
-// an image manifest then the blobs are added to the in-mem blob cache. The manifest is expected
-// to already exist on the file system before this function is called.
+// addToCache adds the passed ManifestHolder to the in-mem manifest cache and, for an image
+// manifest, increments the ref counts of its blobs. Every blob must already be on the file
+// system with the expected size; otherwise an error is returned and the cache is not changed.
 func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string) error {
 	mc.Lock()
 	defer mc.Unlock()
-	addManifestToCache(pr, mh)
-	if mh.IsImageManifest() {
-		bc.Lock()
-		defer bc.Unlock()
-		if err := addBlobsToCache(mh, imagePath); err != nil {
-			return err
-		}
+	bc.Lock()
+	defer bc.Unlock()
+	if !checkBlobs(mh, imagePath) {
+		return fmt.Errorf("unable to add manifest %q to cache: blob check failed (see logs)", mh.ImageUrl)
 	}
+	addManifestToCache(pr, mh)
+	addBlobsToCache(mh)
 	return nil
 }
 
-// replaceInCache handles the case where the system is configured to "always pull latest", meaning
-// that when a ":latest" tag is pulled, the server always goes to the upstream to (re)pull the image.
-// By the time this function is called, the passed 'mhNew' manifest is already written to the file system.
-//
-// If it is an image manifest, then the new image blobs will already have been downloaded and placed
-// on the file system as well. The old manifest and the new manifest may have overlapping blobs. The
-// function handles that case by only removing blobs that were in the old manifest and not in the new
-// manifest, and only adding blobs that are in the new manifest that were not in the old manifest.
-//
-// The blob adds only happen in the in-mem blob cache because the actual blobs have already been downloaded
-// But the deletes happen in both the in-mem blob cache _and_ on the file system.
+// replaceInCache replaces the cached manifest for the passed URL with mhNew, e.g. when a mutable tag moves.
+// A same-digest replace is a no-op. The blobs of mhNew must already be on the file system with the expected
+// sizes. New blob refs are added before old ones are removed so shared blobs are never deleted.
 func replaceInCache(pr pullrequest.PullRequest, mhNew imgpull.ManifestHolder, imagePath string) error {
 	mc.Lock()
 	defer mc.Unlock()
-	// get the existing manifest from cache matching the new manifest url
+	bc.Lock()
+	defer bc.Unlock()
 	mhExisting, exists := fromCache(pr.Url())
-	if !exists {
-		// same logic as addToCache above
-		addManifestToCache(pr, mhNew)
-		if mhNew.IsImageManifest() {
-			bc.Lock()
-			defer bc.Unlock()
-			if err := addBlobsToCache(mhNew, imagePath); err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-	if mhExisting.Digest == mhNew.Digest {
-		// same digest means same manifest: nothing to do
+	if exists && mhExisting.Digest == mhNew.Digest {
 		log.Debugf("replace manifest %s has same digest - nop", pr.Url())
 		return nil
 	}
-	log.Debugf("replace manifest %s, old digest %s, new digest %s", pr.Url(), mhExisting.Digest, mhNew.Digest)
-	rmManifest(mhExisting, imagePath)
+	if !checkBlobs(mhNew, imagePath) {
+		return fmt.Errorf("unable to replace manifest %q in cache: blob check failed (see logs)", mhNew.ImageUrl)
+	}
+	if exists {
+		log.Debugf("replace manifest %s, old digest %s, new digest %s", pr.Url(), mhExisting.Digest, mhNew.Digest)
+		rmManifest(mhExisting, imagePath)
+	}
 	addManifestToCache(pr, mhNew)
-	if mhNew.IsImageManifest() || mhExisting.IsImageManifest() {
-		bc.Lock()
-		defer bc.Unlock()
-		if mhNew.IsImageManifest() {
-			addBlobsToCache(mhNew, imagePath)
-		}
-		if mhExisting.IsImageManifest() {
-			rmBlobs(mhExisting, imagePath)
-		}
+	addBlobsToCache(mhNew) // add new refs before removing old, so shared blobs never reach zero
+	if exists {
+		rmBlobs(mhExisting, imagePath)
 	}
 	return nil
 }
@@ -399,23 +374,17 @@ func addManifestToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
 	}
 }
 
-// addBlobsToCache adds entries to the in-mem blob map and/or increments the ref count
-// for existing blobs in the blob map based on the layers (and the config blob) in the
-// passed manifest. The blobs are expected to already exist on the file system before
-// this function is called.
-func addBlobsToCache(mh imgpull.ManifestHolder, imagePath string) error {
+// addBlobsToCache increments the ref count of each blob (layers and config) in the passed
+// manifest. The caller must have verified the blobs with checkBlobs and must hold bc.
+func addBlobsToCache(mh imgpull.ManifestHolder) {
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)
-		// if not in the map, is added
 		bc.blobs[digest]++
-		if exists, size := serialize.BlobExists(imagePath, digest); !exists {
-			return fmt.Errorf("blob %q referenced by manifest %q not found on the filesystem", digest, mh.ImageUrl)
-		} else if bc.blobs[digest] == 1 {
-			metrics.DeltaBlobBytesOnDisk(float64(size))
+		if bc.blobs[digest] == 1 {
+			metrics.DeltaBlobBytesOnDisk(float64(layer.Size))
 			metrics.DeltaCachedBlobCount(1)
 		}
 	}
-	return nil
 }
 
 // getManifestOrEnqueue looks in the in-mem manifest cache for the passed manifest URL. If found,

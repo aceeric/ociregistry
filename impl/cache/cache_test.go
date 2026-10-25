@@ -31,14 +31,17 @@ var v2dockerManifest = `{
 	"schemaVersion": 2,
 	"mediaType": "application/vnd.docker.distribution.manifest.v2+json",
 	"config": {
-	   "digest": "sha256:%s"
+	   "digest": "sha256:%s",
+	   "size": 64
 	},
 	"layers": [
 	   {
-		  "digest": "sha256:%s"
+		  "digest": "sha256:%s",
+	      "size": 64
 	   },
 	   {
-		  "digest": "sha256:%s"
+		  "digest": "sha256:%s",
+	      "size": 64
 	   }
 	]
 }`
@@ -47,14 +50,17 @@ var v1ociManifest = `{
 	"schemaVersion": 2,
 	"mediaType": "application/vnd.oci.image.manifest.v1+json",
 	"config": {
-	   "digest": "sha256:%s"
+	   "digest": "sha256:%s",
+	   "size": 64
 	},
 	"layers": [
 	   {
-		  "digest": "sha256:%s"
+		  "digest": "sha256:%s",
+	      "size": 64
 	   },
 	   {
-		  "digest": "sha256:%s"
+		  "digest": "sha256:%s",
+	      "size": 64
 	   }
 	]
 }`
@@ -230,6 +236,35 @@ func TestConcurrentGet(t *testing.T) {
 	}
 }
 
+func TestShortBlobFailsLoad(t *testing.T) {
+	ResetCache()
+	imageUrl := "foo.io/my-image:latest"
+	td := t.TempDir()
+	serialize.CreateDirs(td, true)
+
+	digest := "000000000000000000000000000000000000000000000000000000000000000"
+	os.WriteFile(filepath.Join(td, globals.BlobPath, digest), []byte(digest[:5]), 0777)
+	mh := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociManifest,
+		ImageUrl: imageUrl,
+		Digest:   digest,
+		V1ociManifest: v1oci.Manifest{
+			Config: v1oci.Descriptor{Digest: digest, Size: 64},
+			Layers: []v1oci.Descriptor{
+				{Digest: digest, Size: 64},
+			},
+		},
+	}
+	pr, err := pullrequest.NewPullRequestFromUrl(imageUrl)
+	if err != nil {
+		t.FailNow()
+	}
+
+	if addToCache(pr, mh, td) == nil {
+		t.Fail()
+	}
+}
+
 // Tests replacing a "latest" image in the cache with another "latest" image with a different
 // digest. This is the case where the server is configured to always pull latest, and a latest
 // manifest is pulled with one digest, and a subsequent pull of latest gets a different digest,
@@ -257,11 +292,11 @@ func TestReplace(t *testing.T) {
 		ImageUrl: imageUrl,
 		Digest:   firstDigest,
 		V1ociManifest: v1oci.Manifest{
-			Config: v1oci.Descriptor{Digest: digests[0]},
+			Config: v1oci.Descriptor{Digest: digests[0], Size: 64},
 			Layers: []v1oci.Descriptor{
-				{Digest: digests[1]},
-				{Digest: digests[2]},
-				{Digest: digests[3]},
+				{Digest: digests[1], Size: 64},
+				{Digest: digests[2], Size: 64},
+				{Digest: digests[3], Size: 64},
 			},
 		},
 	}
@@ -290,11 +325,11 @@ func TestReplace(t *testing.T) {
 		ImageUrl: imageUrl,
 		Digest:   firstDigest,
 		V1ociManifest: v1oci.Manifest{
-			Config: v1oci.Descriptor{Digest: digests[2]},
+			Config: v1oci.Descriptor{Digest: digests[2], Size: 64},
 			Layers: []v1oci.Descriptor{
-				{Digest: digests[3]},
-				{Digest: digests[4]},
-				{Digest: digests[5]},
+				{Digest: digests[3], Size: 64},
+				{Digest: digests[4], Size: 64},
+				{Digest: digests[5], Size: 64},
 			},
 		},
 	}
@@ -314,11 +349,11 @@ func TestReplace(t *testing.T) {
 		ImageUrl: imageUrl,
 		Digest:   secondDigest,
 		V1ociManifest: v1oci.Manifest{
-			Config: v1oci.Descriptor{Digest: digests[2]},
+			Config: v1oci.Descriptor{Digest: digests[2], Size: 64},
 			Layers: []v1oci.Descriptor{
-				{Digest: digests[3]},
-				{Digest: digests[4]},
-				{Digest: digests[5]},
+				{Digest: digests[3], Size: 64},
+				{Digest: digests[4], Size: 64},
+				{Digest: digests[5], Size: 64},
 			},
 		},
 	}
@@ -394,10 +429,10 @@ func TestLatestChangesTagAlignment(t *testing.T) {
 			ImageUrl: "foo.io/bar/baz:v1",
 			Digest:   manifestDigests[v1],
 			V1ociManifest: v1oci.Manifest{
-				Config: v1oci.Descriptor{Digest: blobDigests[0]},
+				Config: v1oci.Descriptor{Digest: blobDigests[0], Size: 64},
 				Layers: []v1oci.Descriptor{
-					{Digest: blobDigests[1]},
-					{Digest: blobDigests[2]},
+					{Digest: blobDigests[1], Size: 64},
+					{Digest: blobDigests[2], Size: 64},
 				},
 			},
 		},
@@ -406,10 +441,10 @@ func TestLatestChangesTagAlignment(t *testing.T) {
 			ImageUrl: "foo.io/bar/baz:v2",
 			Digest:   manifestDigests[v2],
 			V1ociManifest: v1oci.Manifest{
-				Config: v1oci.Descriptor{Digest: blobDigests[1]},
+				Config: v1oci.Descriptor{Digest: blobDigests[1], Size: 64},
 				Layers: []v1oci.Descriptor{
-					{Digest: blobDigests[2]},
-					{Digest: blobDigests[3]},
+					{Digest: blobDigests[2], Size: 64},
+					{Digest: blobDigests[3], Size: 64},
 				},
 			},
 		},
@@ -419,7 +454,7 @@ func TestLatestChangesTagAlignment(t *testing.T) {
 	defer os.RemoveAll(td)
 	serialize.CreateDirs(td, true)
 	for _, digest := range blobDigests {
-		os.WriteFile(filepath.Join(td, globals.BlobPath, digest), []byte("foo"), 0777)
+		os.WriteFile(filepath.Join(td, globals.BlobPath, digest), []byte("0000000000000000000000000000000000000000000000000000000000000000"), 0777)
 	}
 
 	pr, _ := pullrequest.NewPullRequestFromUrl(mhs[v1].ImageUrl)

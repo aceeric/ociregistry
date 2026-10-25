@@ -34,12 +34,14 @@ var manifest = `{
     "mediaType": "application/vnd.oci.image.manifest.v1+json",
     "config": {
       "mediaType": "application/vnd.oci.image.config.v1+json",
-      "digest": "sha256:74cc54e27dc41bb10dc4b2226072d469509f2f22f1a3ce74f4a59661a1d44602"
+      "digest": "sha256:74cc54e27dc41bb10dc4b2226072d469509f2f22f1a3ce74f4a59661a1d44602",
+	  "size": 64
     },
     "layers": [
       {
         "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
-        "digest": "sha256:e6590344b1a5dc518829d6ea1524fc12f8bcd14ee9a02aa6ad8360cce3a9a9e9"
+        "digest": "sha256:e6590344b1a5dc518829d6ea1524fc12f8bcd14ee9a02aa6ad8360cce3a9a9e9",
+	    "size": 64
       }
     ]
   },

@@ -2,6 +2,7 @@ package cache
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -464,5 +465,56 @@ func TestPruneWaitsForPull(t *testing.T) {
 	wg.Wait()
 	if mc.len() != 0 || blobFileExists(td, pruneBlob1) || blobFileExists(td, orphan) {
 		t.Fatalf("prune did not complete after the pull: mc=%d", mc.len())
+	}
+}
+
+// Item 13: if a pull is still in progress after pruneLockWait, the prune gives up with
+// ErrPruneBusy and changes nothing. While the prune is waiting, new pulls are not blocked.
+func TestPruneBusy(t *testing.T) {
+	td, _ := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
+	saved := pruneLockWait
+	pruneLockWait = 500 * time.Millisecond
+	defer func() { pruneLockWait = saved }()
+
+	pullGate.RLock() // a long pull in progress
+	defer pullGate.RUnlock()
+	errCh := make(chan error, 1)
+	go func() { errCh <- doPrune(td, pruneAll, noLimit, false) }()
+
+	// while the prune waits, a new pull can still take the gate
+	time.Sleep(150 * time.Millisecond)
+	newPull := make(chan struct{})
+	go func() {
+		pullGate.RLock()
+		pullGate.RUnlock()
+		close(newPull)
+	}()
+	select {
+	case <-newPull:
+	case <-time.After(time.Second):
+		t.Fatal("a new pull was blocked by a waiting prune")
+	}
+
+	if err := <-errCh; !errors.Is(err, ErrPruneBusy) {
+		t.Fatalf("expected ErrPruneBusy, got %v", err)
+	}
+	if mc.len() != 2 || !blobFileExists(td, pruneBlob1) {
+		t.Fatal("a busy prune must not change the cache")
+	}
+}
+
+// Item 13: the REST entry point returns ErrPruneBusy instead of the prune log.
+func TestPruneFromApiBusy(t *testing.T) {
+	td, _ := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
+	config.Set(config.Configuration{ImagePath: td})
+	saved := pruneLockWait
+	pruneLockWait = 200 * time.Millisecond
+	defer func() { pruneLockWait = saved }()
+
+	pullGate.RLock()
+	defer pullGate.RUnlock()
+	expr, dryRun, count := "docker.io", "false", -1
+	if _, err := Prune("pattern", nil, &expr, &dryRun, &count); !errors.Is(err, ErrPruneBusy) {
+		t.Fatalf("expected ErrPruneBusy, got %v", err)
 	}
 }

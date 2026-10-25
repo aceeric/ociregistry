@@ -33,6 +33,14 @@ type logWriter struct {
 	log string
 }
 
+// ErrPruneBusy is returned when a prune could not start because upstream pulls were still in
+// progress after waiting pruneLockWait.
+var ErrPruneBusy = errors.New("prune not started: upstream pulls in progress, try again later")
+
+// pruneLockWait is how long a prune waits for in-progress upstream pulls to finish before
+// giving up with ErrPruneBusy. It's a var so tests can shorten it.
+var pruneLockWait = 10 * time.Second
+
 // RunPruner runs the pruner goroutine if enabled, performing the prune according to the criteria
 // and frequency specified in the passed prune configuration. For example, if the configuration
 // string has `{"accessed": "15d"}` then using built-in defaults, the pruner will remove images
@@ -73,7 +81,9 @@ func RunPruner(stopChan, stoppedChan chan bool) error {
 				stoppedChan <- true
 				return
 			case <-time.After(runFreq):
-				doPrune(config.GetImagePath(), comparer, count, cfg.DryRun)
+				if err := doPrune(config.GetImagePath(), comparer, count, cfg.DryRun); err != nil {
+					log.Infof("scheduled prune skipped until next run: %s", err)
+				}
 			}
 		}
 	}()
@@ -114,7 +124,9 @@ func Prune(pruneType string, dur *string, expr *string, dryRun *string, count *i
 	if err != nil {
 		return "", errors.New("unable to parse prune params")
 	}
-	doPrune(config.GetImagePath(), comparer, cfg.Count, cfg.DryRun)
+	if err := doPrune(config.GetImagePath(), comparer, cfg.Count, cfg.DryRun); err != nil {
+		return "", err
+	}
 	return lw.log, nil
 }
 
@@ -227,10 +239,13 @@ func calcCutoff(cfg config.PruneConfig) (time.Time, error) {
 // comparer. If the comparer indicates that a manifest matches the prune criteria it is pruned.
 // The count arg is the max number of manifests to prune. If noLimit (-1) then there is no limit.
 // If dryRun then the function logs what would be pruned but does not actually prune. The whole
-// prune holds pullGate exclusively: it waits for in-progress upstream pulls to finish, and new
-// pulls wait for it. Cache hits are not affected.
-func doPrune(imagePath string, comparer ManifestComparer, count int, dryRun bool) {
-	pullGate.Lock()
+// prune holds pullGate exclusively, so new upstream pulls wait for it while it runs; cache hits
+// are not affected. If upstream pulls are still in progress after pruneLockWait, the prune is
+// not started and ErrPruneBusy is returned.
+func doPrune(imagePath string, comparer ManifestComparer, count int, dryRun bool) error {
+	if !lockForPrune() {
+		return ErrPruneBusy
+	}
 	defer pullGate.Unlock()
 	toPrune := GetManifestsCompare(comparer, count)
 	log.Infof("begin prune - count of manifests to prune: %d", len(toPrune))
@@ -243,6 +258,23 @@ func doPrune(imagePath string, comparer ManifestComparer, count int, dryRun bool
 	}
 	if !dryRun {
 		sweepBlobs(imagePath)
+	}
+	return nil
+}
+
+// lockForPrune takes pullGate exclusively, retrying for up to pruneLockWait, and returns false
+// if it couldn't. It polls with TryLock rather than calling Lock: a blocked Lock makes every new
+// RLock wait behind it, so a prune waiting on one long pull would stall every new cache miss.
+func lockForPrune() bool {
+	deadline := time.Now().Add(pruneLockWait)
+	for {
+		if pullGate.TryLock() {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 

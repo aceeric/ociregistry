@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -86,7 +87,9 @@ func (r *OciRegistry) CmdPrune(ctx echo.Context, params models.CmdPruneParams) e
 	}()
 	cnt := count(params.Count)
 	logs, err := cache.Prune(params.Type, params.Dur, params.Expr, params.DryRun, &cnt)
-	if err != nil {
+	if errors.Is(err, cache.ErrPruneBusy) {
+		return ctx.String(http.StatusServiceUnavailable, err.Error())
+	} else if err != nil {
 		return ctx.String(http.StatusBadRequest, err.Error())
 	}
 	return ctx.Stream(http.StatusOK, "text/plain", strings.NewReader(logs))

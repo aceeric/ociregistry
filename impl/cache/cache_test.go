@@ -236,13 +236,17 @@ func TestConcurrentGet(t *testing.T) {
 	}
 }
 
+// Tests that a manifest haivng a blob whose size on disk does not equal the metadata
+// size is not Loaded into cache from the filesystem. Since the filesystem only contains
+// one manifest with one blob, the manifest and blob caches should be
 func TestShortBlobFailsLoad(t *testing.T) {
 	ResetCache()
 	imageUrl := "foo.io/my-image:latest"
 	td := t.TempDir()
 	serialize.CreateDirs(td, true)
 
-	digest := "000000000000000000000000000000000000000000000000000000000000000"
+	digest := "0000000000000000000000000000000000000000000000000000000000000000"
+	// only write 5 bytes of the blob to simulate a corrupted blob download
 	os.WriteFile(filepath.Join(td, globals.BlobPath, digest), []byte(digest[:5]), 0777)
 	mh := imgpull.ManifestHolder{
 		Type:     imgpull.V1ociManifest,
@@ -255,12 +259,13 @@ func TestShortBlobFailsLoad(t *testing.T) {
 			},
 		},
 	}
-	pr, err := pullrequest.NewPullRequestFromUrl(imageUrl)
-	if err != nil {
+	if err := serialize.MhToFilesystem(mh, td, true); err != nil {
 		t.FailNow()
 	}
-
-	if addToCache(pr, mh, td) == nil {
+	if err := Load(td); err != nil {
+		t.Fail()
+	}
+	if mc.len() != 00 || len(bc.blobs) != 0 {
 		t.Fail()
 	}
 }

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -108,13 +110,25 @@ func TestPrune(t *testing.T) {
 	if mc.len() != 2 || len(bc.blobs) != 3 {
 		t.Fail()
 	}
-	prune(mh, td)
+	prune(mh, pruneAll, td)
 	if mc.len() != 0 {
 		t.Fail()
 	}
 	for _, digest := range digests {
 		if cnt, exists := bc.blobs[digest]; cnt != 0 || exists {
 			t.Fail()
+		}
+		// prune only drops the refs - the files stay until the sweep
+		if !blobFileExists(td, digest) {
+			t.Fatalf("blob %s removed before sweep", digest)
+		}
+	}
+	pullGate.Lock()
+	sweepBlobs(td)
+	pullGate.Unlock()
+	for _, digest := range digests {
+		if blobFileExists(td, digest) {
+			t.Fatalf("blob %s not removed by sweep", digest)
 		}
 	}
 }
@@ -263,4 +277,192 @@ func setupPrune() (string, error) {
 	}
 	config.Set(cfg)
 	return td, nil
+}
+
+// pruneAll is a comparer that selects every manifest.
+func pruneAll(imgpull.ManifestHolder) bool { return true }
+
+func blobFileExists(imagePath, digest string) bool {
+	_, err := os.Stat(filepath.Join(imagePath, globals.BlobPath, digest))
+	return err == nil
+}
+
+// pruneFixture caches one image manifest, "docker.io/test/manifest:v1", whose config and
+// layer blobs are the passed digests (64 bytes each), and returns the cache directory and
+// the cached manifest.
+func pruneFixture(t *testing.T, manifestDigest string, blobs ...string) (string, imgpull.ManifestHolder) {
+	t.Helper()
+	ResetCache()
+	td := t.TempDir()
+	serialize.CreateDirs(td, true)
+	for _, d := range blobs {
+		if err := os.WriteFile(filepath.Join(td, globals.BlobPath, d), []byte(d), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	layers := []v1oci.Descriptor{}
+	for _, d := range blobs[1:] {
+		layers = append(layers, v1oci.Descriptor{Digest: d, Size: 64})
+	}
+	mh := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociManifest,
+		Digest:   manifestDigest,
+		ImageUrl: "docker.io/test/manifest:v1",
+		V1ociManifest: v1oci.Manifest{
+			Config: v1oci.Descriptor{Digest: blobs[0], Size: 64},
+			Layers: layers,
+		},
+	}
+	pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := addToCache(pr, mh, td); err != nil {
+		t.Fatal(err)
+	}
+	return td, mh
+}
+
+var (
+	pruneDigestA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	pruneDigestB = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	pruneBlob1   = "1111111111111111111111111111111111111111111111111111111111111111"
+	pruneBlob2   = "2222222222222222222222222222222222222222222222222222222222222222"
+)
+
+// Item 10: a stale prune candidate whose tag now points at a different digest must not
+// remove the current manifest or touch its blob ref counts.
+func TestPruneSkipsChangedManifest(t *testing.T) {
+	td, mh := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
+	stale := mh
+	stale.Digest = pruneDigestB // what the prune list saw before the tag moved
+	prune(stale, pruneAll, td)
+	if mc.len() != 2 || bc.blobs[pruneBlob1] != 1 || bc.blobs[pruneBlob2] != 1 {
+		t.Fatalf("current manifest was pruned: mc=%d blobs=%v", mc.len(), bc.blobs)
+	}
+}
+
+// Item 10: a candidate that was pruned already (e.g. by an overlapping prune) is skipped,
+// so ref counts are not decremented a second time.
+func TestPruneTwiceDecrementsOnce(t *testing.T) {
+	td, mh := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
+	// a second manifest sharing blob1 keeps it referenced
+	other := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociManifest,
+		Digest:   pruneDigestB,
+		ImageUrl: "docker.io/test/other:v1",
+		V1ociManifest: v1oci.Manifest{
+			Config: v1oci.Descriptor{Digest: pruneBlob1, Size: 64},
+		},
+	}
+	pr, _ := pullrequest.NewPullRequestFromUrl(other.ImageUrl)
+	if err := addToCache(pr, other, td); err != nil {
+		t.Fatal(err)
+	}
+	prune(mh, pruneAll, td)
+	prune(mh, pruneAll, td)
+	if bc.blobs[pruneBlob1] != 1 {
+		t.Fatalf("shared blob ref count should be 1, got %d", bc.blobs[pruneBlob1])
+	}
+}
+
+// Item 10: the comparer is re-run on the current cache entry, so a manifest that no longer
+// matches (e.g. it was pulled after the list was built) is kept.
+func TestPruneRechecksComparer(t *testing.T) {
+	td, mh := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
+	prune(mh, func(imgpull.ManifestHolder) bool { return false }, td)
+	if mc.len() != 2 || len(bc.blobs) != 2 {
+		t.Fatalf("manifest should have been kept: mc=%d blobs=%v", mc.len(), bc.blobs)
+	}
+}
+
+// Item 12: sweepBlobs removes only blob files with no refs and leaves temp files to
+// RemoveTempFiles.
+func TestSweepRemovesOnlyUnreferenced(t *testing.T) {
+	orphan := "3333333333333333333333333333333333333333333333333333333333333333"
+	td, _ := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
+	for _, name := range []string{orphan, orphan + ".123.tmp"} {
+		if err := os.WriteFile(filepath.Join(td, globals.BlobPath, name), []byte("x"), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pullGate.Lock()
+	sweepBlobs(td)
+	pullGate.Unlock()
+	if blobFileExists(td, orphan) {
+		t.Fatal("unreferenced blob not removed")
+	}
+	if !blobFileExists(td, pruneBlob1) || !blobFileExists(td, pruneBlob2) {
+		t.Fatal("referenced blob removed")
+	}
+	if !blobFileExists(td, orphan+".123.tmp") {
+		t.Fatal("sweep should leave temp files alone")
+	}
+}
+
+// Item 12: replacing a manifest drops the old manifest's refs but leaves the files; a
+// sweep then removes only the blobs the new manifest doesn't share.
+func TestReplaceLeavesFilesForSweep(t *testing.T) {
+	td, _ := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
+	blob3 := "3333333333333333333333333333333333333333333333333333333333333333"
+	if err := os.WriteFile(filepath.Join(td, globals.BlobPath, blob3), []byte(blob3), 0644); err != nil {
+		t.Fatal(err)
+	}
+	mhNew := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociManifest,
+		Digest:   pruneDigestB,
+		ImageUrl: "docker.io/test/manifest:v1",
+		V1ociManifest: v1oci.Manifest{
+			Config: v1oci.Descriptor{Digest: pruneBlob1, Size: 64}, // shared with the old manifest
+			Layers: []v1oci.Descriptor{{Digest: blob3, Size: 64}},
+		},
+	}
+	pr, _ := pullrequest.NewPullRequestFromUrl(mhNew.ImageUrl)
+	if err := replaceInCache(pr, mhNew, td); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := bc.blobs[pruneBlob2]; ok {
+		t.Fatal("old-only blob should have no refs")
+	}
+	if !blobFileExists(td, pruneBlob2) {
+		t.Fatal("replace must not delete blob files")
+	}
+	trySweepBlobs(td) // no pull in progress, so this sweeps
+	if blobFileExists(td, pruneBlob2) {
+		t.Fatal("old-only blob not swept")
+	}
+	if !blobFileExists(td, pruneBlob1) || !blobFileExists(td, blob3) {
+		t.Fatal("blob referenced by the new manifest was swept")
+	}
+}
+
+// Item 11: a prune waits for an in-progress pull (holding pullGate shared) to finish,
+// and trySweepBlobs gives up rather than waiting.
+func TestPruneWaitsForPull(t *testing.T) {
+	td, _ := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
+	orphan := "3333333333333333333333333333333333333333333333333333333333333333"
+	if err := os.WriteFile(filepath.Join(td, globals.BlobPath, orphan), []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	pullGate.RLock() // simulate a pull in progress
+	trySweepBlobs(td)
+	if !blobFileExists(td, orphan) {
+		t.Fatal("trySweepBlobs swept while a pull was in progress")
+	}
+	var wg sync.WaitGroup
+	var pruned atomic.Bool
+	wg.Go(func() {
+		doPrune(td, pruneAll, noLimit, false)
+		pruned.Store(true)
+	})
+	time.Sleep(200 * time.Millisecond)
+	if pruned.Load() {
+		pullGate.RUnlock()
+		t.Fatal("prune ran while a pull held the gate")
+	}
+	pullGate.RUnlock() // the pull finishes
+	wg.Wait()
+	if mc.len() != 0 || blobFileExists(td, pruneBlob1) || blobFileExists(td, orphan) {
+		t.Fatalf("prune did not complete after the pull: mc=%d", mc.len())
+	}
 }

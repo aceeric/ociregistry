@@ -86,6 +86,11 @@ var (
 		blobs: map[string]int{},
 	}
 	emptyManifestHolder = imgpull.ManifestHolder{}
+	// pullGate keeps prune from deleting a blob that an upstream pull is relying on. A pull
+	// holds it shared from before it checks the blob directory until its manifest is in the
+	// cache. Prune holds it exclusively. Only sweepBlobs deletes blob files, and only with
+	// pullGate held exclusively. Lock order: pullGate, then mc, then bc.
+	pullGate sync.RWMutex
 )
 
 // GetManifest returns a manifest from the in-mem cache matching the URL of the passed PullRequest.
@@ -110,19 +115,14 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 	case mustPull:
 		log.Infof("pulling manifest from upstream: %q", url)
 		defer signalWaiters(url)
-		mh, err := doPull(pr, imagePath)
+		mh, err := pullToCache(pr, imagePath, forcePull)
 		if err != nil {
-			log.Errorf("doPull failed for %q: %s", url, err)
 			return emptyManifestHolder, err
 		}
 		if forcePull {
-			if err := replaceInCache(pr, mh, imagePath); err != nil {
-				return emptyManifestHolder, err
-			}
-		} else {
-			if err := addToCache(pr, mh, imagePath); err != nil {
-				return emptyManifestHolder, err
-			}
+			// a moved tag may have left blobs with no refs - remove them now if no other pull is
+			// in progress, rather than waiting for the next prune
+			trySweepBlobs(imagePath)
 		}
 		return mh, nil
 	case mustWait:
@@ -143,10 +143,31 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 	}
 }
 
-// GetBlob returns the ref count for the passed blob digest. If zero then the blob is not referenced
-// by any cached manifests. This should never happen because when a manifest is pruned, any blobs
-// ref'd by the deleted manifest that decrement to zero should be removed while the blob cache is
-// locked. In other words if this ever returns zero, that indicates a defect in the code.
+// pullToCache pulls the manifest (and its blobs) from the upstream and adds it to the cache.
+// It holds pullGate shared throughout, so a prune can't remove a blob this pull found on disk
+// before the manifest that references it is cached.
+func pullToCache(pr pullrequest.PullRequest, imagePath string, forcePull bool) (imgpull.ManifestHolder, error) {
+	pullGate.RLock()
+	defer pullGate.RUnlock()
+	mh, err := doPull(pr, imagePath)
+	if err != nil {
+		log.Errorf("doPull failed for %q: %s", pr.Url(), err)
+		return emptyManifestHolder, err
+	}
+	if forcePull {
+		err = replaceInCache(pr, mh, imagePath)
+	} else {
+		err = addToCache(pr, mh, imagePath)
+	}
+	if err != nil {
+		return emptyManifestHolder, err
+	}
+	return mh, nil
+}
+
+// GetBlob returns the ref count for the passed blob digest. Zero means no cached manifest
+// references the blob, so it should not be served: its file may still be on disk until the
+// next sweep removes it.
 func GetBlob(digest string) int {
 	bc.RLock()
 	defer bc.RUnlock()
@@ -330,7 +351,8 @@ func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath
 
 // replaceInCache replaces the cached manifest for the passed URL with mhNew, e.g. when a mutable tag moves.
 // A same-digest replace is a no-op. The blobs of mhNew must already be on the file system with the expected
-// sizes. New blob refs are added before old ones are removed so shared blobs are never deleted.
+// sizes. New blob refs are added before old ones are removed so shared blobs never reach zero. Blobs left
+// with no refs keep their files until sweepBlobs runs.
 func replaceInCache(pr pullrequest.PullRequest, mhNew imgpull.ManifestHolder, imagePath string) error {
 	mc.Lock()
 	defer mc.Unlock()
@@ -351,7 +373,7 @@ func replaceInCache(pr pullrequest.PullRequest, mhNew imgpull.ManifestHolder, im
 	addManifestToCache(pr, mhNew)
 	addBlobsToCache(mhNew) // add new refs before removing old, so shared blobs never reach zero
 	if exists {
-		rmBlobs(mhExisting, imagePath)
+		rmBlobs(mhExisting)
 	}
 	return nil
 }

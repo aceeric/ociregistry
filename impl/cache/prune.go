@@ -226,8 +226,12 @@ func calcCutoff(cfg config.PruneConfig) (time.Time, error) {
 // doPrune makes one pass through the cache and evaluates each manifest according to the passed
 // comparer. If the comparer indicates that a manifest matches the prune criteria it is pruned.
 // The count arg is the max number of manifests to prune. If noLimit (-1) then there is no limit.
-// If dryRun then the function logs what would be pruned but does not actually prune.
+// If dryRun then the function logs what would be pruned but does not actually prune. The whole
+// prune holds pullGate exclusively: it waits for in-progress upstream pulls to finish, and new
+// pulls wait for it. Cache hits are not affected.
 func doPrune(imagePath string, comparer ManifestComparer, count int, dryRun bool) {
+	pullGate.Lock()
+	defer pullGate.Unlock()
 	toPrune := GetManifestsCompare(comparer, count)
 	log.Infof("begin prune - count of manifests to prune: %d", len(toPrune))
 	for _, mh := range toPrune {
@@ -235,24 +239,35 @@ func doPrune(imagePath string, comparer ManifestComparer, count int, dryRun bool
 			log.Infof("doPrune - dry run specified, skipping prune of manifest %q", mh.ImageUrl)
 			continue
 		}
-		log.Infof("pruning manifest %q", mh.ImageUrl)
-		prune(mh, imagePath)
+		prune(mh, comparer, imagePath)
+	}
+	if !dryRun {
+		sweepBlobs(imagePath)
 	}
 }
 
-// prune removes the passed manifest (and blobs if the manifest is an image manifest)
-// from the in-mem cache and from the file system. A lock is held on the manifest cache while
-// blobs are being pruned so the cache reports existence or non-existence of an image manifest
-// and its blobs as a single unit.
-func prune(mh imgpull.ManifestHolder, imagePath string) {
+// prune removes the passed manifest from the in-mem cache and the file system, and decrements
+// the ref counts of its blobs. The passed manifest comes from a list built earlier, so under the
+// lock the function first checks that the same manifest is still cached and still matches the
+// comparer (it may have been pulled since the list was built). Blob files are not removed here;
+// doPrune calls sweepBlobs afterwards. The caller must hold pullGate exclusively.
+func prune(mh imgpull.ManifestHolder, comparer ManifestComparer, imagePath string) {
 	mc.Lock()
 	defer mc.Unlock()
-	rmManifest(mh, imagePath)
-	if mh.IsImageManifest() {
-		bc.Lock()
-		defer bc.Unlock()
-		rmBlobs(mh, imagePath)
+	cur, exists := fromCache(mh.ImageUrl)
+	if !exists || cur.Digest != mh.Digest {
+		log.Infof("skipping prune of manifest %q: no longer cached with digest %s", mh.ImageUrl, mh.Digest)
+		return
 	}
+	if !comparer(cur) {
+		log.Infof("skipping prune of manifest %q: no longer matches prune criteria", mh.ImageUrl)
+		return
+	}
+	log.Infof("pruning manifest %q", mh.ImageUrl)
+	rmManifest(cur, imagePath)
+	bc.Lock()
+	defer bc.Unlock()
+	rmBlobs(cur)
 }
 
 // rmManifest removes the passed manifest from the manifest cache and the file system. If the
@@ -291,33 +306,51 @@ func (mc *manifestCache) delete(pr pullrequest.PullRequest, digest string) {
 	}
 }
 
-// rmBlobs decrements the ref count of all blobs ref'd by the passed image manifest in the in-mem
-// blob map and if the ref count is zero, the blob is removed from the map and the file system.
-func rmBlobs(mh imgpull.ManifestHolder, imagePath string) error {
+// rmBlobs decrements the ref count of each blob (layers and config) in the passed manifest.
+// A blob whose count reaches zero is removed from the in-mem blob map, but its file is left
+// on disk for sweepBlobs. The caller must hold bc.
+func rmBlobs(mh imgpull.ManifestHolder) {
 	for _, layer := range mh.Layers() {
 		digest := helpers.GetDigestFrom(layer.Digest)
-		if err := rmBlob(digest, imagePath); err != nil {
-			return err
+		switch cnt := bc.blobs[digest]; {
+		case cnt <= 0:
+			log.Errorf("blob %q has no refs to remove (should never happen)", digest)
+		case cnt == 1:
+			delete(bc.blobs, digest)
+			metrics.DeltaBlobBytesOnDisk(float64(-layer.Size))
+			metrics.DeltaCachedBlobCount(-1)
+		default:
+			bc.blobs[digest]--
 		}
 	}
-	return nil
 }
 
-// rmBlob decrements the ref count for the passed blob digest. If zero, the function removes the
-// blob from the blob map and the file system.
-func rmBlob(digest string, imagePath string) error {
-	bc.blobs[digest]--
-	if bc.blobs[digest] == 0 {
-		delete(bc.blobs, digest)
-		if err := serialize.RmBlob(imagePath, digest); err != nil {
-			return fmt.Errorf("error removing blob %q from the file system. the error was: %s", digest, err)
-		} else {
-			log.Infof("removed blob: %s", digest)
+// sweepBlobs deletes every blob file that no cached manifest references: blobs whose refs were
+// removed by a prune or a tag move, and blobs left by failed pulls. The caller must hold
+// pullGate exclusively, so no pull can be relying on a blob it found on disk but has not yet
+// referenced.
+func sweepBlobs(imagePath string) {
+	bc.Lock()
+	defer bc.Unlock()
+	for digest := range serialize.GetAllBlobs(imagePath) {
+		if _, referenced := bc.blobs[digest]; referenced {
+			continue
 		}
-	} else if bc.blobs[digest] < 0 {
-		return fmt.Errorf("negative blob count for digest %q (should never happen)", digest)
+		if err := serialize.RmBlob(imagePath, digest); err != nil {
+			log.Errorf("error removing unreferenced blob %q: %s", digest, err)
+		} else {
+			log.Infof("removed unreferenced blob: %s", digest)
+		}
 	}
-	return nil
+}
+
+// trySweepBlobs runs sweepBlobs if no upstream pull or prune is in progress, without waiting.
+// If one is, the blobs stay until the next prune (or the next successful try).
+func trySweepBlobs(imagePath string) {
+	if pullGate.TryLock() {
+		defer pullGate.Unlock()
+		sweepBlobs(imagePath)
+	}
 }
 
 // days2hrs converts a days string like "-1d" to an hours string like "-24h" because

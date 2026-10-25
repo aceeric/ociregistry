@@ -2,7 +2,9 @@ package serialize
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -126,15 +128,13 @@ func RemoveTempFiles(imagePath string) error {
 }
 
 // RmBlob removes the blob with the passed digest. If the blob file does not exist,
-// no error is returned.
+// no error is returned. Blob metrics are maintained by the cache ref counts, not here.
 func RmBlob(imagePath string, digest string) error {
-	blobPath := filepath.Join(imagePath, globals.BlobPath, digest)
-	if fi, err := os.Stat(blobPath); err == nil {
-		metrics.DeltaBlobBytesOnDisk(float64(fi.Size() * -1))
-		metrics.DeltaCachedBlobCount(-1)
-		return os.Remove(blobPath)
+	err := os.Remove(filepath.Join(imagePath, globals.BlobPath, digest))
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
 	}
-	return nil
+	return err
 }
 
 // BlobExists returns true if the passed blob is on the file system, else false.

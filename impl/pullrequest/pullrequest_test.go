@@ -2,6 +2,7 @@ package pullrequest
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -57,14 +58,14 @@ func TestNewPr(t *testing.T) {
 	parseTests := []parseTest{
 		{1, "", nil, "", "v1.2.3", []string{"docker.io", "foo", "bar"}, PullRequest{ByTag, "foo/bar", "v1.2.3", "docker.io"}, true, "the basic"},
 		{1, "", nil, "", "v1.2.3", []string{"docker.io", "a", "b", "c", "d", "e"}, PullRequest{ByTag, "a/b/c/d/e", "v1.2.3", "docker.io"}, true, "many repo segments"},
-		{2, "", nil, "", "latest", []string{"docker.io", "foo"}, PullRequest{ByTag, "foo", "latest", "docker.io"}, true, "in-path ns"},
+		{2, "", nil, "", "latest", []string{"docker.io", "foo"}, PullRequest{ByTag, "library/foo", "latest", "docker.io"}, true, "in-path ns"},
 		{3, "", nil, "", "latest", []string{"foo"}, PullRequest{}, false, "no namespace"},
 		{4, "quay.io", nil, "", "sha256:123", []string{"foo"}, PullRequest{ByDigest, "foo", "sha256:123", "quay.io"}, true, "ns from header"},
 		{5, "", &ghcr, "", "sha256:123", []string{"foo"}, PullRequest{ByDigest, "foo", "sha256:123", "ghcr.io"}, true, "ns from query param"},
-		{6, "", nil, "docker.io", "sha256:123", []string{"foo"}, PullRequest{ByDigest, "foo", "sha256:123", "docker.io"}, true, "ns from default"},
+		{6, "", nil, "docker.io", "sha256:123", []string{"foo"}, PullRequest{ByDigest, "library/foo", "sha256:123", "docker.io"}, true, "ns from default"},
 		{7, "quay.io", nil, "", "latest", []string{"docker.io", "foo"}, PullRequest{}, false, "two ns"},
 		{8, "", &ghcr, "", "latest", []string{"docker.io", "foo"}, PullRequest{}, false, "two ns"},
-		{9, "", nil, "registry.gitlab.com", "latest", []string{"docker.io", "foo"}, PullRequest{ByTag, "foo", "latest", "docker.io"}, true, "in-path ns ignores default ns"},
+		{9, "", nil, "registry.gitlab.com", "latest", []string{"docker.io", "foo"}, PullRequest{ByTag, "library/foo", "latest", "docker.io"}, true, "in-path ns ignores default ns"},
 	}
 	for _, pt := range parseTests {
 		pr, err := NewPullRequest(pt.regHdr, pt.ns, pt.defaultNs, pt.reference, pt.segments...)
@@ -95,30 +96,6 @@ func TestUrlWithDigest(t *testing.T) {
 	}
 }
 
-// Test AltDockerUrl which enables to find manifests in cache that were pulled through as either
-// docker.io/library/xyz or docker.io/xyz (without the "library" component)
-func TestAltDockerUrl(t *testing.T) {
-	type parseTest struct {
-		testNum   int
-		pr        PullRequest
-		expectUrl string
-		rule      string
-	}
-	parseTests := []parseTest{
-		{1, PullRequest{ByTag, "foo/bar/baz", "v1.2.3", "candyland.com"}, "", "ignore: not docker.io"},
-		{2, PullRequest{ByTag, "foo/bar", "v1.2.3", "docker.io"}, "docker.io/library/foo/bar:v1.2.3", "add library"},
-		{3, PullRequest{ByTag, "library/foo/bar", "v1.2.3", "docker.io"}, "docker.io/foo/bar:v1.2.3", "remove library"},
-		{2, PullRequest{ByTag, "foo/bar", "sha256:123", "docker.io"}, "docker.io/library/foo/bar@sha256:123", "add library, sha"},
-		{3, PullRequest{ByTag, "library/foo/bar", "sha256:123", "docker.io"}, "docker.io/foo/bar@sha256:123", "remove library, sha"},
-	}
-	for _, pt := range parseTests {
-		url := pt.pr.AltDockerUrl()
-		if url != pt.expectUrl {
-			t.FailNow()
-		}
-	}
-}
-
 // Simulates RESTler sending a single path segment that contains a dot
 // e.g. GET /v2/ubuntu.me/manifests/latest
 // segments[0] = "ubuntu.me" matches the "." case, sets frst=1
@@ -134,5 +111,55 @@ func TestNewPullRequestPanicSingleSegmentWithDot(t *testing.T) {
 	// Should return an error, not panic
 	if err == nil {
 		t.Error("expected error for single segment with dot, got nil")
+	}
+}
+
+// Tests canonicalization: registry and repository lowercased, digests lowercased, tag case
+// preserved, and single-component docker.io repositories given the "library/" prefix. Both
+// constructors must produce the same canonical url.
+func TestCanonical(t *testing.T) {
+	dgst := "sha256:ABCDEF0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+	tests := []struct {
+		url      string
+		segments []string
+		ref      string
+		expect   string
+	}{
+		{"docker.io/hello-world:latest", []string{"docker.io", "hello-world"}, "latest", "docker.io/library/hello-world:latest"},
+		{"docker.io/library/hello-world:latest", []string{"docker.io", "library", "hello-world"}, "latest", "docker.io/library/hello-world:latest"},
+		{"docker.io/calico/cni:v3.27.0", []string{"docker.io", "calico", "cni"}, "v3.27.0", "docker.io/calico/cni:v3.27.0"},
+		{"quay.io/foo:v1", []string{"quay.io", "foo"}, "v1", "quay.io/foo:v1"},
+		{"Quay.IO/Org/App:RC1", []string{"Quay.IO", "Org", "App"}, "RC1", "quay.io/org/app:RC1"},
+		{"quay.io/org/app:rc1", []string{"quay.io", "org", "app"}, "rc1", "quay.io/org/app:rc1"},
+		{"docker.io/busybox@" + dgst, []string{"docker.io", "busybox"}, dgst, "docker.io/library/busybox@" + strings.ToLower(dgst)},
+	}
+	for _, tst := range tests {
+		fromUrl, err := NewPullRequestFromUrl(tst.url)
+		if err != nil {
+			t.Fatalf("%s: %s", tst.url, err)
+		}
+		if got := fromUrl.Url(); got != tst.expect {
+			t.Errorf("NewPullRequestFromUrl(%q).Url() = %q, want %q", tst.url, got, tst.expect)
+		}
+		fromApi, err := NewPullRequest("", nil, "", tst.ref, tst.segments...)
+		if err != nil {
+			t.Fatalf("%v: %s", tst.segments, err)
+		}
+		if got := fromApi.Url(); got != tst.expect {
+			t.Errorf("NewPullRequest(%v, %q).Url() = %q, want %q", tst.segments, tst.ref, got, tst.expect)
+		}
+	}
+}
+
+// Tags are case-sensitive, so only an exact "latest" is latest.
+func TestIsLatestCaseSensitive(t *testing.T) {
+	for ref, want := range map[string]bool{"latest": true, "Latest": false, "LATEST": false, "v1": false} {
+		pr, err := NewPullRequestFromUrl("quay.io/foo:" + ref)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pr.IsLatest() != want {
+			t.Errorf("IsLatest() for %q = %t, want %t", ref, !want, want)
+		}
 	}
 }

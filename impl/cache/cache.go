@@ -227,6 +227,11 @@ func Load(imagePath string) error {
 			log.Errorf("load: manifest url %q can't be parsed - will not be cached: %s", mh.ImageUrl, err)
 			return nil
 		}
+		if canonical := pr.Url(); mh.ImageUrl != canonical {
+			// e.g. docker.io/hello-world:latest cached before urls were canonicalized
+			log.Infof("load: manifest url %q is cached as %q", mh.ImageUrl, canonical)
+			mh.ImageUrl = canonical
+		}
 		log.Debugf("loading manifest for %s", mh.ImageUrl)
 		if err := addToCache(pr, mh, imagePath); err != nil {
 			log.Errorf("load: %s - will not be cached", err)
@@ -466,14 +471,7 @@ func getManifestFromCache(pr pullrequest.PullRequest, imagePath string) (imgpull
 	mc.Lock()
 	defer mc.Unlock()
 	url := pr.Url()
-	var mh imgpull.ManifestHolder
-	var exists bool
-	if mh, exists = fromCache(pr.Url()); !exists {
-		if url = pr.AltDockerUrl(); url != "" {
-			mh, exists = fromCache(url)
-		}
-	}
-	if exists {
+	if mh, exists := fromCache(url); exists {
 		mh.Pulled = globals.CurTime()
 		if pr.IsLatest() {
 			mc.latest[url] = mh

@@ -541,3 +541,72 @@ func TestSignalAfterWaiterTimeout(t *testing.T) {
 		t.Fatal("expected new puller after signal")
 	}
 }
+
+// Tests that docker.io/<name> and docker.io/library/<name> are the same image to the cache:
+// one entry, found by either spelling (including IsCached, used in air-gapped mode), and one
+// concurrent-pull entry so two clients using different spellings don't both go upstream.
+func TestDockerIoSpellingsShareCache(t *testing.T) {
+	ResetCache()
+	td := t.TempDir()
+	serialize.CreateDirs(td, true)
+	short, err := pullrequest.NewPullRequestFromUrl("docker.io/hello-world:latest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	long, err := pullrequest.NewPullRequestFromUrl("docker.io/library/hello-world:latest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mh := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociIndex,
+		Digest:   "424f1f86cdf501deb591ace8d14d2f40272617b51b374915a87a2886b2025ece",
+		ImageUrl: short.Url(),
+	}
+	if err := addToCache(short, mh, td); err != nil {
+		t.Fatal(err)
+	}
+	if mc.len() != 2 { // by tag and by digest
+		t.Fatalf("expected one image (2 keys), got %d keys", mc.len())
+	}
+	for _, pr := range []pullrequest.PullRequest{short, long} {
+		if !IsCached(pr) {
+			t.Errorf("IsCached(%q) = false", pr.Url())
+		}
+		if _, found := getManifestFromCache(pr, td); !found {
+			t.Errorf("getManifestFromCache(%q) not found", pr.Url())
+		}
+	}
+	if _, er := enqueuePull(short); er != mustPull {
+		t.Fatal("expected puller")
+	}
+	if _, er := enqueuePull(long); er != mustWait {
+		t.Fatal("the other spelling should wait on the same pull")
+	}
+	signalWaiters(short.Url())
+}
+
+// Tests that Load rewrites a non-canonical ImageUrl from an older cache, so the entry's
+// ImageUrl matches its key and prune can select it.
+func TestLoadCanonicalizesImageUrl(t *testing.T) {
+	ResetCache()
+	td := t.TempDir()
+	serialize.CreateDirs(td, true)
+	mh := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociIndex,
+		Digest:   "424f1f86cdf501deb591ace8d14d2f40272617b51b374915a87a2886b2025ece",
+		ImageUrl: "docker.io/hello-world:v1",
+	}
+	if err := serialize.MhToFilesystem(mh, td, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := Load(td); err != nil {
+		t.Fatal(err)
+	}
+	got, exists := fromCache("docker.io/library/hello-world:v1")
+	if !exists || got.ImageUrl != "docker.io/library/hello-world:v1" {
+		t.Fatalf("expected canonical entry, got exists=%t url=%q", exists, got.ImageUrl)
+	}
+	if found := GetManifestsCompare(func(imgpull.ManifestHolder) bool { return true }, noLimit); len(found) != 1 {
+		t.Fatalf("expected the entry to be a prune candidate, got %d", len(found))
+	}
+}

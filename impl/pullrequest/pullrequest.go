@@ -36,7 +36,7 @@ type PullRequest struct {
 }
 
 // NewPullRequest returns a 'PullRequest' struct from the passed args. It is intended to be used
-// to parse the REST API components into URL components.
+// to parse the REST API components into URL components. The result is canonical: see canonicalize.
 //
 //	regHdr    If the X-Registry HTTP header was set, this is the value, else empty string
 //	ns        If the ?ns= query param was set, this is a pointer to the value, else nil
@@ -47,7 +47,7 @@ type PullRequest struct {
 func NewPullRequest(regHdr string, ns *string, defaultNs string, reference string, segments ...string) (PullRequest, error) {
 	pr := PullRequest{
 		PullType:  typeFromRef(reference),
-		Reference: strings.ToLower(reference),
+		Reference: reference,
 	}
 	frst := 0
 	switch {
@@ -72,13 +72,15 @@ func NewPullRequest(regHdr string, ns *string, defaultNs string, reference strin
 
 	}
 	pr.Repository = strings.Join((segments[frst:]), "/")
+	pr.canonicalize()
 	return pr, nil
 }
 
 // NewPullRequestFromUrl parses the passed image url (e.g. docker.io/hello-world:latest,
 // or docker.io/library/hello-world@sha256:...) into a 'PullRequest' struct. The url
 // MUST begin with a registry ref (e.g. quay.io). The right-most component MUST be a tag
-// or digest. Everything in between is the repository.
+// or digest. Everything in between is the repository. The result is canonical: see
+// canonicalize.
 func NewPullRequestFromUrl(url string) (PullRequest, error) {
 	before, after, found := strings.Cut(url, "/")
 	if !found || after == "" || !strings.Contains(before, ".") {
@@ -98,12 +100,33 @@ func NewPullRequestFromUrl(url string) (PullRequest, error) {
 	if repository == "" {
 		return PullRequest{}, fmt.Errorf("unable to parse image url: %s", url)
 	}
-	return PullRequest{
+	pr := PullRequest{
 		PullType:   typeFromRef(ref),
-		Repository: strings.ToLower(repository),
-		Reference:  strings.ToLower(ref),
-		Remote:     strings.ToLower(remote),
-	}, nil
+		Repository: repository,
+		Reference:  ref,
+		Remote:     remote,
+	}
+	pr.canonicalize()
+	return pr, nil
+}
+
+// canonicalize puts the receiver in the one form used to identify an image everywhere in the
+// server (cache keys, file names, concurrent-pull tracking, pattern matching):
+//
+//   - The registry and repository are lowercased. Both are case-insensitive by spec.
+//   - A digest is lowercased. A tag keeps its case, because tags are case-sensitive: RC1 and rc1
+//     are different tags.
+//   - A single-component docker.io repository gets the implicit "library/" prefix, so
+//     docker.io/hello-world:latest and docker.io/library/hello-world:latest are the same image.
+func (pr *PullRequest) canonicalize() {
+	pr.Remote = strings.ToLower(pr.Remote)
+	pr.Repository = strings.ToLower(pr.Repository)
+	if pr.PullType == ByDigest {
+		pr.Reference = strings.ToLower(pr.Reference)
+	}
+	if pr.Remote == "docker.io" && !strings.Contains(pr.Repository, "/") {
+		pr.Repository = "library/" + pr.Repository
+	}
 }
 
 // Url formats the instance as an image reference like 'quay.io/appzygy/ociregistry:n.n.n'
@@ -115,39 +138,22 @@ func (pr *PullRequest) Url() string {
 	return fmt.Sprintf("%s/%s%s%s", pr.Remote, pr.Repository, separator, pr.Reference)
 }
 
-// If the receiver has "docker.io/library/..." then returns "docker.io/...". If receiver has
-// "docker.io/..." then returns "docker.io/library/...". If neither of those cases are true,
-// returns the empty string.
-func (pr *PullRequest) AltDockerUrl() string {
-	if pr.Remote != "docker.io" {
-		return ""
-	}
-	separator := ":"
-	if strings.HasPrefix(pr.Reference, "sha256:") {
-		separator = "@"
-	}
-	before, after, found := strings.Cut(pr.Repository, "/")
-	if found && before == "library" {
-		return fmt.Sprintf("%s/%s%s%s", pr.Remote, after, separator, pr.Reference)
-	}
-	return fmt.Sprintf("%s/%s/%s%s%s", pr.Remote, "library", pr.Repository, separator, pr.Reference)
-}
-
 // UrlWithDigest is like Url except it overrides the ref in the receiver with the passed digest
 func (pr *PullRequest) UrlWithDigest(digest string) string {
 	separator := "@"
 	return fmt.Sprintf("%s/%s%s%s", pr.Remote, pr.Repository, separator, digest)
 }
 
-// IsLatest returns true if the ref in the receiver has tag "latest"
+// IsLatest returns true if the ref in the receiver has tag "latest". Tags are case-sensitive,
+// so "Latest" is a different tag.
 func (pr *PullRequest) IsLatest() bool {
-	return strings.ToLower(pr.Reference) == "latest"
+	return pr.Reference == "latest"
 }
 
 // typeFromRef looks at the passed 'ref' and if it's a digest ref then returns
 // 'ByDigest' else returns 'ByTag'.
 func typeFromRef(ref string) PullType {
-	if strings.HasPrefix(ref, "sha256:") {
+	if strings.HasPrefix(strings.ToLower(ref), "sha256:") {
 		return ByDigest
 	}
 	return ByTag

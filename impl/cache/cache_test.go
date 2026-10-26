@@ -683,7 +683,7 @@ func TestTwoTagsShareDigest(t *testing.T) {
 	}
 
 	// prune the release tag: the mutable tag still serves the digest
-	prune(mhRel, pruneAll, td)
+	prune(mhRel, pruneAll, td, log.StandardLogger())
 	if _, _, found := mc.lookup(digestOfD); !found {
 		t.Fatal("pruning one tag hid the digest from the other")
 	}
@@ -764,7 +764,7 @@ func TestDigestEntryAndTagEntry(t *testing.T) {
 	if mc.len() != 2 || bc.blobs[aliasBlob1] != 2 {
 		t.Fatalf("expected 2 entries and 2 refs, got %d %v", mc.len(), bc.blobs)
 	}
-	prune(mhDigest, pruneAll, td)
+	prune(mhDigest, pruneAll, td, log.StandardLogger())
 	if _, key, found := mc.lookup(imageUrl(prDigest.Url())); !found || key != imageUrl(prTag.Url()) {
 		t.Fatal("after pruning the digest entry, the tag alias should serve the digest")
 	}
@@ -824,7 +824,7 @@ func TestDigestAliasPerRepository(t *testing.T) {
 		t.Error("a repository with no tag for the digest must miss")
 	}
 	// pruning bbb's tag doesn't let bbb's digest fall back to aaa
-	prune(mhB, pruneAll, td)
+	prune(mhB, pruneAll, td, log.StandardLogger())
 	if _, _, found := mc.lookup(imageUrl("ghcr.io/bbb/bbb@sha256:" + aliasDigestD)); found {
 		t.Error("bbb's digest must not be served from another repository")
 	}

@@ -98,6 +98,10 @@ var (
 	cp concurrentPulls = concurrentPulls{
 		pulls: make(map[string]chan struct{}),
 	}
+	// waitPullsTimeout and waitPullsInterval control WaitPulls. They're vars so tests can
+	// shorten them.
+	waitPullsTimeout  = time.Minute
+	waitPullsInterval = 2 * time.Second
 	// mc is the manifest in-mem cache
 	mc = newManifestCache()
 	// bc is the blob cache, keyed by digest with a ref count of cached manifests that
@@ -273,11 +277,11 @@ func Load(imagePath string) error {
 	return err
 }
 
-// WaitPulls waits 60 seconds for any in-progress pulls to complete and then
-// returns. If a pull in progress is partially complete (some of the blobs are written
-// and some aren't) then the cache will be in an inconsistent state. When the server
-// is restarted - it will detect this and exclude any such manifests from being
-// loaded into the in-mem cache.
+// WaitPulls waits up to a minute for any in-progress pulls to complete and then returns,
+// whether they completed or not, so a shutdown can't hang on a stuck pull. A pull that doesn't
+// complete leaves its blobs and manifest out of the cache: blobs are written to temp files and
+// renamed when complete, and a manifest is only written after its blobs, so on restart the
+// incomplete pull is simply not there, and is pulled again when next requested.
 func WaitPulls() {
 	log.Info("checking for pulls in progress")
 	if pullsInProgress() == 0 {
@@ -286,14 +290,12 @@ func WaitPulls() {
 	}
 	log.Info("waiting for pulls in progress to complete")
 	start := time.Now()
-	for {
-		time.Sleep(time.Second * 2)
-		if pullsInProgress() == 0 {
-			break
+	for pullsInProgress() != 0 {
+		if time.Since(start) > waitPullsTimeout {
+			log.Errorf("timeout waiting for %d pull(s) in progress to complete - continuing without them", pullsInProgress())
+			return
 		}
-		if time.Since(start) > time.Minute {
-			log.Error("timeout waiting for pulls in progress to complete")
-		}
+		time.Sleep(waitPullsInterval)
 	}
 	log.Info("in-progress pulls have completed")
 }

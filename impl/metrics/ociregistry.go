@@ -136,7 +136,7 @@ func addOciregistryMetrics() {
 		prometheus.GaugeOpts{
 			Name:      cached_manifest_count,
 			Namespace: "ociregistry",
-			Help:      "Total number of manifests cached in memory by tag, digest, and latest",
+			Help:      "Total number of manifests cached in memory (one per cached tag or digest url)",
 		},
 	)
 	DeltaCachedManifestCount = func(delta float64) {

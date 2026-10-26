@@ -45,8 +45,8 @@ func TestRunPruner(t *testing.T) {
 	time.Sleep(time.Second)
 	stopPruneCh <- true
 	<-pruneStoppedCh
-	// each manifest stored twice - once by tag and once by digest
-	if mc.len() != 2 {
+	// one of the three manifests is left
+	if mc.len() != 1 {
 		t.Fail()
 	}
 }
@@ -69,7 +69,7 @@ func TestPrunerFromApi(t *testing.T) {
 	if err != nil {
 		t.FailNow()
 	}
-	if mc.len() != 2 {
+	if mc.len() != 1 {
 		t.Fail()
 	}
 }
@@ -107,8 +107,7 @@ func TestPrune(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	// manifests that are pulled by tag are added twice - one by tag and a second by digest
-	if mc.len() != 2 || len(bc.blobs) != 3 {
+	if mc.len() != 1 || len(bc.blobs) != 3 {
 		t.Fail()
 	}
 	prune(mh, pruneAll, td)
@@ -338,7 +337,7 @@ func TestPruneSkipsChangedManifest(t *testing.T) {
 	stale := mh
 	stale.Digest = pruneDigestB // what the prune list saw before the tag moved
 	prune(stale, pruneAll, td)
-	if mc.len() != 2 || bc.blobs[pruneBlob1] != 1 || bc.blobs[pruneBlob2] != 1 {
+	if mc.len() != 1 || bc.blobs[pruneBlob1] != 1 || bc.blobs[pruneBlob2] != 1 {
 		t.Fatalf("current manifest was pruned: mc=%d blobs=%v", mc.len(), bc.blobs)
 	}
 }
@@ -372,7 +371,7 @@ func TestPruneTwiceDecrementsOnce(t *testing.T) {
 func TestPruneRechecksComparer(t *testing.T) {
 	td, mh := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
 	prune(mh, func(imgpull.ManifestHolder) bool { return false }, td)
-	if mc.len() != 2 || len(bc.blobs) != 2 {
+	if mc.len() != 1 || len(bc.blobs) != 2 {
 		t.Fatalf("manifest should have been kept: mc=%d blobs=%v", mc.len(), bc.blobs)
 	}
 }
@@ -498,7 +497,7 @@ func TestPruneBusy(t *testing.T) {
 	if err := <-errCh; !errors.Is(err, ErrPruneBusy) {
 		t.Fatalf("expected ErrPruneBusy, got %v", err)
 	}
-	if mc.len() != 2 || !blobFileExists(td, pruneBlob1) {
+	if mc.len() != 1 || !blobFileExists(td, pruneBlob1) {
 		t.Fatal("a busy prune must not change the cache")
 	}
 }

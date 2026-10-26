@@ -311,8 +311,7 @@ var cmds = &cli.Command{
 					Usage:       "List images matching the comma-separated pattern(s), e.g. '--pattern cilium,coredns'",
 					Destination: &cfg.ListConfig.Expr,
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
-						fromCmdline.PruneConfig = true
-						cfg.PruneConfig.Type = "date"
+						fromCmdline.ListConfig = true
 						return nil
 					},
 				},

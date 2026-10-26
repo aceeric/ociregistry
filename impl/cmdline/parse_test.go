@@ -139,6 +139,20 @@ func TestParsePrune(t *testing.T) {
 	}
 }
 
+// Tests that list --pattern sets the list config (and only the list config), so it is merged
+// over a config file's list settings.
+func TestParseListPattern(t *testing.T) {
+	ClearParse()
+	os.Args = []string{"bin/ociregistry", "list", "--pattern", "cilium"}
+	fromCmdline, cfg, err := Parse()
+	if err != nil || fromCmdline.Command != "list" || !fromCmdline.ListConfig || cfg.ListConfig.Expr != "cilium" {
+		t.Fatalf("expected the list pattern to be set: %v %+v %+v", err, fromCmdline, cfg.ListConfig)
+	}
+	if fromCmdline.PruneConfig || cfg.PruneConfig != (config.PruneConfig{}) {
+		t.Fatalf("list --pattern must not touch the prune config: %+v", cfg.PruneConfig)
+	}
+}
+
 var testCfg = `
 ---
 imagePath: /foo/test

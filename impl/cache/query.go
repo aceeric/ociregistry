@@ -110,18 +110,7 @@ func GetManifestsCompare(comparer ManifestComparer, count int) []imgpull.Manifes
 	defer mc.Unlock()
 	mhs := []imgpull.ManifestHolder{}
 	matches := 0
-	for url, mh := range mc.allManifests {
-		if url != mh.ImageUrl {
-			// when manifests are added to the in-mem cache, if the manifest has a tag
-			// it is added by tag and again by digest so it is retrievable both ways. When
-			// added by digest (the 2nd one), the map key will have the digest in the url but
-			// the manifest produced by the map will still have the tag in its url. (It's a copy.)
-			// The second copy is only for lookup and is not considered to be a separate manifest.
-			// The prune will function handle the second copy so only add to the prune list if the
-			// lookup key matches the manifest url - this *guarantees* that the manifest to prune
-			// is not a 2nd copy.
-			continue
-		}
+	for _, mh := range mc.entries {
 		if comparer(mh) {
 			matches++
 			if count != noLimit && matches > count {

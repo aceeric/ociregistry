@@ -14,7 +14,6 @@ import (
 	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/helpers"
 	"github.com/aceeric/ociregistry/impl/metrics"
-	"github.com/aceeric/ociregistry/impl/pullrequest"
 	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
@@ -286,7 +285,7 @@ func lockForPrune() bool {
 func prune(mh imgpull.ManifestHolder, comparer ManifestComparer, imagePath string) {
 	mc.Lock()
 	defer mc.Unlock()
-	cur, exists := fromCache(mh.ImageUrl)
+	cur, exists := mc.entries[imageUrl(mh.ImageUrl)]
 	if !exists || cur.Digest != mh.Digest {
 		log.Infof("skipping prune of manifest %q: no longer cached with digest %s", mh.ImageUrl, mh.Digest)
 		return
@@ -302,40 +301,15 @@ func prune(mh imgpull.ManifestHolder, comparer ManifestComparer, imagePath strin
 	rmBlobs(cur)
 }
 
-// rmManifest removes the passed manifest from the manifest cache and the file system. If the
-// manifest is by tag, then the pair by-digest manifest is also removed from in-mem cache if
-// one exists. Manifests only exist once on the file system, but may exist twice in the in-mem
-// cache: once by tag and once by digest for retrieval both ways. The blobs for the manifest
-// (if any) are *not* removed.
+// rmManifest removes the passed manifest's entry from the manifest cache, and its file from the
+// file system. Other entries with the same digest (other tags, or the digest url) are not
+// affected. The blobs for the manifest (if any) are *not* removed. The caller must hold mc.
 func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
-	pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
-	if err != nil {
-		log.Errorf("error parsing manifest URL: %s", err)
-		return
-	}
-	mc.delete(pr, mh.Digest)
+	mc.drop(imageUrl(mh.ImageUrl))
 	if err := serialize.RmManifest(imagePath, mh); err != nil {
-		log.Errorf("error removing manifest %q from the file system. the error was: %s", pr.Url(), err)
+		log.Errorf("error removing manifest %q from the file system. the error was: %s", mh.ImageUrl, err)
 	}
-	log.Infof("removed manifest: %s", pr.Url())
-}
-
-// delete actually deletes a manifest from the in-mem cache taking into account whether
-// the manifest is tagged "latest" or not.
-func (mc *manifestCache) delete(pr pullrequest.PullRequest, digest string) {
-	if pr.IsLatest() {
-		metrics.DeltaCachedManifestCount(-2)
-		delete(mc.latest, pr.Url())
-		// IsLatest means the manifest has tag "latest"
-		delete(mc.latest, pr.UrlWithDigest("sha256:"+digest))
-	} else {
-		metrics.DeltaCachedManifestCount(-1)
-		delete(mc.manifests, pr.Url())
-		if pr.PullType == pullrequest.ByTag {
-			metrics.DeltaCachedManifestCount(-1)
-			delete(mc.manifests, pr.UrlWithDigest("sha256:"+digest))
-		}
-	}
+	log.Infof("removed manifest: %s", mh.ImageUrl)
 }
 
 // rmBlobs decrements the ref count of each blob (layers and config) in the passed manifest.

@@ -5,7 +5,9 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
+	"slices"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/aceeric/ociregistry/impl/auth"
@@ -100,6 +102,7 @@ type Configuration struct {
 	Health           int              `yaml:"health"`
 	Metrics          int              `yaml:"metrics"`
 	AlwaysPullLatest bool             `yaml:"alwaysPullLatest"`
+	NoCache          []string         `yaml:"noCache"`
 	AirGapped        bool             `yaml:"airGapped"`
 	HelloWorld       bool             `yaml:"helloWorld"`
 	DefaultNs        string           `yaml:"defaultNs"`
@@ -131,6 +134,7 @@ type FromCmdLine struct {
 	Health           bool
 	Metrics          bool
 	AlwaysPullLatest bool
+	NoCache          bool
 	AirGapped        bool
 	HelloWorld       bool
 	DefaultNs        bool
@@ -218,6 +222,36 @@ func GetMetrics() int {
 
 func GetAlwaysPullLatest() bool {
 	return config.AlwaysPullLatest
+}
+
+func GetNoCache() []string {
+	return config.NoCache
+}
+
+// latestPattern is the --no-cache pattern that --always-pull-latest stands for.
+const latestPattern = ":latest$"
+
+// NoCachePatterns returns the compiled --no-cache patterns. An image whose canonical url
+// matches any of them is always pulled from the upstream. If alwaysPullLatest is set, the
+// pattern ':latest$' is included. If any pattern doesn't compile, the ones that do are
+// returned with an error naming the first that doesn't.
+func NoCachePatterns() ([]*regexp.Regexp, error) {
+	patterns := slices.Clone(config.NoCache)
+	if config.AlwaysPullLatest && !slices.Contains(patterns, latestPattern) {
+		patterns = append(patterns, latestPattern)
+	}
+	compiled := []*regexp.Regexp{}
+	var firstErr error
+	for _, p := range patterns {
+		if re, err := regexp.Compile(p); err != nil {
+			if firstErr == nil {
+				firstErr = fmt.Errorf("--no-cache pattern %q does not compile: %s", p, err)
+			}
+		} else {
+			compiled = append(compiled, re)
+		}
+	}
+	return compiled, firstErr
 }
 
 func GetAirGapped() bool {

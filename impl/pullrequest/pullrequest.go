@@ -144,12 +144,6 @@ func (pr *PullRequest) UrlWithDigest(digest string) string {
 	return fmt.Sprintf("%s/%s%s%s", pr.Remote, pr.Repository, separator, digest)
 }
 
-// IsLatest returns true if the ref in the receiver has tag "latest". Tags are case-sensitive,
-// so "Latest" is a different tag.
-func (pr *PullRequest) IsLatest() bool {
-	return pr.Reference == "latest"
-}
-
 // typeFromRef looks at the passed 'ref' and if it's a digest ref then returns
 // 'ByDigest' else returns 'ByTag'.
 func typeFromRef(ref string) PullType {

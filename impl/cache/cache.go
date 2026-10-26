@@ -137,6 +137,14 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 		defer signalWaiters(url)
 		mh, err := pullToCache(pr, imagePath, forcePull)
 		if err != nil {
+			if forcePull {
+				// e.g. the upstream is unreachable: a cached copy is better than failing
+				if cached, found := getManifestFromCache(pr, imagePath); found {
+					log.Warnf("serving the cached manifest for %q because the upstream pull failed: %s", url, err)
+					metrics.IncCachedPullsByNs(pr.Remote)
+					return cached, nil
+				}
+			}
 			return emptyManifestHolder, err
 		}
 		if forcePull {
@@ -496,7 +504,7 @@ func addBlobsToCache(mh imgpull.ManifestHolder) {
 //
 // As a final bit of complexity, if forcePull is true then the manifest is always enqueued.
 // In this case the server acts like a simple proxy meaning it will always pull a manifest
-// from the upstream.
+// from the upstream. If that pull fails, GetManifest serves the cached copy if there is one.
 func getManifestOrEnqueue(pr pullrequest.PullRequest, imagePath string, forcePull bool) (imgpull.ManifestHolder, chan struct{}, enqueueResult) {
 	if !forcePull {
 		if mh, exists := getManifestFromCache(pr, imagePath); exists {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
@@ -348,5 +349,45 @@ func TestGetters(t *testing.T) {
 	}
 	if GetListConfig() != lc {
 		t.FailNow()
+	}
+}
+
+// Tests the --no-cache patterns: from the config file, with alwaysPullLatest adding ':latest$'
+// once, and with a pattern that doesn't compile.
+func TestNoCachePatterns(t *testing.T) {
+	if err := SetConfigFromStr([]byte("noCache:\n  - ':nightly$'\n  - ':pr-[0-9]{1,3}$'\nalwaysPullLatest: true\n")); err != nil {
+		t.Fatal(err)
+	}
+	patterns, err := NoCachePatterns()
+	if err != nil || len(patterns) != 3 || patterns[2].String() != ":latest$" {
+		t.Fatalf("expected the two patterns plus :latest$, got %v %v", patterns, err)
+	}
+	if err := SetConfigFromStr([]byte("noCache:\n  - ':latest$'\nalwaysPullLatest: true\n")); err != nil {
+		t.Fatal(err)
+	}
+	if patterns, _ := NoCachePatterns(); len(patterns) != 1 {
+		t.Fatalf("':latest$' should not be added twice, got %v", patterns)
+	}
+	if err := SetConfigFromStr([]byte("noCache:\n  - '[unclosed'\n  - ':ok$'\n")); err != nil {
+		t.Fatal(err)
+	}
+	if patterns, err := NoCachePatterns(); err == nil || len(patterns) != 1 {
+		t.Fatalf("expected an error and the one valid pattern, got %v %v", patterns, err)
+	}
+}
+
+// Tests that --no-cache on the command line replaces the config file's patterns, and that
+// the file's patterns are kept when the flag isn't given.
+func TestMergeNoCache(t *testing.T) {
+	if err := SetConfigFromStr([]byte("noCache:\n  - ':nightly$'\n")); err != nil {
+		t.Fatal(err)
+	}
+	Merge(FromCmdLine{}, Configuration{NoCache: []string{}})
+	if !slices.Equal(GetNoCache(), []string{":nightly$"}) {
+		t.Fatalf("file patterns should be kept, got %v", GetNoCache())
+	}
+	Merge(FromCmdLine{NoCache: true}, Configuration{NoCache: []string{":latest$"}})
+	if !slices.Equal(GetNoCache(), []string{":latest$"}) {
+		t.Fatalf("command line patterns should replace the file's, got %v", GetNoCache())
 	}
 }

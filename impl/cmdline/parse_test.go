@@ -153,6 +153,21 @@ func TestParseListPattern(t *testing.T) {
 	}
 }
 
+// Tests that --no-cache is repeatable and that a comma inside a regex is not split.
+func TestParseNoCache(t *testing.T) {
+	ClearParse()
+	os.Args = []string{"bin/ociregistry", "serve", "--no-cache", ":latest$", "--no-cache", ":pr-[0-9]{1,3}$"}
+	fromCmdline, cfg, err := Parse()
+	if err != nil || !fromCmdline.NoCache || !reflect.DeepEqual(cfg.NoCache, []string{":latest$", ":pr-[0-9]{1,3}$"}) {
+		t.Fatalf("unexpected parse: %v %t %q", err, fromCmdline.NoCache, cfg.NoCache)
+	}
+	ClearParse()
+	os.Args = []string{"bin/ociregistry", "serve", "--no-cache", "[unclosed"}
+	if _, _, err := Parse(); err == nil {
+		t.Fatal("expected an error for a regex that doesn't compile")
+	}
+}
+
 var testCfg = `
 ---
 imagePath: /foo/test

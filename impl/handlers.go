@@ -30,8 +30,7 @@ func (r *OciRegistry) handleV2ManifestsReference(ctx echo.Context, reference str
 		metrics.IncApiErrorResults()
 		return ctx.JSON(http.StatusNotFound, "")
 	}
-	forcePull := r.alwaysPullLatest && pr.Reference == "latest"
-	mh, err := cache.GetManifest(pr, r.imagePath, r.pullTimeout, forcePull)
+	mh, err := cache.GetManifest(pr, r.imagePath, r.pullTimeout, r.alwaysPull(pr.Url()))
 	if err != nil {
 		log.Errorf("error getting manifest for %q: %s", pr.Url(), err)
 		metrics.IncApiErrorResults()

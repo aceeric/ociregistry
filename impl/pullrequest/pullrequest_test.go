@@ -150,16 +150,3 @@ func TestCanonical(t *testing.T) {
 		}
 	}
 }
-
-// Tags are case-sensitive, so only an exact "latest" is latest.
-func TestIsLatestCaseSensitive(t *testing.T) {
-	for ref, want := range map[string]bool{"latest": true, "Latest": false, "LATEST": false, "v1": false} {
-		pr, err := NewPullRequestFromUrl("quay.io/foo:" + ref)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if pr.IsLatest() != want {
-			t.Errorf("IsLatest() for %q = %t, want %t", ref, !want, want)
-		}
-	}
-}

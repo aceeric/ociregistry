@@ -6,6 +6,7 @@ package impl
 
 import (
 	"net/http"
+	"regexp"
 
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/config"
@@ -14,6 +15,7 @@ import (
 	_ "crypto/sha512"
 
 	"github.com/labstack/echo/v4"
+	log "github.com/sirupsen/logrus"
 )
 
 // OciRegistry implements the OCI Distribution REST API.
@@ -22,8 +24,9 @@ type OciRegistry struct {
 	imagePath string
 	// timeout in milliseconds for pulling from upstreams
 	pullTimeout int
-	// if true then always pull images with tag 'latest' (act like a simple proxy)
-	alwaysPullLatest bool
+	// images whose canonical url matches any of these are always pulled from the upstream
+	// (unless air-gapped), with the cached copy served if the pull fails
+	noCache []*regexp.Regexp
 	// if air-gapped, we can't pull so don't try just return 404
 	airGapped bool
 	// supports pull thru like 'docker pull ociregistry:8080/hello-word' (i.e. no namespace so assume docker.io)
@@ -36,15 +39,36 @@ type OciRegistry struct {
 // passed channel allows the /cmd/stop endpoint to signal the REST server to shut down.
 // The OciRegistry struct returned by the function implements the api.ServerInterface interface,
 // which is generated from the api/ociregistry.yaml openapi spec for the distribution server.
+//
+// The --no-cache patterns are validated when the server starts (see subcmd.Serve), so any
+// that don't compile have already stopped the server; here they are only logged.
 func NewOciRegistry(ch chan bool) *OciRegistry {
-	return &OciRegistry{
-		imagePath:        config.GetImagePath(),
-		pullTimeout:      int(config.GetPullTimeout()),
-		alwaysPullLatest: config.GetAlwaysPullLatest(),
-		airGapped:        config.GetAirGapped(),
-		defaultNs:        config.GetDefaultNs(),
-		shutdownCh:       ch,
+	noCache, err := config.NoCachePatterns()
+	if err != nil {
+		log.Error(err)
 	}
+	return &OciRegistry{
+		imagePath:   config.GetImagePath(),
+		pullTimeout: int(config.GetPullTimeout()),
+		noCache:     noCache,
+		airGapped:   config.GetAirGapped(),
+		defaultNs:   config.GetDefaultNs(),
+		shutdownCh:  ch,
+	}
+}
+
+// alwaysPull returns true if the passed canonical image url must be pulled from the upstream
+// on every request because it matches a --no-cache pattern. Never true when air-gapped.
+func (r *OciRegistry) alwaysPull(url string) bool {
+	if r.airGapped {
+		return false
+	}
+	for _, re := range r.noCache {
+		if re.MatchString(url) {
+			return true
+		}
+	}
+	return false
 }
 
 // GET /

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"runtime"
 	"slices"
 	"strings"
@@ -87,6 +88,9 @@ var cmds = &cli.Command{
 		{
 			Name:  "serve",
 			Usage: "Runs the pull-through registry",
+			// don't split slice flag values on commas: a --no-cache regex can contain one, e.g.
+			// {1,3}. This must be set on the command that owns the flag; it is not inherited.
+			DisableSliceFlagSeparator: true,
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "serve"
 				return nil
@@ -164,10 +168,29 @@ var cmds = &cli.Command{
 						return nil
 					},
 				},
+				&cli.StringSliceFlag{
+					Name: "no-cache",
+					Usage: "Always pull from the upstream if the image url matches this Go regex (repeatable),\n" +
+						"e.g. --no-cache ':latest$' --no-cache ':(nightly|pr-[0-9]+)$'. Matched against the canonical url,\n" +
+						"e.g. docker.io/library/hello-world:latest. If the upstream pull fails, a cached copy is served",
+					Destination: &cfg.NoCache,
+					Validator: func(patterns []string) error {
+						for _, p := range patterns {
+							if _, err := regexp.Compile(p); err != nil {
+								return fmt.Errorf("regex %q does not compile: %s", p, err)
+							}
+						}
+						return nil
+					},
+					Action: func(ctx context.Context, cmd *cli.Command, _ []string) error {
+						fromCmdline.NoCache = true
+						return nil
+					},
+				},
 				&cli.BoolFlag{
 					Name:        "always-pull-latest",
 					Value:       false,
-					Usage:       "Always pulls from the upstream if an image tag is 'latest'",
+					Usage:       "Same as --no-cache ':latest$' (kept for compatibility)",
 					Destination: &cfg.AlwaysPullLatest,
 					Action: func(ctx context.Context, cmd *cli.Command, _ bool) error {
 						fromCmdline.AlwaysPullLatest = true

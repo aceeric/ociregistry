@@ -2,7 +2,7 @@ package subcmd
 
 import (
 	"context"
-	"errors"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -38,9 +39,12 @@ Command line: %v
 ----------------------------------------------------------------------
 `
 
-// listener will be initialized with the Echo listener once the Echo server
-// is started.
-var listener net.Listener
+// listener is the server's listener, set when the server starts. It's read by unit tests from
+// another goroutine (to find the port when serving on port 0), hence the mutex.
+var (
+	listenerMu sync.Mutex
+	listener   net.Listener
+)
 
 // Serve runs the OCI distribution server, blocking until stopped with CTRL-C
 // or via the command REST API.
@@ -115,9 +119,24 @@ func Serve(buildVer string, buildDtm string) error {
 	fmt.Fprintf(os.Stderr, startupBanner, buildVer, buildDtm, time.Unix(0, time.Now().UnixNano()), config.GetPort(),
 		os.Getuid(), os.Getgid(), os.Getpid(), tlsMsg(), strings.Join(os.Args, " "))
 
+	// Create the listener here rather than letting Echo create it in its goroutine: Echo uses a
+	// listener that is already set, so nothing has to wait or poll for it, nothing reads it
+	// while Echo writes it, and a port that can't be bound is an ordinary startup error.
+	addr := net.JoinHostPort(config.GetHost(), strconv.Itoa(int(config.GetPort())))
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("unable to listen on %s: %w", addr, err)
+	}
+	if tlsCfg != nil {
+		e.TLSListener = tls.NewListener(ln, tlsCfg)
+		setListener(e.TLSListener)
+	} else {
+		e.Listener = ln
+		setListener(ln)
+	}
+
 	// start the API server
 	go func() {
-		addr := net.JoinHostPort(config.GetHost(), strconv.Itoa(int(config.GetPort())))
 		if tlsCfg != nil {
 			s := http.Server{
 				Addr:      addr,
@@ -133,13 +152,8 @@ func Serve(buildVer string, buildDtm string) error {
 			}
 		}
 	}()
-	err = waitForEchoListener(e)
-	if err != nil {
-		return errors.New("timed out waiting for Echo listener")
-	}
-	listener = getEchoListener(e)
 
-	go health()
+	go health(config.GetHealth())
 
 	log.Info("server is running")
 
@@ -188,48 +202,30 @@ func tlsMsg() string {
 
 // health handles the /health endpoint always on plain HTTP and is not part of the
 // server itself, hence a separate goroutine running an http server.
-func health() {
-	if config.GetHealth() != 0 {
+func health(port int) {
+	if port != 0 {
 		http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		})
-		http.ListenAndServe(fmt.Sprintf(":%d", config.GetHealth()), nil)
+		http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 	}
 }
 
-// getEchoListener gets the Echo listener. Supports unit testing.
-func getEchoListener(e *echo.Echo) net.Listener {
-	if e.Listener != nil {
-		return e.Listener
-	}
-	return e.TLSListener
-}
-
-// waitForEchoListener waits for the Listener in the Echo server to be initialized. This
-// is only used in unit testing so that the unit tests can start the server on ":0" and let
-// the http package assign a random port number. Supports unit testing.
-func waitForEchoListener(e *echo.Echo) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-			if e.Listener != nil || e.TLSListener != nil {
-				return nil
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
+// setListener records the server's listener.
+func setListener(l net.Listener) {
+	listenerMu.Lock()
+	defer listenerMu.Unlock()
+	listener = l
 }
 
 // GetListener supports unit testing.
 func GetListener() net.Listener {
+	listenerMu.Lock()
+	defer listenerMu.Unlock()
 	return listener
 }
 
 // InitListener supports unit testing.
 func InitListener() {
-	listener = nil
+	setListener(nil)
 }

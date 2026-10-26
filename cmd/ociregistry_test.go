@@ -94,7 +94,8 @@ func doTestServe(helloWorldMode bool) error {
 	if helloWorldMode {
 		os.Args = append(os.Args, "--hello-world")
 	}
-	go realMain()
+	result := make(chan int, 1)
+	go func() { result <- realMain() }()
 	err = waitForEchoListener()
 	if err != nil {
 		return err
@@ -110,9 +111,20 @@ func doTestServe(helloWorldMode bool) error {
 	}
 	// shut the server down
 	cmd := fmt.Sprintf("http://localhost:%d/cmd/stop", tcpAddr.Port)
-	_, err = http.Get(cmd)
+	resp, err := http.Get(cmd)
 	if err != nil {
 		return err
+	}
+	resp.Body.Close()
+	// wait for the server to stop, so it can't overlap the next test's use of the global
+	// configuration and listener
+	select {
+	case code := <-result:
+		if code != 0 {
+			return fmt.Errorf("serve exited with %d", code)
+		}
+	case <-time.After(10 * time.Second):
+		return errors.New("timed out waiting for the server to stop")
 	}
 	return nil
 }

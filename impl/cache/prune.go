@@ -3,7 +3,6 @@ package cache
 import (
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
 	"slices"
 	"strconv"
@@ -28,8 +27,28 @@ const (
 	defaultPruneFreq = "5h"
 )
 
-type logWriter struct {
-	log string
+// pruneLog is what the prune code logs through. The scheduled pruner uses the server's
+// logger; the REST prune uses a teeLog so the prune's own messages can be returned to the
+// REST client without touching the server's logger.
+type pruneLog interface {
+	Infof(format string, args ...any)
+	Errorf(format string, args ...any)
+}
+
+// teeLog writes each message to its own logger (whose output is returned to the REST client)
+// and to the server's logger, which applies the server's log level and output as usual.
+type teeLog struct {
+	own *log.Logger
+}
+
+func (t teeLog) Infof(format string, args ...any) {
+	t.own.Infof(format, args...)
+	log.Infof(format, args...)
+}
+
+func (t teeLog) Errorf(format string, args ...any) {
+	t.own.Errorf(format, args...)
+	log.Errorf(format, args...)
 }
 
 // ErrPruneBusy is returned when a prune could not start because upstream pulls were still in
@@ -80,7 +99,7 @@ func RunPruner(stopChan, stoppedChan chan bool) error {
 				stoppedChan <- true
 				return
 			case <-time.After(runFreq):
-				if err := doPrune(config.GetImagePath(), comparer, count, cfg.DryRun); err != nil {
+				if err := doPrune(config.GetImagePath(), comparer, count, cfg.DryRun, log.StandardLogger()); err != nil {
 					log.Infof("scheduled prune skipped until next run: %s", err)
 				}
 			}
@@ -90,13 +109,17 @@ func RunPruner(stopChan, stoppedChan chan bool) error {
 }
 
 // Prune is intended to be called by the REST API handlers. It parses the prune configuration
-// received on the API. It also "redirects" the logger so that all the logged messages can be
-// returned to the caller as a big newline-delimited string. The caller can then stream it
-// to the REST client if they choose. To do its work, it calls doPrune, just like RunPruner.
+// received on the API, runs the prune with doPrune just like RunPruner, and returns the
+// messages the prune logged as a newline-delimited string for the caller to stream to the
+// REST client. Only this prune's messages are returned, at info level regardless of the
+// server's log level; they are also logged by the server as usual. The server's logger is
+// not modified.
 func Prune(pruneType string, dur *string, expr *string, dryRun *string, count *int) (string, error) {
-	lw := newLogWriter()
-	log.SetOutput(lw)
-	defer log.SetOutput(os.Stderr)
+	var out strings.Builder
+	own := log.New()
+	own.SetOutput(&out)
+	own.SetLevel(log.InfoLevel)
+	own.SetFormatter(log.StandardLogger().Formatter)
 	cfg := config.PruneConfig{
 		Enabled: true,
 		Type:    pruneType,
@@ -123,10 +146,10 @@ func Prune(pruneType string, dur *string, expr *string, dryRun *string, count *i
 	if err != nil {
 		return "", errors.New("unable to parse prune params")
 	}
-	if err := doPrune(config.GetImagePath(), comparer, cfg.Count, cfg.DryRun); err != nil {
+	if err := doPrune(config.GetImagePath(), comparer, cfg.Count, cfg.DryRun, teeLog{own}); err != nil {
 		return "", err
 	}
-	return lw.log, nil
+	return out.String(), nil
 }
 
 // ParseCriteria parses the prune criteria in the passed arg and returns a manifest comparer
@@ -189,27 +212,6 @@ func ParseCriteria(cfg config.PruneConfig) (ManifestComparer, error) {
 	return nil, fmt.Errorf("unsupported prune type %q", cfg.Type)
 }
 
-// newLogWriter returns a struct that impements the io.Writer interface. It supports
-// "redirecting" the system logger to a string array.
-func newLogWriter() *logWriter {
-	return &logWriter{
-		log: "",
-	}
-}
-
-// Write writes to the log redirection struct.  It supports
-// "redirecting" the system logger to a string array.
-func (w *logWriter) Write(b []byte) (cnt int, err error) {
-	w.log += string(b)
-	return len(b), nil
-}
-
-// Close closes log redirection.  It supports
-// "redirecting" the system logger to a string array.
-func (w *logWriter) Close() error {
-	return nil
-}
-
 // calcCutoff returns a prune cutoff date by parsing the passed config. If no cutoff
 // date/time is specified then an empty time.Time struct is returned.
 func calcCutoff(cfg config.PruneConfig) (time.Time, error) {
@@ -241,22 +243,22 @@ func calcCutoff(cfg config.PruneConfig) (time.Time, error) {
 // prune holds pullGate exclusively, so new upstream pulls wait for it while it runs; cache hits
 // are not affected. If upstream pulls are still in progress after pruneLockWait, the prune is
 // not started and ErrPruneBusy is returned.
-func doPrune(imagePath string, comparer ManifestComparer, count int, dryRun bool) error {
+func doPrune(imagePath string, comparer ManifestComparer, count int, dryRun bool, plog pruneLog) error {
 	if !lockForPrune() {
 		return ErrPruneBusy
 	}
 	defer pullGate.Unlock()
 	toPrune := GetManifestsCompare(comparer, count)
-	log.Infof("begin prune - count of manifests to prune: %d", len(toPrune))
+	plog.Infof("begin prune - count of manifests to prune: %d", len(toPrune))
 	for _, mh := range toPrune {
 		if dryRun {
-			log.Infof("doPrune - dry run specified, skipping prune of manifest %q", mh.ImageUrl)
+			plog.Infof("doPrune - dry run specified, skipping prune of manifest %q", mh.ImageUrl)
 			continue
 		}
-		prune(mh, comparer, imagePath)
+		prune(mh, comparer, imagePath, plog)
 	}
 	if !dryRun {
-		sweepBlobs(imagePath)
+		sweepBlobs(imagePath, plog)
 	}
 	return nil
 }
@@ -282,20 +284,20 @@ func lockForPrune() bool {
 // lock the function first checks that the same manifest is still cached and still matches the
 // comparer (it may have been pulled since the list was built). Blob files are not removed here;
 // doPrune calls sweepBlobs afterwards. The caller must hold pullGate exclusively.
-func prune(mh imgpull.ManifestHolder, comparer ManifestComparer, imagePath string) {
+func prune(mh imgpull.ManifestHolder, comparer ManifestComparer, imagePath string, plog pruneLog) {
 	mc.Lock()
 	defer mc.Unlock()
 	cur, exists := mc.entries[imageUrl(mh.ImageUrl)]
 	if !exists || cur.Digest != mh.Digest {
-		log.Infof("skipping prune of manifest %q: no longer cached with digest %s", mh.ImageUrl, mh.Digest)
+		plog.Infof("skipping prune of manifest %q: no longer cached with digest %s", mh.ImageUrl, mh.Digest)
 		return
 	}
 	if !comparer(cur) {
-		log.Infof("skipping prune of manifest %q: no longer matches prune criteria", mh.ImageUrl)
+		plog.Infof("skipping prune of manifest %q: no longer matches prune criteria", mh.ImageUrl)
 		return
 	}
-	log.Infof("pruning manifest %q", mh.ImageUrl)
-	rmManifest(cur, imagePath)
+	plog.Infof("pruning manifest %q", mh.ImageUrl)
+	rmManifest(cur, imagePath, plog)
 	bc.Lock()
 	defer bc.Unlock()
 	rmBlobs(cur)
@@ -304,12 +306,12 @@ func prune(mh imgpull.ManifestHolder, comparer ManifestComparer, imagePath strin
 // rmManifest removes the passed manifest's entry from the manifest cache, and its file from the
 // file system. Other entries with the same digest (other tags, or the digest url) are not
 // affected. The blobs for the manifest (if any) are *not* removed. The caller must hold mc.
-func rmManifest(mh imgpull.ManifestHolder, imagePath string) {
+func rmManifest(mh imgpull.ManifestHolder, imagePath string, plog pruneLog) {
 	mc.drop(imageUrl(mh.ImageUrl))
 	if err := serialize.RmManifest(imagePath, mh); err != nil {
-		log.Errorf("error removing manifest %q from the file system. the error was: %s", mh.ImageUrl, err)
+		plog.Errorf("error removing manifest %q from the file system. the error was: %s", mh.ImageUrl, err)
 	}
-	log.Infof("removed manifest: %s", mh.ImageUrl)
+	plog.Infof("removed manifest: %s", mh.ImageUrl)
 }
 
 // rmBlobs decrements the ref count of each blob (layers and config) in the passed manifest.
@@ -335,7 +337,7 @@ func rmBlobs(mh imgpull.ManifestHolder) {
 // removed by a prune or a tag move, and blobs left by failed pulls. The caller must hold
 // pullGate exclusively, so no pull can be relying on a blob it found on disk but has not yet
 // referenced.
-func sweepBlobs(imagePath string) {
+func sweepBlobs(imagePath string, plog pruneLog) {
 	bc.Lock()
 	defer bc.Unlock()
 	for digest := range serialize.GetAllBlobs(imagePath) {
@@ -343,9 +345,9 @@ func sweepBlobs(imagePath string) {
 			continue
 		}
 		if err := serialize.RmBlob(imagePath, digest); err != nil {
-			log.Errorf("error removing unreferenced blob %q: %s", digest, err)
+			plog.Errorf("error removing unreferenced blob %q: %s", digest, err)
 		} else {
-			log.Infof("removed unreferenced blob: %s", digest)
+			plog.Infof("removed unreferenced blob: %s", digest)
 		}
 	}
 }
@@ -355,7 +357,7 @@ func sweepBlobs(imagePath string) {
 func trySweepBlobs(imagePath string) {
 	if pullGate.TryLock() {
 		defer pullGate.Unlock()
-		sweepBlobs(imagePath)
+		sweepBlobs(imagePath, log.StandardLogger())
 	}
 }
 

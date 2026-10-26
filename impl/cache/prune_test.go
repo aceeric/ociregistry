@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -110,7 +111,7 @@ func TestPrune(t *testing.T) {
 	if mc.len() != 1 || len(bc.blobs) != 3 {
 		t.Fail()
 	}
-	prune(mh, pruneAll, td)
+	prune(mh, pruneAll, td, log.StandardLogger())
 	if mc.len() != 0 {
 		t.Fail()
 	}
@@ -124,7 +125,7 @@ func TestPrune(t *testing.T) {
 		}
 	}
 	pullGate.Lock()
-	sweepBlobs(td)
+	sweepBlobs(td, log.StandardLogger())
 	pullGate.Unlock()
 	for _, digest := range digests {
 		if blobFileExists(td, digest) {
@@ -336,7 +337,7 @@ func TestPruneSkipsChangedManifest(t *testing.T) {
 	td, mh := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
 	stale := mh
 	stale.Digest = pruneDigestB // what the prune list saw before the tag moved
-	prune(stale, pruneAll, td)
+	prune(stale, pruneAll, td, log.StandardLogger())
 	if mc.len() != 1 || bc.blobs[pruneBlob1] != 1 || bc.blobs[pruneBlob2] != 1 {
 		t.Fatalf("current manifest was pruned: mc=%d blobs=%v", mc.len(), bc.blobs)
 	}
@@ -359,8 +360,8 @@ func TestPruneTwiceDecrementsOnce(t *testing.T) {
 	if err := addToCache(pr, other, td); err != nil {
 		t.Fatal(err)
 	}
-	prune(mh, pruneAll, td)
-	prune(mh, pruneAll, td)
+	prune(mh, pruneAll, td, log.StandardLogger())
+	prune(mh, pruneAll, td, log.StandardLogger())
 	if bc.blobs[pruneBlob1] != 1 {
 		t.Fatalf("shared blob ref count should be 1, got %d", bc.blobs[pruneBlob1])
 	}
@@ -370,7 +371,7 @@ func TestPruneTwiceDecrementsOnce(t *testing.T) {
 // matches (e.g. it was pulled after the list was built) is kept.
 func TestPruneRechecksComparer(t *testing.T) {
 	td, mh := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
-	prune(mh, func(imgpull.ManifestHolder) bool { return false }, td)
+	prune(mh, func(imgpull.ManifestHolder) bool { return false }, td, log.StandardLogger())
 	if mc.len() != 1 || len(bc.blobs) != 2 {
 		t.Fatalf("manifest should have been kept: mc=%d blobs=%v", mc.len(), bc.blobs)
 	}
@@ -387,7 +388,7 @@ func TestSweepRemovesOnlyUnreferenced(t *testing.T) {
 		}
 	}
 	pullGate.Lock()
-	sweepBlobs(td)
+	sweepBlobs(td, log.StandardLogger())
 	pullGate.Unlock()
 	if blobFileExists(td, orphan) {
 		t.Fatal("unreferenced blob not removed")
@@ -452,7 +453,7 @@ func TestPruneWaitsForPull(t *testing.T) {
 	var wg sync.WaitGroup
 	var pruned atomic.Bool
 	wg.Go(func() {
-		doPrune(td, pruneAll, noLimit, false)
+		doPrune(td, pruneAll, noLimit, false, log.StandardLogger())
 		pruned.Store(true)
 	})
 	time.Sleep(200 * time.Millisecond)
@@ -478,7 +479,7 @@ func TestPruneBusy(t *testing.T) {
 	pullGate.RLock() // a long pull in progress
 	defer pullGate.RUnlock()
 	errCh := make(chan error, 1)
-	go func() { errCh <- doPrune(td, pruneAll, noLimit, false) }()
+	go func() { errCh <- doPrune(td, pruneAll, noLimit, false, log.StandardLogger()) }()
 
 	// while the prune waits, a new pull can still take the gate
 	time.Sleep(150 * time.Millisecond)
@@ -515,5 +516,94 @@ func TestPruneFromApiBusy(t *testing.T) {
 	expr, dryRun, count := "docker.io", "false", -1
 	if _, err := Prune("pattern", nil, &expr, &dryRun, &count); !errors.Is(err, ErrPruneBusy) {
 		t.Fatalf("expected ErrPruneBusy, got %v", err)
+	}
+}
+
+// Item 22: the REST prune returns its own messages (at info level, regardless of the server's
+// level) and not messages logged elsewhere in the server at the same time; the server still
+// logs the prune at its own level; and the server's log output is left as it was (it used to
+// be reset to stderr, ignoring --log-file).
+func TestPruneFromApiLog(t *testing.T) {
+	td, _ := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
+	config.Set(config.Configuration{ImagePath: td})
+	var serverOut bytes.Buffer
+	savedOut, savedLevel := log.StandardLogger().Out, log.GetLevel()
+	log.SetOutput(&serverOut)
+	log.SetLevel(log.ErrorLevel)
+	defer func() {
+		log.SetOutput(savedOut)
+		log.SetLevel(savedLevel)
+	}()
+	stop := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				log.Errorf("unrelated server message")
+				time.Sleep(time.Millisecond)
+			}
+		}
+	})
+	expr, dryRun, count := "docker.io/test", "false", -1
+	out, err := Prune("pattern", nil, &expr, &dryRun, &count)
+	close(stop)
+	wg.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "pruning manifest") || !strings.Contains(out, "removed manifest") {
+		t.Fatalf("expected the prune's messages in the response:\n%s", out)
+	}
+	if strings.Contains(out, "unrelated server message") {
+		t.Fatal("the response must not contain other server messages")
+	}
+	if log.StandardLogger().Out != &serverOut {
+		t.Fatal("the server's log output must not be changed")
+	}
+	if strings.Contains(serverOut.String(), "pruning manifest") {
+		t.Fatal("the server log should apply its own level (error) to the prune's info messages")
+	}
+	if mc.len() != 0 {
+		t.Fatal("expected the manifest to be pruned")
+	}
+}
+
+// Item 21: WaitPulls returns after its timeout even if a pull never completes.
+func TestWaitPullsTimesOut(t *testing.T) {
+	ResetCache()
+	savedTimeout, savedInterval := waitPullsTimeout, waitPullsInterval
+	waitPullsTimeout, waitPullsInterval = 200*time.Millisecond, 20*time.Millisecond
+	defer func() { waitPullsTimeout, waitPullsInterval = savedTimeout, savedInterval }()
+	pr, _ := pullrequest.NewPullRequestFromUrl("quay.io/stuck/pull:v1")
+	enqueuePull(pr) // never signaled
+	defer signalWaiters(pr.Url())
+	done := make(chan struct{})
+	go func() { WaitPulls(); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("WaitPulls did not return after its timeout")
+	}
+}
+
+// Item 21: WaitPulls returns as soon as the pulls in progress complete.
+func TestWaitPullsReturnsWhenDone(t *testing.T) {
+	ResetCache()
+	savedTimeout, savedInterval := waitPullsTimeout, waitPullsInterval
+	waitPullsTimeout, waitPullsInterval = 10*time.Second, 20*time.Millisecond
+	defer func() { waitPullsTimeout, waitPullsInterval = savedTimeout, savedInterval }()
+	pr, _ := pullrequest.NewPullRequestFromUrl("quay.io/slow/pull:v1")
+	enqueuePull(pr)
+	go func() {
+		time.Sleep(100 * time.Millisecond)
+		signalWaiters(pr.Url())
+	}()
+	start := time.Now()
+	WaitPulls()
+	if pullsInProgress() != 0 || time.Since(start) > 2*time.Second {
+		t.Fatalf("expected WaitPulls to return once the pull completed, took %s", time.Since(start))
 	}
 }

@@ -2,6 +2,7 @@
 
 # On deck
 
+- cmd/subcmd/serve.go: `swagger, err := api.GetSwagger()` deprecated
 - Refactor tests to use `t.TempDir()` and `t.Helper()`
 
 # Parked

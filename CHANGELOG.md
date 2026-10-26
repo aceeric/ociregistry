@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## 2.0.0-prerelease
+
+26-Oct-2026
+
+> TODO - Update documentation after testing
+
+1. Refactor in-memory and on-disk caching design. Server will automatically migrate cache on startup or can be done manually via `ociregistry migrate-cache`
+2. Identify and fix concurrency issues on startup, shutdown, prune, including blob pull reliability
+2. Support mutable tags via new `--no-cache` arg(s) (#35)
+3. Via `imgpull` library, handle token expiry during blob pulls over slow link / large blobs
+4. Preserve image url tag case (previous version lowercased which is technically not correct)
+5. Go 1.27.3
+6. Module updates: aceeric/imgpull v1.15.2-0.20261026220424-c456a2229377 (until that module tested more), aws/aws-sdk-go-v2/config v1.33.11, aws/aws-sdk-go-v2/service/ecr v1.67.0, getkin/kin-openapi v0.152.0, labstack/echo/v4 v4.16.2, oapi-codegen/echo-middleware v1.2.1, oapi-codegen/runtime v1.8.0, prometheus/client_golang v1.25.0, urfave/cli/v3 v3.14.0
+
 ## 1.20.0
 
 11-Sep-2026

@@ -85,7 +85,8 @@ var cmds = &cli.Command{
 	},
 	Commands: []*cli.Command{
 		{
-			Name: "serve",
+			Name:  "serve",
+			Usage: "Runs the pull-through registry",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "serve"
 				return nil
@@ -216,8 +217,8 @@ var cmds = &cli.Command{
 			},
 		},
 		{
-			Name: "load",
-			//Usage: "Loads the image cache",
+			Name:  "load",
+			Usage: "Loads the image cache using the server as a cli",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "load"
 				return nil
@@ -285,7 +286,8 @@ var cmds = &cli.Command{
 			},
 		},
 		{
-			Name: "list",
+			Name:  "list",
+			Usage: "Lists the cache as it is on the file system",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "list"
 				return nil
@@ -327,7 +329,8 @@ var cmds = &cli.Command{
 			},
 		},
 		{
-			Name: "prune",
+			Name:  "prune",
+			Usage: "Prunes the cache on the filesystem",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "prune"
 				return nil
@@ -369,12 +372,39 @@ var cmds = &cli.Command{
 			},
 		},
 		{
-			Name: "version",
+			Name:  "migrate-cache",
+			Usage: "Migrates the cache from the legacy layout",
+			Action: func(ctx context.Context, cmd *cli.Command) error {
+				fromCmdline.Command = "migrate-cache"
+				return nil
+			},
+			Description: "Migrates the cache from the legacy layout (manifests named by digest in the lts and img\n" +
+				"directories) to the current layout (one file per image url in the manifests directory). The\n" +
+				"legacy directories are not modified. A report is written to manifests/migration-report.txt.\n" +
+				"The serve command migrates automatically; load, list and prune require a migrated cache.\n" +
+				"Stop any server using the cache first. Exits 0 if the migration is complete (skipped files\n" +
+				"are listed in the report), 1 if any manifest could not be written.",
+			Flags: []cli.Flag{
+				&cli.BoolFlag{
+					Name:        "dry-run",
+					Value:       false,
+					Usage:       "Shows what would be migrated, but does not write anything",
+					Destination: &cfg.MigrateConfig.DryRun,
+					Action: func(ctx context.Context, cmd *cli.Command, _ bool) error {
+						fromCmdline.MigrateConfig = true
+						return nil
+					},
+				},
+			},
+		},
+		{
+			Name:  "version",
+			Usage: "Displays the server version.",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "version"
 				return nil
 			},
-			Description: "Displays the server version.",
+			Description: "Displays the server version",
 		},
 	},
 }

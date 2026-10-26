@@ -71,6 +71,12 @@ type PruneConfig struct {
 	DryRun   bool   `yaml:"dryrun"`
 }
 
+// MigrateConfig configures the migrate-cache sub-command. It is only set from the
+// command line.
+type MigrateConfig struct {
+	DryRun bool `yaml:"-"`
+}
+
 // ListConfig configures the list sub-command
 type ListConfig struct {
 	Header      bool   `yaml:"header"`
@@ -101,6 +107,7 @@ type Configuration struct {
 	Registries       []RegistryConfig `yaml:"registries"`
 	PruneConfig      PruneConfig      `yaml:"pruneConfig"`
 	ListConfig       ListConfig       `yaml:"listConfig"`
+	MigrateConfig    MigrateConfig    `yaml:"-"`
 	ServerTlsCfg     ServerTlsCfg     `yaml:"serverTlsConfig"`
 }
 
@@ -130,6 +137,7 @@ type FromCmdLine struct {
 	Host             bool
 	PruneConfig      bool
 	ListConfig       bool
+	MigrateConfig    bool
 }
 
 var (
@@ -242,6 +250,10 @@ func GetPruneConfig() PruneConfig {
 
 func GetListConfig() ListConfig {
 	return config.ListConfig
+}
+
+func GetMigrateConfig() MigrateConfig {
+	return config.MigrateConfig
 }
 
 func GetServerTlsCfg() ServerTlsCfg {

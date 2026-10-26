@@ -184,7 +184,7 @@ func addImageManifests(matches map[string]match, imagePath string) error {
 				}
 				url := pr.UrlWithDigest(sha256)
 				if _, exists := matches[url]; !exists {
-					if mh, found := serialize.MhFromFilesystem(sha256, true, imagePath); found {
+					if mh, found := serialize.MhFromFilesystem(url, imagePath); found {
 						matches[url] = struct {
 							mh imgpull.ManifestHolder
 						}{mh}

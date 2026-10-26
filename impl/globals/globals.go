@@ -3,11 +3,14 @@ package globals
 import "time"
 
 const (
-	// LtsPath is the subdirectory under the image cache root where "latest" manifests
-	// are stored. Latest manifests exist side-by-side with non-latest.
+	// ManifestPath is the subdirectory under the image cache root where manifests are stored,
+	// one file per canonical image url, named by the SHA-256 hex of the url.
+	ManifestPath = "manifests"
+	// LtsPath is the legacy subdirectory where "latest" manifests were stored, named by
+	// manifest digest. It is only read by the cache migration and never written.
 	LtsPath = "lts"
-	// ImgPath is the subdirectory under the image cache root where non-"latest" manifests
-	// are stored
+	// ImgPath is the legacy subdirectory where non-"latest" manifests were stored, named by
+	// manifest digest. It is only read by the cache migration and never written.
 	ImgPath = "img"
 	// BlobPath is the subdirectory under the image cache root where blobs are stored
 	BlobPath = "blobs"

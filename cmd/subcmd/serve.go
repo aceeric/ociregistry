@@ -45,6 +45,10 @@ var listener net.Listener
 // Serve runs the OCI distribution server, blocking until stopped with CTRL-C
 // or via the command REST API.
 func Serve(buildVer string, buildDtm string) error {
+	// before anything reads or writes the cache: preload, the pruner, and the cache load
+	if err := migrateOnStartup(config.GetImagePath()); err != nil {
+		return err
+	}
 	if config.GetPreloadImages() != "" {
 		if err := preload.Load(config.GetPreloadImages(), config.GetResolveRef()); err != nil {
 			return fmt.Errorf("error pre-loading images: %s", err)

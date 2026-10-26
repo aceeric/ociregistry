@@ -373,7 +373,9 @@ func replaceInCache(pr pullrequest.PullRequest, mhNew imgpull.ManifestHolder, im
 	}
 	if exists {
 		log.Debugf("replace manifest %s, old digest %s, new digest %s", pr.Url(), mhExisting.Digest, mhNew.Digest)
-		rmManifest(mhExisting, imagePath)
+		// only the in-memory entry: manifests are stored one file per url, so the file for
+		// this url already holds mhNew (doPull replaced it) and must not be removed
+		mc.delete(pr, mhExisting.Digest)
 	}
 	addManifestToCache(pr, mhNew)
 	addBlobsToCache(mhNew) // add new refs before removing old, so shared blobs never reach zero

@@ -1,7 +1,6 @@
 package subcmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand/v2"
@@ -78,7 +77,7 @@ func TestPrunebyPattern(t *testing.T) {
 	}
 	if err := Prune(); err != nil {
 		t.FailNow()
-	} else if entries, err := os.ReadDir(filepath.Join(td, globals.ImgPath)); err != nil {
+	} else if entries, err := os.ReadDir(filepath.Join(td, globals.ManifestPath)); err != nil {
 		t.FailNow()
 	} else if len(entries) != manifestCnt-expectPrune {
 		t.FailNow()
@@ -113,11 +112,7 @@ func TestPrunebyDate(t *testing.T) {
 			// set the cutoff halfway through
 			cutoff = tstamp.Add(time.Second)
 		}
-		isLatest, err := mh.IsLatest()
-		if err != nil {
-			t.FailNow()
-		}
-		mh, exists := serialize.MhFromFilesystem(mh.Digest, isLatest, td)
+		mh, exists := serialize.MhFromFilesystem(mh.ImageUrl, td)
 		if !exists {
 			t.FailNow()
 		}
@@ -133,7 +128,7 @@ func TestPrunebyDate(t *testing.T) {
 	}
 	if err := Prune(); err != nil {
 		t.FailNow()
-	} else if entries, err := os.ReadDir(filepath.Join(td, globals.ImgPath)); err != nil {
+	} else if entries, err := os.ReadDir(filepath.Join(td, globals.ManifestPath)); err != nil {
 		t.FailNow()
 	} else if len(entries) != manifestCnt-expectPrune {
 		t.FailNow()
@@ -212,8 +207,7 @@ func makeTestFiles(cnt int) (string, string, []imgpull.ManifestHolder, error) {
 		}
 		mh.Created = time.Now().Format(dateFormat)
 		mhs[i] = mh
-		mb, _ := json.Marshal(mh)
-		err = os.WriteFile(filepath.Join(dir, globals.ImgPath, manifestDigests[i]), mb, 0777)
+		err = serialize.MhToFilesystem(mh, dir, true)
 		if err != nil {
 			return "", "", nil, err
 		}

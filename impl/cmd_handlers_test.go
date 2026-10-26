@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/cache"
 	"github.com/aceeric/ociregistry/impl/config"
@@ -153,7 +155,11 @@ func setupTests() (string, error) {
 	for i := range 3 {
 		md := fmt.Sprintf(manifestDigest, i)
 		mfst := fmt.Sprintf(manifest, md, orgs[i])
-		if err = os.WriteFile(filepath.Join(td, globals.ImgPath, md), []byte(mfst), 0777); err != nil {
+		mh := imgpull.ManifestHolder{}
+		if err = json.Unmarshal([]byte(mfst), &mh); err != nil {
+			return td, err
+		}
+		if err = serialize.MhToFilesystem(mh, td, true); err != nil {
 			return td, err
 		}
 	}

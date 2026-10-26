@@ -24,6 +24,7 @@ const (
 	loadCmd    string = "load"
 	listCmd    string = "list"
 	pruneCmd   string = "prune"
+	migrateCmd string = "migrate-cache"
 	versionCmd string = "version"
 	// emptyCmd means no command was invoked so the CLI parser will display
 	// help and so there's nothing to do.
@@ -51,13 +52,29 @@ func realMain() int {
 	} else if command == versionCmd {
 		fmt.Fprintf(os.Stderr, "ociregistry version: %s build date: %s\n", buildVer, buildDtm)
 		return 0
-	} else if config.GetHelloWorld() {
+	}
+
+	// before anything touches the cache, including creating its directories
+	switch command {
+	case loadCmd, listCmd, pruneCmd:
+		if needs, err := serialize.NeedsMigration(config.GetImagePath()); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to check whether the cache needs migration: %s\n", err)
+			return 1
+		} else if needs {
+			fmt.Fprintln(os.Stderr, subcmd.NotMigratedMsg)
+			return 1
+		}
+	}
+
+	if config.GetHelloWorld() {
 		if tmpDir, err := helloWorldMode(); err != nil {
 			fmt.Fprintf(os.Stderr, "error configuring hello-world mode: %s\n", err)
 			return 1
 		} else {
 			defer os.RemoveAll(tmpDir)
 		}
+	} else if command == migrateCmd && config.GetMigrateConfig().DryRun {
+		// a dry run writes nothing, not even the directories
 	} else if err := serialize.CreateDirs(config.GetImagePath(), writeable); err != nil {
 		fmt.Fprintf(os.Stderr, "unable to verify image path: %s\n", err)
 		return 1
@@ -80,6 +97,11 @@ func realMain() int {
 	case pruneCmd:
 		if err := subcmd.Prune(); err != nil {
 			fmt.Fprintf(os.Stderr, "error pruning the cache: %s\n", err)
+			return 1
+		}
+	case migrateCmd:
+		if err := subcmd.MigrateCache(); err != nil {
+			fmt.Fprintf(os.Stderr, "error migrating the cache: %s\n", err)
 			return 1
 		}
 	case serveCmd:

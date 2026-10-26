@@ -66,6 +66,9 @@ func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 	if fromCmdline.PruneConfig || config.PruneConfig == (PruneConfig{}) {
 		config.PruneConfig = cfg.PruneConfig
 	}
+	if fromCmdline.MigrateConfig {
+		config.MigrateConfig = cfg.MigrateConfig
+	}
 	if fromCmdline.ListConfig || config.ListConfig == (ListConfig{}) {
 		config.ListConfig = cfg.ListConfig
 	}

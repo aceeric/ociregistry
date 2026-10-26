@@ -17,10 +17,10 @@ import (
 // LoadTarball loads every image found in the OCI-layout or docker-save
 // tarball at tarPath into the file system cache, the same way Load does for
 // a text file of image URLs. resolveRef allows to replace the image url in the
-// tarball with an override from the command line. Since the server stores manifest
-// by digest, if you override the url for a manifest that is already cached by
-// digest, the image is skipped. This feature is only supported for single entry
-// tarballs and will error otherwise.
+// tarball with an override from the command line. Manifests are stored by url, so
+// the override caches the image under the new url even if it's already cached under
+// another. This feature is only supported for single entry tarballs and will error
+// otherwise.
 func LoadTarball(tarPath string, resolveRef string) error {
 	imagePath := config.GetImagePath()
 	blobDir := filepath.Join(imagePath, globals.BlobPath)
@@ -52,20 +52,22 @@ func LoadTarball(tarPath string, resolveRef string) error {
 		if err != nil {
 			return fmt.Errorf("unable to parse image ref %q", mh.ImageUrl)
 		}
-		if _, found := serialize.MhFromFilesystem(mh.Digest, pr.IsLatest(), imagePath); found {
+		mh.ImageUrl = pr.Url()
+		if cached, found := serialize.MhFromFilesystem(mh.ImageUrl, imagePath); found && cached.Digest == mh.Digest {
 			log.Infof("already cached: %s (%s)", mh.ImageUrl, mh.Digest)
 			continue
 		}
 		log.Infof("saving image: %s", mh.ImageUrl)
 		mh.Created = globals.CurTime()
 		itemcnt++
-		if err := serialize.MhToFilesystem(mh, imagePath, false); err != nil {
-			return err
-		}
+		// blobs first, so a manifest on disk always has its blobs
 		if mh.IsImageManifest() {
 			if err := itb.SaveBlobs(mh, blobDir); err != nil {
 				return err
 			}
+		}
+		if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
+			return err
 		}
 	}
 	log.Infof("loaded %d images from tarball %q to the file system cache in %s", itemcnt, tarPath, time.Since(start))

@@ -394,11 +394,7 @@ func validateReplace(expCachedBlobs []string, testDir string, pr pullrequest.Pul
 	} else if mhFound.Digest != mhExp.Digest {
 		return false
 	} else {
-		isLatest, err := mhExp.IsLatest()
-		if err != nil {
-			return false
-		}
-		mhFromFs, found := serialize.MhFromFilesystem(mhExp.Digest, isLatest, testDir)
+		mhFromFs, found := serialize.MhFromFilesystem(mhExp.ImageUrl, testDir)
 		if !found {
 			return false
 		}

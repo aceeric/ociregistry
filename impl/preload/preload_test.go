@@ -56,6 +56,26 @@ func TestPreload(t *testing.T) {
 	if err != nil || cnt != 0 {
 		t.Fail()
 	}
+	// the list is stored under the tag url and its image manifest under its own digest url -
+	// the urls a client uses - so neither replaces the other
+	list, found := serialize.MhFromFilesystem(url+"/hello-world:latest", d)
+	if !found || !list.IsManifestList() {
+		t.Fatalf("expected the image list under the tag url, found=%t", found)
+	}
+	digest, err := list.GetImageDigestFor("linux", "amd64")
+	if err != nil {
+		t.Fatal(err)
+	}
+	image, found := serialize.MhFromFilesystem(url+"/hello-world@"+digest, d)
+	if !found || !image.IsImageManifest() {
+		t.Fatalf("expected the image manifest under %s, found=%t", digest, found)
+	}
+	if list.Created == "" || image.Created == "" {
+		t.Error("preloaded manifests should have a created date")
+	}
+	if manifests, _ := os.ReadDir(filepath.Join(d, globals.ManifestPath)); len(manifests) != 2 {
+		t.Fatalf("expected 2 manifest files, got %d", len(manifests))
+	}
 }
 
 var loadConfig = `

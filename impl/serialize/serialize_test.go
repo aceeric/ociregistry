@@ -1,12 +1,15 @@
 package serialize
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/aceeric/ociregistry/impl/globals"
@@ -298,8 +301,7 @@ var manifestTests = []manifestTest{
 
 // Test saving and loading manifest holders.
 func TestSaveAndLoad(t *testing.T) {
-	td, _ := os.MkdirTemp("", "")
-	defer os.RemoveAll(td)
+	td := t.TempDir()
 	CreateDirs(td, true)
 
 	for _, tst := range manifestTests {
@@ -333,11 +335,7 @@ func TestSaveAndLoad(t *testing.T) {
 		if MhToFilesystem(mhOut, td, false) != nil {
 			t.FailNow()
 		}
-		isLatest, err := mhOut.IsLatest()
-		if err != nil {
-			t.FailNow()
-		}
-		mhIn, found := MhFromFilesystem(tst.digest, isLatest, td)
+		mhIn, found := MhFromFilesystem(tst.imgurl, td)
 		if !found {
 			t.FailNow()
 		}
@@ -347,25 +345,19 @@ func TestSaveAndLoad(t *testing.T) {
 	}
 }
 
-// Test the TestWalkTheCache function
+// Test the WalkTheCache function
 func TestWalkTheCache(t *testing.T) {
-	td, _ := os.MkdirTemp("", "")
-	defer os.RemoveAll(td)
+	td := t.TempDir()
 	CreateDirs(td, true)
 	for i := range 10 {
-		digest := fmt.Sprintf("%d", i)
 		mh := imgpull.ManifestHolder{
 			Type:     imgpull.Undefined,
-			Digest:   digest,
+			Digest:   fmt.Sprintf("%d", i),
 			ImageUrl: fmt.Sprintf("zed.io/foo:%d", i),
 			Bytes:    []byte("TEST"),
 		}
-		mhOut, err := json.Marshal(mh)
-		if err != nil {
-			t.FailNow()
-		}
-		if os.WriteFile(filepath.Join(td, "img", digest), mhOut, 0777) != nil {
-			t.FailNow()
+		if err := MhToFilesystem(mh, td, false); err != nil {
+			t.Fatal(err)
 		}
 	}
 	totVal := 0
@@ -397,6 +389,42 @@ func tmpFiles(t *testing.T, dir string) []string {
 	return m
 }
 
+// Tests that manifests are stored one file per canonical url, named by the SHA-256 hex of the
+// url: two tags with the same digest are two files, and both docker.io spellings are one.
+func TestManifestFilePerUrl(t *testing.T) {
+	td := t.TempDir()
+	CreateDirs(td, true)
+	digest := "a1fbaea309fa27bad418200539a69cffb4c9336fe1a6b0af23874cd15293c8f8"
+	for _, url := range []string{"quay.io/org/app:v1.0.0", "quay.io/org/app:nightly-pr", "docker.io/busybox:1", "docker.io/library/busybox:1"} {
+		if err := MhToFilesystem(imgpull.ManifestHolder{Type: imgpull.V1ociManifest, Digest: digest, ImageUrl: url}, td, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := os.ReadDir(filepath.Join(td, globals.ManifestPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 3 {
+		t.Fatalf("expected 3 manifest files, got %d", len(entries))
+	}
+	sum := sha256.Sum256([]byte("quay.io/org/app:nightly-pr"))
+	if _, err := os.Stat(filepath.Join(td, globals.ManifestPath, hex.EncodeToString(sum[:]))); err != nil {
+		t.Fatalf("expected file named by the url hash: %s", err)
+	}
+	for _, url := range []string{"quay.io/org/app:v1.0.0", "quay.io/org/app:nightly-pr", "docker.io/busybox:1", "docker.io/library/busybox:1"} {
+		mh, found := MhFromFilesystem(url, td)
+		if !found {
+			t.Fatalf("%s not found", url)
+		}
+		if canonical, _ := CanonicalUrl(url); mh.ImageUrl != canonical {
+			t.Fatalf("expected stored url %q, got %q", canonical, mh.ImageUrl)
+		}
+	}
+	if _, found := MhFromFilesystem("quay.io/org/app:V1.0.0", td); found {
+		t.Fatal("tags are case-sensitive")
+	}
+}
+
 // Tests that MhToFilesystem writes atomically: the manifest round-trips, a replace
 // overwrites it, no temp files are left behind, and the file has 0644 permissions.
 func TestMhToFilesystemAtomic(t *testing.T) {
@@ -415,15 +443,14 @@ func TestMhToFilesystemAtomic(t *testing.T) {
 	if err := MhToFilesystem(mh, td, true); err != nil {
 		t.Fatal(err)
 	}
-	mhIn, found := MhFromFilesystem(mh.Digest, false, td)
+	mhIn, found := MhFromFilesystem(mh.ImageUrl, td)
 	if !found || mhIn.Pulled != "second" {
 		t.Fatalf("expected replaced manifest, got found=%t pulled=%q", found, mhIn.Pulled)
 	}
-	imgDir := filepath.Join(td, globals.ImgPath)
-	if m := tmpFiles(t, imgDir); len(m) != 0 {
+	if m := tmpFiles(t, filepath.Join(td, globals.ManifestPath)); len(m) != 0 {
 		t.Fatalf("temp files left behind: %v", m)
 	}
-	fi, err := os.Stat(filepath.Join(imgDir, mh.Digest))
+	fi, err := os.Stat(manifestFile(td, mh.ImageUrl))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -449,18 +476,22 @@ func TestMhToFilesystemNoReplace(t *testing.T) {
 	if err := MhToFilesystem(mh, td, false); err != nil {
 		t.Fatal(err)
 	}
-	if mhIn, _ := MhFromFilesystem(mh.Digest, false, td); mhIn.Pulled != "first" {
+	if mhIn, _ := MhFromFilesystem(mh.ImageUrl, td); mhIn.Pulled != "first" {
 		t.Fatalf("expected original manifest, got pulled=%q", mhIn.Pulled)
 	}
 }
 
-// Tests that WalkTheCache skips unparseable files and temp files without stopping
-// the walk, and still delivers every valid manifest in both manifest directories.
+// Tests that WalkTheCache skips unparseable manifest files, temp files and non-manifest
+// files (the migration report and marker) without stopping the walk, ignores the legacy
+// directories, and still delivers every valid manifest.
 func TestWalkTheCacheSkipsBadFiles(t *testing.T) {
 	td := t.TempDir()
 	CreateDirs(td, true)
 	write := func(sub, name string, b []byte) {
 		t.Helper()
+		if err := os.MkdirAll(filepath.Join(td, sub), 0755); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.WriteFile(filepath.Join(td, sub, name), b, 0644); err != nil {
 			t.Fatal(err)
 		}
@@ -473,13 +504,22 @@ func TestWalkTheCacheSkipsBadFiles(t *testing.T) {
 		}
 		return b
 	}
-	// names sort so the bad files are visited before the second valid one in img
-	write(globals.ImgPath, "0-bad", []byte("{not json"))
-	write(globals.ImgPath, "1-empty", []byte{})
-	write(globals.ImgPath, "2-good", valid("2-good", "zed.io/foo:v1"))
-	write(globals.ImgPath, "3-good.abc123.tmp", valid("tmp", "zed.io/foo:tmp")) // valid content, must still be skipped
-	write(globals.LtsPath, "4-good", valid("4-good", "zed.io/foo:latest"))
-
+	hexName := func(c string) string { return strings.Repeat(c, 64) }
+	// names sort so the bad files are visited before the valid ones
+	write(globals.ManifestPath, hexName("0"), []byte("{not json"))
+	write(globals.ManifestPath, hexName("1"), []byte{})
+	write(globals.ManifestPath, hexName("2")+".abc123.tmp", valid("tmp", "zed.io/foo:tmp")) // valid content, must still be skipped
+	write(globals.ManifestPath, MigrationReportFile, valid("report", "zed.io/foo:report"))
+	write(globals.ManifestPath, MigrationMarker, []byte("migrated"))
+	write(globals.ImgPath, hexName("3"), valid("legacy", "zed.io/foo:legacy")) // legacy layout is never walked
+	for _, mh := range []imgpull.ManifestHolder{
+		{Type: imgpull.Undefined, Digest: "good-1", ImageUrl: "zed.io/foo:v1"},
+		{Type: imgpull.Undefined, Digest: "good-2", ImageUrl: "zed.io/foo:latest"},
+	} {
+		if err := MhToFilesystem(mh, td, false); err != nil {
+			t.Fatal(err)
+		}
+	}
 	seen := map[string]bool{}
 	err := WalkTheCache(td, func(mh imgpull.ManifestHolder, _ os.FileInfo) error {
 		seen[mh.Digest] = true
@@ -488,7 +528,7 @@ func TestWalkTheCacheSkipsBadFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("walk should not fail on bad files: %s", err)
 	}
-	if len(seen) != 2 || !seen["2-good"] || !seen["4-good"] {
+	if len(seen) != 2 || !seen["good-1"] || !seen["good-2"] {
 		t.Fatalf("expected exactly the two valid manifests, got %v", seen)
 	}
 }
@@ -497,8 +537,7 @@ func TestWalkTheCacheSkipsBadFiles(t *testing.T) {
 func TestWalkTheCacheHandlerError(t *testing.T) {
 	td := t.TempDir()
 	CreateDirs(td, true)
-	b, _ := json.Marshal(imgpull.ManifestHolder{Type: imgpull.Undefined, Digest: "x", ImageUrl: "zed.io/foo:v1"})
-	if err := os.WriteFile(filepath.Join(td, globals.ImgPath, "x"), b, 0644); err != nil {
+	if err := MhToFilesystem(imgpull.ManifestHolder{Type: imgpull.Undefined, Digest: "x", ImageUrl: "zed.io/foo:v1"}, td, false); err != nil {
 		t.Fatal(err)
 	}
 	want := fmt.Errorf("handler failed")
@@ -507,13 +546,15 @@ func TestWalkTheCacheHandlerError(t *testing.T) {
 	}
 }
 
-// Tests that RemoveTempFiles deletes *.tmp files from all three cache directories
-// and leaves regular manifest and blob files alone.
+// Tests that RemoveTempFiles deletes *.tmp files from the manifest and blob directories,
+// leaves regular files alone, and never touches the legacy directories.
 func TestRemoveTempFiles(t *testing.T) {
 	td := t.TempDir()
 	CreateDirs(td, true)
-	subs := []string{globals.LtsPath, globals.ImgPath, globals.BlobPath}
-	for _, sub := range subs {
+	for _, sub := range []string{globals.ManifestPath, globals.BlobPath, globals.LtsPath, globals.ImgPath} {
+		if err := os.MkdirAll(filepath.Join(td, sub), 0755); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.WriteFile(filepath.Join(td, sub, "leftover.123.tmp"), []byte("x"), 0644); err != nil {
 			t.Fatal(err)
 		}
@@ -525,13 +566,36 @@ func TestRemoveTempFiles(t *testing.T) {
 	if err := RemoveTempFiles(td); err != nil {
 		t.Fatal(err)
 	}
-	for _, sub := range subs {
+	for _, sub := range []string{globals.ManifestPath, globals.BlobPath} {
 		if m := tmpFiles(t, filepath.Join(td, sub)); len(m) != 0 {
 			t.Fatalf("temp files not removed from %s: %v", sub, m)
 		}
 	}
+	for _, sub := range []string{globals.LtsPath, globals.ImgPath} {
+		if m := tmpFiles(t, filepath.Join(td, sub)); len(m) != 1 {
+			t.Fatalf("legacy directory %s must not be modified", sub)
+		}
+	}
 	if _, err := os.Stat(keep); err != nil {
 		t.Fatalf("regular blob was removed: %s", err)
+	}
+}
+
+// Tests that CreateDirs creates the manifest and blob directories and not the legacy ones.
+func TestCreateDirsNoLegacy(t *testing.T) {
+	td := t.TempDir()
+	if err := CreateDirs(td, true); err != nil {
+		t.Fatal(err)
+	}
+	for _, sub := range []string{globals.ManifestPath, globals.BlobPath} {
+		if fi, err := os.Stat(filepath.Join(td, sub)); err != nil || !fi.IsDir() {
+			t.Fatalf("%s not created", sub)
+		}
+	}
+	for _, sub := range []string{globals.LtsPath, globals.ImgPath} {
+		if _, err := os.Stat(filepath.Join(td, sub)); err == nil {
+			t.Fatalf("legacy directory %s should not be created", sub)
+		}
 	}
 }
 

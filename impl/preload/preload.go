@@ -10,6 +10,7 @@ import (
 
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
+	"github.com/aceeric/ociregistry/impl/helpers"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
 	"github.com/aceeric/ociregistry/impl/serialize"
 
@@ -89,7 +90,7 @@ func doPull(imageUrl string, imagePath string, platformArch string, platformOs s
 	if err != nil {
 		return itemcnt, err
 	}
-	mh, cnt, err := getFromCacheOrRemote(puller, md.Digest, pr.IsLatest(), md.IsImageManifest(), imagePath)
+	mh, cnt, err := getFromCacheOrRemote(puller, md.Digest, md.IsImageManifest(), imagePath)
 	if err != nil {
 		return itemcnt, err
 	}
@@ -99,12 +100,10 @@ func doPull(imageUrl string, imagePath string, platformArch string, platformOs s
 		if err != nil {
 			return itemcnt, err
 		}
-		if pr.PullType == pullrequest.ByDigest {
-			// if the manifest list was pulled by digest rather than by tag, then set the ref for the image
-			// manifest to be a digest as well
-			puller.SetUrl(pr.UrlWithDigest(digest))
-		}
-		if mh, cnt, err = getFromCacheOrRemote(puller, digest, pr.IsLatest(), true, imagePath); err != nil {
+		// the image manifest is stored under its own digest url - the url a client uses for it
+		// after getting the list - so it doesn't replace the list stored under the list's url
+		puller.SetUrl(pr.UrlWithDigest(digest))
+		if mh, cnt, err = getFromCacheOrRemote(puller, digest, true, imagePath); err != nil {
 			return itemcnt, err
 		}
 		itemcnt += cnt
@@ -112,12 +111,14 @@ func doPull(imageUrl string, imagePath string, platformArch string, platformOs s
 	return itemcnt, nil
 }
 
-// getFromCacheOrRemote first checks the file system for a manifest whose digest matches the
-// passed 'digest' arg. If already present on the file system, then does nothing. Otherwise pulls
+// getFromCacheOrRemote first checks the file system for the manifest cached under the url in the
+// passed puller. If it is present with the passed 'digest', then does nothing. Otherwise pulls
 // from the upstream using the url in the passed puller and saves the manifest (and blobs if an
-// image url) to the file system.
-func getFromCacheOrRemote(puller imgpull.Puller, digest string, isLatest bool, isImageManifest bool, imagePath string) (imgpull.ManifestHolder, int, error) {
-	if mh, found := serialize.MhFromFilesystem(digest, isLatest, imagePath); found {
+// image manifest) to the file system, replacing a manifest cached under that url with a different
+// digest (a tag that has moved). The blobs are saved first, so a manifest on disk always has its
+// blobs.
+func getFromCacheOrRemote(puller imgpull.Puller, digest string, isImageManifest bool, imagePath string) (imgpull.ManifestHolder, int, error) {
+	if mh, found := serialize.MhFromFilesystem(puller.GetUrl(), imagePath); found && mh.Digest == helpers.GetDigestFrom(digest) {
 		log.Infof("already cached: %s", puller.GetUrl())
 		return mh, 0, nil
 	}
@@ -132,14 +133,15 @@ func getFromCacheOrRemote(puller imgpull.Puller, digest string, isLatest bool, i
 	if err != nil {
 		return imgpull.ManifestHolder{}, 0, err
 	}
-	if err := serialize.MhToFilesystem(mh, imagePath, false); err != nil {
-		return imgpull.ManifestHolder{}, 0, err
-	}
 	if mh.IsImageManifest() {
 		blobDir := filepath.Join(imagePath, globals.BlobPath)
 		if err = puller.PullBlobs(mh, blobDir); err != nil {
 			return mh, 0, err
 		}
+	}
+	mh.Created = globals.CurTime()
+	if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
+		return imgpull.ManifestHolder{}, 0, err
 	}
 	return mh, 1, nil
 }

@@ -2,12 +2,15 @@ package main
 
 import (
 	_ "embed"
+	"encoding/json"
 	"os"
 	"path/filepath"
 
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/serialize"
+
+	"github.com/aceeric/imgpull/pkg/imgpull"
 )
 
 //go:embed hello_world/config.json
@@ -37,18 +40,26 @@ func helloWorldMode() (string, error) {
 	if err := serialize.CreateDirs(config.GetImagePath(), true); err != nil {
 		return "", err
 	}
-	filelist := []struct {
+	blobs := []struct {
 		Name  string
-		Dir   string
 		Bytes *[]byte
 	}{
-		{Name: "424f1f86cdf501deb591ace8d14d2f40272617b51b374915a87a2886b2025ece", Dir: globals.LtsPath, Bytes: &manifestList},
-		{Name: "03b62250a3cb1abd125271d393fc08bf0cc713391eda6b57c02d1ef85efcc25c", Dir: globals.LtsPath, Bytes: &imageManifest},
-		{Name: "74cc54e27dc41bb10dc4b2226072d469509f2f22f1a3ce74f4a59661a1d44602", Dir: globals.BlobPath, Bytes: &configJson},
-		{Name: "e6590344b1a5dc518829d6ea1524fc12f8bcd14ee9a02aa6ad8360cce3a9a9e9", Dir: globals.BlobPath, Bytes: &blobTarGz},
+		{Name: "74cc54e27dc41bb10dc4b2226072d469509f2f22f1a3ce74f4a59661a1d44602", Bytes: &configJson},
+		{Name: "e6590344b1a5dc518829d6ea1524fc12f8bcd14ee9a02aa6ad8360cce3a9a9e9", Bytes: &blobTarGz},
 	}
-	for _, file := range filelist {
-		if err := os.WriteFile(filepath.Join(tmpdir, file.Dir, file.Name), *file.Bytes, 0600); err != nil {
+	for _, blob := range blobs {
+		if err := os.WriteFile(filepath.Join(tmpdir, globals.BlobPath, blob.Name), *blob.Bytes, 0600); err != nil {
+			return "", err
+		}
+	}
+	// the embedded manifests are ManifestHolder JSON, each with its image url, so they are
+	// written by url like any other cached manifest
+	for _, b := range []*[]byte{&manifestList, &imageManifest} {
+		mh := imgpull.ManifestHolder{}
+		if err := json.Unmarshal(*b, &mh); err != nil {
+			return "", err
+		}
+		if err := serialize.MhToFilesystem(mh, tmpdir, true); err != nil {
 			return "", err
 		}
 	}

@@ -2,17 +2,22 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
+	"github.com/aceeric/imgpull/pkg/imgpull/v1oci"
 	"github.com/aceeric/ociregistry/cmd/subcmd"
+	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/serialize"
 )
 
@@ -127,5 +132,115 @@ func waitForEchoListener() error {
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
+	}
+}
+
+// legacyCacheDir creates a cache in the legacy layout with one manifest and its blob.
+func legacyCacheDir(t *testing.T) string {
+	t.Helper()
+	td := t.TempDir()
+	blob := "2222222222222222222222222222222222222222222222222222222222222222"
+	mh := imgpull.ManifestHolder{
+		Type:     imgpull.V1ociManifest,
+		Digest:   "1111111111111111111111111111111111111111111111111111111111111111",
+		ImageUrl: "foo.io/foo:v1.2.3",
+		V1ociManifest: v1oci.Manifest{
+			Config: v1oci.Descriptor{Digest: "sha256:" + blob, Size: 4},
+		},
+	}
+	b, err := json.Marshal(mh)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for dir, files := range map[string]map[string][]byte{
+		globals.ImgPath:  {mh.Digest: b},
+		globals.BlobPath: {blob: []byte("blob")},
+	} {
+		if err := os.MkdirAll(filepath.Join(td, dir), 0755); err != nil {
+			t.Fatal(err)
+		}
+		for name, content := range files {
+			if err := os.WriteFile(filepath.Join(td, dir, name), content, 0644); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	return td
+}
+
+// runMain runs realMain with the passed args and returns its exit code and what it wrote to
+// stderr.
+func runMain(t *testing.T, args ...string) (int, string) {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := os.Stderr
+	os.Stderr = w
+	setup()
+	os.Args = append([]string{"bin/ociregistry"}, args...)
+	result := realMain()
+	os.Stderr = saved
+	w.Close()
+	out, _ := io.ReadAll(r)
+	return result, string(out)
+}
+
+// Tests that load, list and prune refuse to run on a cache that hasn't been migrated, and
+// leave it untouched.
+func TestNotMigratedGate(t *testing.T) {
+	td := legacyCacheDir(t)
+	imgList := filepath.Join(t.TempDir(), "images")
+	os.WriteFile(imgList, []byte(""), 0644)
+	for _, args := range [][]string{
+		{"--image-path", td, "list"},
+		{"--image-path", td, "prune", "--pattern", "foo", "--dry-run"},
+		{"--image-path", td, "load", "--image-file", imgList},
+	} {
+		result, stderr := runMain(t, args...)
+		if result != 1 || !strings.Contains(stderr, subcmd.NotMigratedMsg) {
+			t.Errorf("%v: expected exit 1 and the migration message, got %d %q", args, result, stderr)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(td, globals.ManifestPath)); !os.IsNotExist(err) {
+		t.Error("a refused command must not change the cache, not even create its directories")
+	}
+}
+
+// Tests the migrate-cache command: a dry run writes nothing, a migration completes, and
+// afterwards the CLI commands work and see the migrated manifest.
+func TestMigrateCacheCmd(t *testing.T) {
+	td := legacyCacheDir(t)
+	if result, _ := runMain(t, "--image-path", td, "migrate-cache", "--dry-run"); result != 0 {
+		t.Fatalf("dry run: expected exit 0, got %d", result)
+	}
+	if _, err := os.Stat(filepath.Join(td, globals.ManifestPath)); !os.IsNotExist(err) {
+		t.Fatal("a dry run must not write anything")
+	}
+	if result, _ := runMain(t, "--image-path", td, "migrate-cache"); result != 0 {
+		t.Fatalf("migrate: expected exit 0, got %d", result)
+	}
+	if _, err := os.Stat(filepath.Join(td, globals.ManifestPath, serialize.MigrationMarker)); err != nil {
+		t.Fatal("expected the migration marker")
+	}
+	if _, found := serialize.MhFromFilesystem("foo.io/foo:v1.2.3", td); !found {
+		t.Fatal("expected the migrated manifest")
+	}
+	if result, _ := runMain(t, "--image-path", td, "list"); result != 0 {
+		t.Fatalf("list after migration: expected exit 0, got %d", result)
+	}
+	if result, _ := runMain(t, "--image-path", td, "migrate-cache"); result != 0 {
+		t.Fatalf("migrating a migrated cache: expected exit 0, got %d", result)
+	}
+}
+
+// Tests that migrate-cache exits 1 when a manifest can't be written.
+func TestMigrateCacheCmdIncomplete(t *testing.T) {
+	td := legacyCacheDir(t)
+	// a regular file where the manifests directory should be
+	os.WriteFile(filepath.Join(td, globals.ManifestPath), []byte("x"), 0644)
+	if result, _ := runMain(t, "--image-path", td, "migrate-cache"); result != 1 {
+		t.Fatalf("expected exit 1, got %d", result)
 	}
 }

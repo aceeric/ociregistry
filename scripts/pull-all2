@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#
+# Smoke tests a populated ociregistry server, for example after a cache migration. Lists
+# every cached manifest with the command API, pulls each one back through the server with
+# imgpull, and shows the url from the list next to the url recorded in the pulled tarball's
+# manifest. The two should be identical.
+#
+# Usage: smoke-test.sh [server]       server defaults to localhost:8080
+#
+# Environment:
+#   IMGPULL       the imgpull binary (default: imgpull on the PATH)
+#   IMGPULL_ARGS  extra imgpull args, e.g. "--os linux --arch arm64". imgpull pulls an image
+#                 list for this system's os/arch unless told otherwise.
+#
+# Run the server with --air-gapped to test only what is cached: otherwise a platform image
+# that isn't cached is pulled from the upstream. Every image is pulled in full, one at a time.
+#
+# Requires curl, imgpull, tar, jq and column (util-linux). Exits 1 if any url doesn't match.
+#
+# Output is cached in the script then printed columnarly. So the script is silent until it
+# completes. If you have a large image cache and you want something to look at the find the
+# "tmp.nnnnnn" directory in /tmp that the script creates and tail the results file. E.g.:
+#
+# tail -f /tmp/tmp.w0Jbfe2HE6/results
+#
+
+set -uo pipefail
+
+server="${1:-localhost:8080}"
+imgpull="${IMGPULL:-imgpull}"
+read -r -a imgpull_args <<<"${IMGPULL_ARGS:-}"
+
+for cmd in curl "$imgpull" tar jq column; do
+  if ! command -v "$cmd" >/dev/null; then
+    echo "required command not found: $cmd" >&2
+    exit 1
+  fi
+done
+
+workdir=$(mktemp -d)
+trap 'rm -rf "$workdir"' EXIT
+tarfile="$workdir/image.tar"
+results="$workdir/results"
+
+echo "Run this in another console to monitor progress: tail -f $results"
+
+if ! list=$(curl -sf "http://$server/cmd/manifest/list?count=-1"); then
+  echo "unable to list the manifests on $server" >&2
+  exit 1
+fi
+
+echo "$list" | while read -r url digest _; do
+  # skip the header line, and the message the server returns for an empty cache
+  case "$url" in
+    URL | no | "") continue ;;
+  esac
+  if [[ "$url" == *@sha256:* ]]; then
+    # digest form: the list shows a short digest, so use the full one from the DIGEST column
+    url="${url%@sha256:*}@sha256:$digest"
+  fi
+  rm -f "$tarfile"
+  if "$imgpull" "$server/$url" "$tarfile" --scheme http "${imgpull_args[@]}" >"$workdir/imgpull.log" 2>&1; then
+    manifest_url=$(tar -xOf "$tarfile" manifest.json | jq -r '.[0].repoTags[0]')
+  else
+    manifest_url="PULL-FAILED:$(tail -n 1 "$workdir/imgpull.log" | tr -s ' ' '_')"
+  fi
+  echo "$url $manifest_url"
+done >"$results"
+
+column -t -N OCIREGISTRY_LIST,MANIFEST_URL <"$results"
+
+total=$(wc -l <"$results")
+mismatched=$(awk '$1 != $2' "$results" | wc -l)
+echo >&2
+echo "$((total - mismatched)) of $total url(s) match" >&2
+[[ "$mismatched" -eq 0 ]]

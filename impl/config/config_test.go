@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
@@ -352,27 +353,57 @@ func TestGetters(t *testing.T) {
 	}
 }
 
-// Tests the --no-cache patterns: from the config file, with alwaysPullLatest adding ':latest$'
-// once, and with a pattern that doesn't compile.
+// Tests the --no-cache patterns: from the config file, and with alwaysPullLatest adding
+// ':latest$' once.
 func TestNoCachePatterns(t *testing.T) {
 	if err := SetConfigFromStr([]byte("noCache:\n  - ':nightly$'\n  - ':pr-[0-9]{1,3}$'\nalwaysPullLatest: true\n")); err != nil {
 		t.Fatal(err)
 	}
-	patterns, err := NoCachePatterns()
-	if err != nil || len(patterns) != 3 || patterns[2].String() != ":latest$" {
-		t.Fatalf("expected the two patterns plus :latest$, got %v %v", patterns, err)
+	patterns := NoCachePatterns()
+	if len(patterns) != 3 || patterns[2].String() != ":latest$" {
+		t.Fatalf("expected the two patterns plus :latest$, got %v", patterns)
 	}
 	if err := SetConfigFromStr([]byte("noCache:\n  - ':latest$'\nalwaysPullLatest: true\n")); err != nil {
 		t.Fatal(err)
 	}
-	if patterns, _ := NoCachePatterns(); len(patterns) != 1 {
+	if patterns := NoCachePatterns(); len(patterns) != 1 {
 		t.Fatalf("':latest$' should not be added twice, got %v", patterns)
 	}
-	if err := SetConfigFromStr([]byte("noCache:\n  - '[unclosed'\n  - ':ok$'\n")); err != nil {
+}
+
+// Tests that a pattern that doesn't compile (which validation should make impossible) is
+// skipped, and the patterns that do compile are kept.
+func TestNoCachePatternsSkipsInvalid(t *testing.T) {
+	Set(Configuration{NoCache: []string{":a$", "[unclosed", ":b$"}, AlwaysPullLatest: true})
+	defer Set(Configuration{})
+	var got []string
+	for _, re := range NoCachePatterns() {
+		got = append(got, re.String())
+	}
+	if !slices.Equal(got, []string{":a$", ":b$", ":latest$"}) {
+		t.Fatalf("expected the valid patterns, got %v", got)
+	}
+}
+
+// Tests that a config file noCache pattern that doesn't compile is an error, and leaves the
+// configuration unchanged.
+func TestNoCacheInvalid(t *testing.T) {
+	if err := SetConfigFromStr([]byte("noCache:\n  - ':ok$'\n")); err != nil {
 		t.Fatal(err)
 	}
-	if patterns, err := NoCachePatterns(); err == nil || len(patterns) != 1 {
-		t.Fatalf("expected an error and the one valid pattern, got %v %v", patterns, err)
+	err := SetConfigFromStr([]byte("noCache:\n  - ':fine$'\n  - '[unclosed'\n"))
+	if err == nil || !strings.Contains(err.Error(), "[unclosed") {
+		t.Fatalf("expected an error naming the bad pattern, got %v", err)
+	}
+	if !slices.Equal(GetNoCache(), []string{":ok$"}) {
+		t.Fatalf("configuration should be unchanged, got %v", GetNoCache())
+	}
+	cfgFile := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(cfgFile, []byte("noCache:\n  - '(?<bad'\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := Load(cfgFile); err == nil || !strings.Contains(err.Error(), "(?<bad") {
+		t.Fatalf("expected Load to fail naming the bad pattern, got %v", err)
 	}
 }
 

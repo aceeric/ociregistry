@@ -11,6 +11,7 @@ import (
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/aceeric/ociregistry/impl/auth"
+	log "github.com/sirupsen/logrus"
 
 	yaml "go.yaml.in/yaml/v4"
 )
@@ -233,25 +234,23 @@ const latestPattern = ":latest$"
 
 // NoCachePatterns returns the compiled --no-cache patterns. An image whose canonical url
 // matches any of them is always pulled from the upstream. If alwaysPullLatest is set, the
-// pattern ':latest$' is included. If any pattern doesn't compile, the ones that do are
-// returned with an error naming the first that doesn't.
-func NoCachePatterns() ([]*regexp.Regexp, error) {
+// pattern ':latest$' is included. The patterns are validated where they enter the
+// configuration (the config file by SetConfigFromStr, the command line by the parser).
+// But we trap errors anyway to be safe.
+func NoCachePatterns() []*regexp.Regexp {
 	patterns := slices.Clone(config.NoCache)
 	if config.AlwaysPullLatest && !slices.Contains(patterns, latestPattern) {
 		patterns = append(patterns, latestPattern)
 	}
 	compiled := []*regexp.Regexp{}
-	var firstErr error
 	for _, p := range patterns {
 		if re, err := regexp.Compile(p); err != nil {
-			if firstErr == nil {
-				firstErr = fmt.Errorf("--no-cache pattern %q does not compile: %s", p, err)
-			}
+			log.Errorf("no-cache pattern %q did not compile (should never happen): %s", p, err)
 		} else {
 			compiled = append(compiled, re)
 		}
 	}
-	return compiled, firstErr
+	return compiled
 }
 
 func GetAirGapped() bool {
@@ -317,14 +316,16 @@ func Set(cfg Configuration) {
 	config = cfg
 }
 
-// SetConfigFromStr parses the yaml input and sets the configuration from it
+// SetConfigFromStr parses and validates the yaml input and sets the configuration from it.
+// The configuration is unchanged if there is an error.
 func SetConfigFromStr(configBytes []byte) error {
 	var cfg Configuration
 	if err := yaml.Unmarshal(configBytes, &cfg); err != nil {
 		return err
-	} else {
-		config = cfg
+	} else if err := validateNoCache(cfg.NoCache); err != nil {
+		return err
 	}
+	config = cfg
 	return nil
 }
 
@@ -432,4 +433,14 @@ func UpstreamAuthProviders(yield func(TokenAuth) bool) {
 			}
 		}
 	}
+}
+
+// validateNoCache returns an error naming the first noCache pattern that doesn't compile.
+func validateNoCache(patterns []string) error {
+	for _, p := range patterns {
+		if _, err := regexp.Compile(p); err != nil {
+			return fmt.Errorf("noCache pattern %q does not compile: %s", p, err)
+		}
+	}
+	return nil
 }

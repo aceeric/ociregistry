@@ -112,3 +112,17 @@ func (r *OciRegistry) x_registry_hdr(ctx echo.Context) string {
 	}
 	return ""
 }
+
+// alwaysPull returns true if the passed canonical image url must be pulled from the upstream
+// on every request because it matches a --no-cache pattern. Never true when air-gapped.
+func (r *OciRegistry) alwaysPull(url string) bool {
+	if r.airGapped {
+		return false
+	}
+	for _, re := range r.noCache {
+		if re.MatchString(url) {
+			return true
+		}
+	}
+	return false
+}

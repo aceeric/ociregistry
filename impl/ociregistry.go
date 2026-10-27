@@ -15,7 +15,6 @@ import (
 	_ "crypto/sha512"
 
 	"github.com/labstack/echo/v4"
-	log "github.com/sirupsen/logrus"
 )
 
 // OciRegistry implements the OCI Distribution REST API.
@@ -39,36 +38,15 @@ type OciRegistry struct {
 // passed channel allows the /cmd/stop endpoint to signal the REST server to shut down.
 // The OciRegistry struct returned by the function implements the api.ServerInterface interface,
 // which is generated from the api/ociregistry.yaml openapi spec for the distribution server.
-//
-// The --no-cache patterns are validated when the server starts (see subcmd.Serve), so any
-// that don't compile have already stopped the server; here they are only logged.
 func NewOciRegistry(ch chan bool) *OciRegistry {
-	noCache, err := config.NoCachePatterns()
-	if err != nil {
-		log.Error(err)
-	}
 	return &OciRegistry{
 		imagePath:   config.GetImagePath(),
 		pullTimeout: int(config.GetPullTimeout()),
-		noCache:     noCache,
+		noCache:     config.NoCachePatterns(),
 		airGapped:   config.GetAirGapped(),
 		defaultNs:   config.GetDefaultNs(),
 		shutdownCh:  ch,
 	}
-}
-
-// alwaysPull returns true if the passed canonical image url must be pulled from the upstream
-// on every request because it matches a --no-cache pattern. Never true when air-gapped.
-func (r *OciRegistry) alwaysPull(url string) bool {
-	if r.airGapped {
-		return false
-	}
-	for _, re := range r.noCache {
-		if re.MatchString(url) {
-			return true
-		}
-	}
-	return false
 }
 
 // GET /

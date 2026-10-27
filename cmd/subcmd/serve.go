@@ -49,10 +49,6 @@ var (
 // Serve runs the OCI distribution server, blocking until stopped with CTRL-C
 // or via the command REST API.
 func Serve(buildVer string, buildDtm string) error {
-	// a --no-cache pattern from the config file isn't validated by the command line parser
-	if _, err := config.NoCachePatterns(); err != nil {
-		return err
-	}
 	// before anything reads or writes the cache: preload, the pruner, and the cache load
 	if err := migrateOnStartup(config.GetImagePath()); err != nil {
 		return err

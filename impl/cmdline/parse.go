@@ -98,7 +98,11 @@ var cmds = &cli.Command{
 			Description: "Runs the pull-through registry. The --preload-images arg accepts the following: the name of\n" +
 				"a plain text file containing an image list, the name of a tarball, a glob expression for either of the\n" +
 				"above, or all of the above comma-separated. Glob expressions must be single-quote enclosed to prevent shell\n" +
-				"expansion. Complex example: --preload-images 'foo*.tar,myimagelist.txt,myotherlist.txt,frobozz*.tgz'",
+				"expansion. Complex example: --preload-images 'foo*.tar,myimagelist.txt,myotherlist.txt,frobozz*.tgz'\n\n" +
+				"The --no-cache arg is a Go regex, and is repeatable. An image whose canonical url (e.g.\n" +
+				"docker.io/library/hello-world:latest) matches any --no-cache regex is always pulled from the upstream.\n" +
+				"If that pull fails, the cached copy is served. Single-quote each regex to prevent shell expansion.\n" +
+				"Example: --no-cache ':latest$' --no-cache ':(nightly|pr-[0-9]+)$'",
 			Flags: []cli.Flag{
 				// validation at point of use
 				&cli.StringFlag{
@@ -152,7 +156,7 @@ var cmds = &cli.Command{
 				},
 				&cli.IntFlag{
 					Name:        "health",
-					Usage:       "Specify a port number to have the server run a /health endpoint for liveness/readiness",
+					Usage:       "Port on which the server runs a /health endpoint for liveness/readiness",
 					Destination: &cfg.Health,
 					Action: func(ctx context.Context, cmd *cli.Command, _ int) error {
 						fromCmdline.Health = true
@@ -169,10 +173,8 @@ var cmds = &cli.Command{
 					},
 				},
 				&cli.StringSliceFlag{
-					Name: "no-cache",
-					Usage: "Always pull from the upstream if the image url matches this Go regex (repeatable),\n" +
-						"e.g. --no-cache ':latest$' --no-cache ':(nightly|pr-[0-9]+)$'. Matched against the canonical url,\n" +
-						"e.g. docker.io/library/hello-world:latest. If the upstream pull fails, a cached copy is served",
+					Name:        "no-cache",
+					Usage:       "Always pull images whose url matches this regex from the upstream (repeatable)",
 					Destination: &cfg.NoCache,
 					Validator: func(patterns []string) error {
 						for _, p := range patterns {
@@ -200,7 +202,7 @@ var cmds = &cli.Command{
 				&cli.BoolFlag{
 					Name:        "hello-world",
 					Value:       false,
-					Usage:       "Only serves docker.io/hello-world:latest using built-in files without pulling - for testing",
+					Usage:       "Only serves docker.io/hello-world:latest from built-in files, without pulling (testing)",
 					Destination: &cfg.HelloWorld,
 					Action: func(ctx context.Context, cmd *cli.Command, _ bool) error {
 						fromCmdline.HelloWorld = true
@@ -220,7 +222,7 @@ var cmds = &cli.Command{
 				&cli.StringFlag{
 					Name:        "default-ns",
 					Value:       "",
-					Usage:       "A default namespace if none is provided (otherwise pull without namespace is an error)",
+					Usage:       "A default namespace if none is provided (otherwise a pull without one is an error)",
 					Destination: &cfg.DefaultNs,
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.DefaultNs = true

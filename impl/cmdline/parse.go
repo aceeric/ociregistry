@@ -397,7 +397,7 @@ var cmds = &cli.Command{
 		},
 		{
 			Name:  "migrate-cache",
-			Usage: "Migrates the cache from the legacy layout",
+			Usage: "Migrates the cache from the legacy (pre v2.n.n) layout",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "migrate-cache"
 				return nil
@@ -407,7 +407,9 @@ var cmds = &cli.Command{
 				"legacy directories are not modified. A report is written to manifests/migration-report.txt.\n" +
 				"The serve command migrates automatically; load, list and prune require a migrated cache.\n" +
 				"Stop any server using the cache first. Exits 0 if the migration is complete (skipped files\n" +
-				"are listed in the report), 1 if any manifest could not be written.",
+				"are listed in the report), 1 if any manifest could not be written. Once a migration is completed,\n" +
+				"a file named 'migration-complete' is written to the manifests directory in the image cache. The\n" +
+				"presence of this file prevents any subsequent migration.",
 			Flags: []cli.Flag{
 				&cli.BoolFlag{
 					Name:        "dry-run",

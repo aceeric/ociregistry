@@ -1,0 +1,17 @@
+1. cache  migration (serve and migrate-cache)
+2. Strict config parsing
+3. Prune dryrun -> dryRun
+   - dryRun: no also means false.
+   - No config file: serve can only enable the pruner from the config file, so dry run doesn’t matter there.
+   - The offline prune command: it still uses its --dry-run flag, which defaults to false (opposite)
+   - The REST endpoint: DELETE /cmd/prune already defaults to a dry run.
+   - Prune dry run is now the default. Scheduled prunes only log what they would remove unless the configuration
+     has pruneConfig.dryRun: false. Installations that prune today must add dryRun: false after upgrading, or
+     pruning will stop
+4. --no-cache
+
+
+
+TODO
+ - Review 3-way consistency between cmd rest api, server config  and sub-commands like prune
+ - Review documentation

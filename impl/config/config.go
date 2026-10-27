@@ -1,9 +1,12 @@
 package config
 
 import (
+	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"runtime"
@@ -63,7 +66,8 @@ type RegistryConfig struct {
 	Opts        imgpull.PullerOpts `yaml:"opts,omitempty"`
 }
 
-// PruneConfig configures the prune behavior
+// PruneConfig configures the prune behavior. When loaded from the config file, DryRun is true
+// unless the file has dryRun: false (see SetConfigFromStr).
 type PruneConfig struct {
 	Enabled  bool   `yaml:"enabled"`
 	Duration string `yaml:"duration"`
@@ -71,7 +75,7 @@ type PruneConfig struct {
 	Freq     string `yaml:"frequency"`
 	Count    int    `yaml:"count"`
 	Expr     string `yaml:"expr"`
-	DryRun   bool   `yaml:"dryrun"`
+	DryRun   bool   `yaml:"dryRun"`
 }
 
 // MigrateConfig configures the migrate-cache sub-command. It is only set from the
@@ -317,10 +321,19 @@ func Set(cfg Configuration) {
 }
 
 // SetConfigFromStr parses and validates the yaml input and sets the configuration from it.
-// The configuration is unchanged if there is an error.
+// Parsing is strict: a key that isn't a configuration field is an error, so a misspelled key
+// (e.g. "dryrun" for "dryRun") stops the server rather than being silently ignored. The
+// configuration is unchanged if there is an error.
+//
+// Prune dry run defaults to true: the decoder only sets fields whose keys are present with a
+// value, so pruning for real requires dryRun: false in the file. An absent key, an absent
+// pruneConfig, or a null value (dryRun: with nothing after it) all leave it true.
 func SetConfigFromStr(configBytes []byte) error {
-	var cfg Configuration
-	if err := yaml.Unmarshal(configBytes, &cfg); err != nil {
+	cfg := Configuration{PruneConfig: PruneConfig{DryRun: true}}
+	dec := yaml.NewDecoder(bytes.NewReader(configBytes))
+	dec.KnownFields(true)
+	// io.EOF means the input is empty, or only comments: an empty configuration
+	if err := dec.Decode(&cfg); err != nil && !errors.Is(err, io.EOF) {
 		return err
 	} else if err := validateNoCache(cfg.NoCache); err != nil {
 		return err

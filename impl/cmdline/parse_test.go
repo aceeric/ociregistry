@@ -205,6 +205,8 @@ var expectConfig = config.Configuration{
 	HelloWorld:       true,
 	DefaultNs:        "abc.io",
 	Host:             "2.3.4.5",
+	// prune dry run defaults to true when the config file doesn't set it
+	PruneConfig: config.PruneConfig{DryRun: true},
 }
 
 // Test that a command line with nothing specified does not overwrite any part of

@@ -422,3 +422,56 @@ func TestMergeNoCache(t *testing.T) {
 		t.Fatalf("command line patterns should replace the file's, got %v", GetNoCache())
 	}
 }
+
+// Tests that prune dry run is true unless the config file explicitly has dryRun: false.
+func TestPruneDryRun(t *testing.T) {
+	tests := []struct {
+		cfg  string
+		want bool
+	}{
+		{"", true},
+		{"port: 1234\n", true},
+		{"pruneConfig:\n", true},
+		{"pruneConfig: {}\n", true},
+		{"pruneConfig:\n  enabled: true\n", true},
+		{"pruneConfig:\n  dryRun:\n", true},
+		{"pruneConfig:\n  dryRun: ~\n", true},
+		{"pruneConfig:\n  dryRun: true\n", true},
+		{"pruneConfig:\n  dryRun: false\n", false},
+	}
+	for _, tst := range tests {
+		if err := SetConfigFromStr([]byte(tst.cfg)); err != nil {
+			t.Fatalf("%q: %s", tst.cfg, err)
+		}
+		if got := GetPruneConfig().DryRun; got != tst.want {
+			t.Errorf("%q: expected DryRun %t, got %t", tst.cfg, tst.want, got)
+		}
+	}
+}
+
+// Tests strict parsing: a key that isn't a configuration field, at any level, is an error that
+// names the key and leaves the configuration unchanged. Empty and comment-only input is an
+// empty configuration.
+func TestUnknownKeys(t *testing.T) {
+	for _, cfg := range []string{
+		"pruneConfig:\n  dryrun: true\n",
+		"logleve: debug\n",
+		"registries:\n  - name: docker.io\n    auth:\n      usr: frobozz\n",
+	} {
+		if err := SetConfigFromStr([]byte("port: 1234\n")); err != nil {
+			t.Fatal(err)
+		}
+		err := SetConfigFromStr([]byte(cfg))
+		if err == nil || !strings.Contains(err.Error(), "not found") {
+			t.Errorf("%q: expected an unknown field error, got %v", cfg, err)
+		}
+		if GetPort() != 1234 {
+			t.Errorf("%q: configuration should be unchanged", cfg)
+		}
+	}
+	for _, cfg := range []string{"", "# only a comment\n"} {
+		if err := SetConfigFromStr([]byte(cfg)); err != nil {
+			t.Errorf("%q: expected an empty configuration, got %v", cfg, err)
+		}
+	}
+}

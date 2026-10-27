@@ -9,7 +9,7 @@ pruneConfig:
   enabled: true
   duration: 0d
   type: pattern
-  expr: 1.31
+  expr: 1\.31
   frequency: 0s
   count: -1
   dryRun: false

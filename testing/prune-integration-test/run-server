@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# usage: testing/integration-test-1/test-script --start-docker --load-images --cleanup
+# usage: testing/prune-integration-test/run-server --start-docker --load-images --cleanup
 
 set -e
 
@@ -52,7 +52,7 @@ fi
 # start the pull-through server
 temp_dir=$(mktemp -d) && echo "IMAGEPATH=$temp_dir"
 truncate -s0 /tmp/ociregistry.log
-bin/ociregistry --config-file testing/integration-test-1/config.yaml --image-path $temp_dir serve &
+bin/ociregistry --config-file testing/prune-integration-test/config.yaml --image-path $temp_dir serve &
 
 sleep 2s && read -p 'press any key to end the test'
 

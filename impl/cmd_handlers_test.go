@@ -74,6 +74,8 @@ func TestCmdApi(t *testing.T) {
 		{testFun: testGetBlobList, expRespLines: 2},
 		{testFun: testGetImgList, expRespLines: 10},
 		{testFun: testPrune, expRespLines: 2},
+		{testFun: testImageCache, expRespLines: 16},
+		{testFun: testImageCacheBadLen, expRespLines: 1},
 	}
 	for _, tst := range tests {
 		rec := httptest.NewRecorder()
@@ -167,4 +169,20 @@ func setupTests() (string, error) {
 		return td, err
 	}
 	return td, nil
+}
+
+// GET /cmd/image/cache?digestLen=...
+// returns the entries heading, blank, header, the three manifests (the prune test is a dry
+// run), blank, the aliases heading, blank, header, and for each manifest its alias and tag
+func testImageCache(r *OciRegistry, ctx echo.Context, rec *httptest.ResponseRecorder) bool {
+	n := 12
+	r.CmdImagecache(ctx, models.CmdImagecacheParams{DigestLen: &n})
+	return ctx.Response().Status == 200 && strings.Contains(rec.Body.String(), "03b62250a3cb...")
+}
+
+// GET /cmd/image/cache?digestLen=0 is rejected
+func testImageCacheBadLen(r *OciRegistry, ctx echo.Context, rec *httptest.ResponseRecorder) bool {
+	n := 0
+	r.CmdImagecache(ctx, models.CmdImagecacheParams{DigestLen: &n})
+	return ctx.Response().Status == 400
 }

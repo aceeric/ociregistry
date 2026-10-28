@@ -1377,6 +1377,19 @@ paths:
           description: ""
         '404':
           description: ""
+  /cmd/image/cache:
+    get:
+      operationId: cmd-imagecache
+      parameters:
+        - in: query
+          name: digestLen
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: ''
   /cmd/prune:
     delete:
       tags: []

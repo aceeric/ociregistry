@@ -78,6 +78,25 @@ func (r *OciRegistry) CmdImagelist(ctx echo.Context, params models.CmdImagelistP
 	return ctx.Stream(http.StatusOK, "text/plain", cache.NewMFReaderWithBlobs(manifests))
 }
 
+// GET /cmd/image/cache?digestLen=n
+// Shows the in-memory manifest cache: every entry, then every digest alias with its tags.
+// Digests are shortened to digestLen hex characters; the default, 64, shows them in full.
+func (r *OciRegistry) CmdImagecache(ctx echo.Context, params models.CmdImagecacheParams) error {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Errorf("handled panic: %s", err)
+		}
+	}()
+	digestLen := 64
+	if params.DigestLen != nil {
+		digestLen = *params.DigestLen
+	}
+	if digestLen < 1 {
+		return ctx.String(http.StatusBadRequest, "invalid parameters\n")
+	}
+	return ctx.String(http.StatusOK, cache.DumpCache(digestLen))
+}
+
 // DELETE /cmd/prune?type=...&dur=...&expr=...&dryRun=
 func (r *OciRegistry) CmdPrune(ctx echo.Context, params models.CmdPruneParams) error {
 	defer func() {

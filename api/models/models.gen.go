@@ -9,6 +9,11 @@ type CmdBloblistParams struct {
 	Count  *int    `form:"count,omitempty" json:"count,omitempty"`
 }
 
+// CmdImagecacheParams defines parameters for CmdImagecache.
+type CmdImagecacheParams struct {
+	DigestLen *int `form:"digestLen,omitempty" json:"digestLen,omitempty"`
+}
+
 // CmdImagelistParams defines parameters for CmdImagelist.
 type CmdImagelistParams struct {
 	Pattern *string `form:"pattern,omitempty" json:"pattern,omitempty"`

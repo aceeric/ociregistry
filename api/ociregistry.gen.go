@@ -28,6 +28,9 @@ type ServerInterface interface {
 	// (GET /cmd/blob/list)
 	CmdBloblist(ctx echo.Context, params CmdBloblistParams) error
 
+	// (GET /cmd/image/cache)
+	CmdImagecache(ctx echo.Context, params CmdImagecacheParams) error
+
 	// (GET /cmd/image/list)
 	CmdImagelist(ctx echo.Context, params CmdImagelistParams) error
 
@@ -188,6 +191,24 @@ func (w *ServerInterfaceWrapper) CmdBloblist(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CmdBloblist(ctx, params)
+	return err
+}
+
+// CmdImagecache converts echo context to params.
+func (w *ServerInterfaceWrapper) CmdImagecache(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CmdImagecacheParams
+	// ------------- Optional query parameter "digestLen" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "digestLen", ctx.QueryParams(), &params.DigestLen, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter digestLen: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CmdImagecache(ctx, params)
 	return err
 }
 
@@ -1719,6 +1740,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/cmd/manifest/list", wrapper.CmdManifestlist, options.OperationMiddlewares["cmd-manifestlist"]...)
 	router.GET(options.BaseURL+"/cmd/blob/list", wrapper.CmdBloblist, options.OperationMiddlewares["cmd-bloblist"]...)
 	router.GET(options.BaseURL+"/cmd/image/list", wrapper.CmdImagelist, options.OperationMiddlewares["cmd-imagelist"]...)
+	router.GET(options.BaseURL+"/cmd/image/cache", wrapper.CmdImagecache, options.OperationMiddlewares["cmd-imagecache"]...)
 	router.DELETE(options.BaseURL+"/cmd/prune", wrapper.CmdPrune, options.OperationMiddlewares["cmd-prune"]...)
 
 }
@@ -1728,25 +1750,25 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"7FhLb9s4F/0rwl19H6Bafs0stJpOUrQG0iSIMrMZzIKmriUCEsnykalr6L8PqMRtOpEcS1YSP7RJnJC8",
-	"5D3nPs71CvCrQcVJdi6ohnAFMWqqmDRMcAjhIzOf7NzTwiqKHhUxgg9WZRBCaozUYRAkzKR2PqAiDwhF",
-	"VIwGgjKFCdNGLaHwgfGFcKap4IZQ4z5iTpgzQqT8tkyWv0kljOCDHN3+n59wbbPsneDZ0pPuk0mVsEnq",
-	"UUJTxhPv6mzmnbur2Ny6E16E6g4V+JAxilyju46THCGEz7Nb7+L+v97/chGzBcP4/088UuSfwb1XVqNy",
-	"r0Zu6hwMFC50kCKJdZATxoOL2dmHy+iDc8SgyvXVwr2IUYQQLgVH8MEwk7k/3dtvHux477wrifz99cyb",
-	"DIbgwx0qfY/AaDAcDJ09IZETySCEyWA4mIAPkpi0pC1wPxIswRUSFXFYzGII4UYIAz4o1FJwjeXu8XD4",
-	"lGsoiqLwIaB5HMwzMQ8ypk2t2bM8/j0T83KPe4ciORpUGsK/VsCcvS8W1RL8NfjazrVR4IOmKebEWTRL",
-	"Wa4YxXgCReFXn6TCclN1kHGDCSooir+3c9CHaf3CdDMkLCcJPovJzO3aHhRJjEu/NqjELEFtDhfPnHC2",
-	"QG2ehfTzw8ZXQXU/sJHKcrzfkqHBSliuyz1b4VG64F79xTKFMYRGWWwTcrZV/uJX2epcrJY39oBZ1EbI",
-	"TYEdufUmlfluXF/m/xyf44LYbNtav9GxUfUbfHB9ruruT0jil7//AQNiTboBh/duuTov3PNR/YgTZ0ko",
-	"9q083kWGaCrKVGt+8EEjbDraIGQ3A7hylxZlk9eBlZkgcWlQCl2J6LXQ5pLk6Bq+/uNhfzXCTpD88Kr8",
-	"1UXhad3r8rpK8NzBhRJ5QzZG1WyMh+MuK0sNf8FK4QIVcorFhuT4iE+YvFmfe1lKfzajHl26va2nmE8b",
-	"IuhcNDStjHK3cFTgjBuB48N09Gstara6MthDDqf21Wbr5N81x0vHFCodrO6ftUVy36zPnK8deTUevkO3",
-	"MwlEGbYg1NwuZWddcTcqDEn05mHlOwO3JNEX7KWh/w9irZRyRhpHelsU9Wjdsh6Hct2E4/SsW4lGZXFp",
-	"EMp69DaB3EH9Hf5SV3/r4+2QARo27t6bBpBTQuJxUq2/SXmiAZ/PrfV3Kw27die4vbjKGb5O+h0ehnUN",
-	"RMPbpm+PZIMxplaQH0dWj3YoiCs9bic1ovGbdBA9PjHFcvI4d105e0B3LRc7iKho/JYFtxMOjkWLnSwV",
-	"+yrpekL2Shn2pao7gbnSk7YqM5ocbrvWk5MTqz1d+6l5e172QjqXhXAn/RxNDr4tdcLn8cjwntHjVPM9",
-	"r8c4FPSs7uNssdLT9gNGND1xbaSnJzin9KxPj3nc6emdHtfUVJb4HUenaNo3785i45gmsD4w3jww9nmQ",
-	"68PjhMPjuXmwD449bCqNx8qi+HcA",
+	"7Fhbb9s2FP4rwnnaANXybXvw07qmaA2kSRBnexn2QFPHEgGJZHnJ6hr67wPluE0bSbFkJb7pJXFC8pDn",
+	"+87lO14BfjGoOEkuBNUwWUGImiomDRMcJvCBmY927mlhFUWPihDBB6sSmEBsjNSTIIiYie28R0UaEIqo",
+	"GA0EZQojpo1aQuYD4wvhTFPBDaHGfcSUMGeESPl1GS3/kEoYwXspuv0/PuHGJskbwZOlJ90nEytho9ij",
+	"hMaMR971u6l34a5ic+tOeDNU96jAh4RR5BrddZykCBP4NL3zLtf/9X5JRcgWDMNfn3ikyH+9tVdWo3Kv",
+	"Rm7KHAwULnQQIwl1kBLGg8vpu/dXs/fOEYMq1dcL9yJGESZwJTiCD4aZxP3p3n77YMd7411L5G9vpt6o",
+	"1wcf7lHpNQKDXr/Xd/aERE4kgwmMev3eCHyQxMQ5bYH7EWEOrpCoiMNiGsIEboUw4INCLQXXmO8e9vtP",
+	"uYYsyzIfApqGwTwR8yBh2pSafZeGfyZinu9x71AkRYNKw+SfFTBn77NFtQR/A762c20U+KBpjClxFs1S",
+	"5itGMR5BlvnFJ6mw3BQdZNxghAqy7N/tHPRhXL4wroaEpSTCwIUdVoEyddvWu7aCJWQRanOJ/GUd/NmP",
+	"57jN3dieXEmMKyNN2F0DcLxxkRLOFqjNs5B+etj4KqgeBjZSWY7rLQkaLITlJt+zFR65C+7Vny1TGMLE",
+	"KItNQs42qkP4RTY6F6rlrT1iFrURsiqwZ269Toe5H5a3q7+HF7ggNtm2Z1U6Nih+gw+uXxfd/RFJ+PL3",
+	"P2BArIkrcHjrlovzwj0f1fc4cZaEYl/z421kiKYiT7X6Bx+0TtXRGiFbDeDKXZrlYkUHViaChLlBKXQh",
+	"ojdCmyuSohMu+q+H/cUIO2H13av8VxuFp3GvS8sqwXMHF0qkNdkYFLMx7A/brCwl/AUrhQtUyClmFcnx",
+	"AZ8webs597KU/mhGPbp0e1tPMR/XRNC5aGhcGOVu4aTAGdYCx4fx4PdS1GxxZbDHHE7Nq83Wyb9rjueO",
+	"KVQ6WK2ftUVy327OXGwceTUevkG3MwlEGbYg1NwtZWtdcTcqDIl09bDyjYE7EulL9tLQ/4RYI6WckNqR",
+	"3hRFPdi0rMehXDbhOD3rVmaDvLjUCGU92E8gt1B/+7+V1d/yeDtmgPq1u3fVAHJOSDxOqs03KU804PO5",
+	"tflupWbXbgW3F1c5/ddJv+PDsKyBaNhv+nZI1hhjSgX5aWT1YIeCuNLDZlJjNtxLB9HDM1MsZ49z25Wz",
+	"A3TXcrGDiJoN91lwW+HgVLTY2VJxqJKuI+SglGFXqtoTmCs9aqoyZ6Pjbdd6dHZitaPrMDVvx8tBSOe8",
+	"EO6kn2ejo29LrfB5OjK8Y/Q01XzH6ykOBR2rhzhbrPS4+YAxG5+5NtLjM5xTOtbHpzzudPSOT2tqykv8",
+	"jqPTbNw179Zi45QmsC4w9h4YhzzIdeFxxuHx3DzYBccBNpXaY2WW/T8A",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

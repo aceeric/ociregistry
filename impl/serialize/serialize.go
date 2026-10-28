@@ -46,8 +46,14 @@ func CanonicalUrl(url string) (string, error) {
 // depends on the exact canonical url, changing the canonicalization rules requires a cache
 // migration.
 func manifestFile(imagePath string, url string) string {
+	return filepath.Join(imagePath, globals.ManifestPath, UrlDigest(url))
+}
+
+// UrlDigest returns the SHA-256 hex of the passed canonical image url, which is the name of
+// the file that holds the manifest for the url.
+func UrlDigest(url string) string {
 	sum := sha256.Sum256([]byte(url))
-	return filepath.Join(imagePath, globals.ManifestPath, hex.EncodeToString(sum[:]))
+	return hex.EncodeToString(sum[:])
 }
 
 // MhFromFilesystem gets the ManifestHolder for the passed image url from the file system.

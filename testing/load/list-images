@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# Lists the images in the local docker registry container on ubuntu.me:5000
+#
+
+registry_url="http://ubuntu.me:5000"
+page_size=100
+next_path="/v2/_catalog?n=${page_size}"
+total_count=0
+
+while [[ -n "$next_path" ]]; do
+  response=$(curl -s -i "${registry_url}${next_path}")
+
+  page_repos=$(echo "$response" | awk '/^\r?$/ {show=1; next} show' | jq -r '.repositories[]')
+  if [[ -n "$page_repos" ]]; then
+    page_count=$(echo "$page_repos" | wc -l)
+    total_count=$((total_count + page_count))
+  fi
+  echo "$page_repos"
+  link_header=$(echo "$response" | grep -i '^Link:' | tr -d '\r')
+  if [[ -n "$link_header" ]]; then
+    next_path=$(echo "$link_header" | sed -n 's/.*<\([^>]*\)>;\s*rel="next".*/\1/p')
+  else
+    next_path=""
+  fi
+done
+
+echo "-----------------------------------"
+echo "Total Repositories: ${total_count}"

@@ -1,0 +1,9 @@
+logLevel: debug
+imagePath: /tmp/mutable-test
+#noCache:
+#  - nightly
+port: 8888
+registries:
+  - name: ubuntu.me:5000
+    description: docker registry running as a container in docker daemon
+    scheme: http

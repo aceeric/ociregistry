@@ -207,7 +207,7 @@ func TestNotMigratedGate(t *testing.T) {
 	os.WriteFile(imgList, []byte(""), 0644)
 	for _, args := range [][]string{
 		{"--image-path", td, "list"},
-		{"--image-path", td, "prune", "--pattern", "foo", "--dry-run"},
+		{"--image-path", td, "prune", "--pattern", "foo"},
 		{"--image-path", td, "load", "--image-file", imgList},
 	} {
 		result, stderr := runMain(t, args...)

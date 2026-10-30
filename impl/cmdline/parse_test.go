@@ -124,18 +124,54 @@ func TestParsePrune(t *testing.T) {
 	afile := filepath.Join(td, "foo")
 	os.WriteFile(afile, []byte("foo"), 0755)
 
-	os.Args = []string{"bin/ociregistry", "prune", "--pattern", "frobozz", "--dry-run"}
+	os.Args = []string{"bin/ociregistry", "prune", "--pattern", "frobozz", "--dry-run", "true"}
 	fromCmdline, cfg, err := Parse()
 	if err != nil || fromCmdline.Command != "prune" || !fromCmdline.PruneConfig || !cfg.PruneConfig.DryRun ||
 		cfg.PruneConfig.Expr != "frobozz" || cfg.PruneConfig.Type != "pattern" {
 		t.Fail()
 	}
 
+	// dry run is the default
+	ClearParse()
 	os.Args = []string{"bin/ociregistry", "prune", "--date", "2025-02-28T12:59:59"}
 	fromCmdline, cfg, err = Parse()
-	if err != nil || fromCmdline.Command != "prune" || !fromCmdline.PruneConfig || cfg.PruneConfig.DryRun ||
+	if err != nil || fromCmdline.Command != "prune" || !fromCmdline.PruneConfig || !cfg.PruneConfig.DryRun ||
 		cfg.PruneConfig.Expr != "2025-02-28T12:59:59" || cfg.PruneConfig.Type != "date" {
 		t.Fail()
+	}
+}
+
+// Tests every form of the prune --dry-run flag: true unless given as false, with or without
+// "=", and an error for anything that isn't true or false, including a missing value.
+func TestParsePruneDryRun(t *testing.T) {
+	tests := []struct {
+		args    []string
+		want    bool
+		wantErr bool
+	}{
+		{[]string{"--pattern", "x"}, true, false},
+		{[]string{"--pattern", "x", "--dry-run", "true"}, true, false},
+		{[]string{"--pattern", "x", "--dry-run=true"}, true, false},
+		{[]string{"--pattern", "x", "--dry-run", "false"}, false, false},
+		{[]string{"--pattern", "x", "--dry-run=false"}, false, false},
+		{[]string{"--dry-run", "false", "--pattern", "x"}, false, false},
+		{[]string{"--pattern", "x", "--dry-run", "nope"}, true, true},
+		{[]string{"--pattern", "x", "--dry-run"}, true, true},
+		{[]string{"--dry-run", "--pattern", "x"}, true, true},
+	}
+	for _, tst := range tests {
+		ClearParse()
+		os.Args = append([]string{"bin/ociregistry", "prune"}, tst.args...)
+		_, cfg, err := Parse()
+		if tst.wantErr {
+			if err == nil {
+				t.Errorf("%v: expected an error", tst.args)
+			}
+			continue
+		}
+		if err != nil || cfg.PruneConfig.DryRun != tst.want {
+			t.Errorf("%v: expected DryRun %t, got %t %v", tst.args, tst.want, cfg.PruneConfig.DryRun, err)
+		}
 	}
 }
 

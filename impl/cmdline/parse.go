@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/aceeric/ociregistry/impl/config"
@@ -21,6 +22,11 @@ var fromCmdline config.FromCmdLine
 
 // cfg has the parsed configuration - including defaults (e.g. port) if the user does not override
 var cfg = config.Configuration{}
+
+// pruneDryRun is the prune --dry-run value. It is a string flag so that both --dry-run false
+// and --dry-run=false work (a bool flag only accepts the second form). The prune command parses
+// it into cfg.PruneConfig.DryRun.
+var pruneDryRun string
 
 // cmds is for the command line parser urfave/cli
 var cmds = &cli.Command{
@@ -357,11 +363,13 @@ var cmds = &cli.Command{
 			Usage: "Prunes the cache on the filesystem",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "prune"
+				// validated by the flag, and defaulted to "true" if not given
+				cfg.PruneConfig.DryRun, _ = strconv.ParseBool(pruneDryRun)
 				return nil
 			},
-			Description: "Prunes the cache on the filesystem (server should not be running). Important: --dry-run\n" +
-				"defaults to false so typically specify --dry-run until results are as expected, then remove to\n" +
-				"actually prune. Important: the date format must be exactly as shown in the --date arg help below.",
+			Description: "Prunes the cache on the filesystem (server should not be running). Note: --dry-run defaults\n" +
+				"to true so specify --dry-run false to actually prune. Important: the date format must be exactly as\n" +
+				"in the --date arg help.",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:        "pattern",
@@ -383,12 +391,18 @@ var cmds = &cli.Command{
 						return nil
 					},
 				},
-				&cli.BoolFlag{
+				&cli.StringFlag{
 					Name:        "dry-run",
-					Value:       false,
-					Usage:       "Shows what would prune, but does not actually prune",
-					Destination: &cfg.PruneConfig.DryRun,
-					Action: func(ctx context.Context, cmd *cli.Command, _ bool) error {
+					Value:       "true",
+					Usage:       "true shows what would prune but does not prune, false prunes",
+					Destination: &pruneDryRun,
+					Validator: func(v string) error {
+						if _, err := strconv.ParseBool(v); err != nil {
+							return fmt.Errorf("must be true or false")
+						}
+						return nil
+					},
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.PruneConfig = true
 						return nil
 					},
@@ -397,7 +411,7 @@ var cmds = &cli.Command{
 		},
 		{
 			Name:  "migrate-cache",
-			Usage: "Migrates the cache from the legacy (pre v2.n.n) layout",
+			Usage: "Migrates the cache from the legacy layout",
 			Action: func(ctx context.Context, cmd *cli.Command) error {
 				fromCmdline.Command = "migrate-cache"
 				return nil
@@ -407,9 +421,7 @@ var cmds = &cli.Command{
 				"legacy directories are not modified. A report is written to manifests/migration-report.txt.\n" +
 				"The serve command migrates automatically; load, list and prune require a migrated cache.\n" +
 				"Stop any server using the cache first. Exits 0 if the migration is complete (skipped files\n" +
-				"are listed in the report), 1 if any manifest could not be written. Once a migration is completed,\n" +
-				"a file named 'migration-complete' is written to the manifests directory in the image cache. The\n" +
-				"presence of this file prevents any subsequent migration.",
+				"are listed in the report), 1 if any manifest could not be written.",
 			Flags: []cli.Flag{
 				&cli.BoolFlag{
 					Name:        "dry-run",
@@ -456,4 +468,5 @@ func Parse() (config.FromCmdLine, config.Configuration, error) {
 func ClearParse() {
 	fromCmdline = config.FromCmdLine{}
 	cfg = config.Configuration{}
+	pruneDryRun = ""
 }

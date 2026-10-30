@@ -69,3 +69,5 @@ EOF
 Then: `ociregistry --config-file /tmp/test-config.yaml serve`
 
 By default, _Ociregistry_ serves on HTTP so if run that way then it is automatically reachable by the test driver.
+
+> Remember to enable traffic into your local host via any firewall apps you use, if testing there.

@@ -57,10 +57,19 @@ Note that since pruning itself introduces locking and load on the server it dist
 The preparation steps are:
 
 1. Run the `maketar` script to generate a set of images. These are small images that test concurrency. Each image has five small blobs. So this isn't about testing large blob pulls, network latency, etc. It's purely a concurrency test. The `maketar` script has logic to generate a defined number of batches. For example: 1000 images in batches of 100 with the batching pattern in the image ref like `-0001`, `-0002` and so on.
-2. Start the Docker Registry container on port 5000.
-3. Run the `load-docker-container` script to move the image tarballs into the Docker Registry container.
-4. Start _Ociregistry_ server on port 8080, exposing metrics on port 2112, on the `/metrics` path.
-5. Start Prometheus and Grafana.
+2. Start the Docker Registry container on port 5000. (The `load-docker-container` script has option `--start-docker` for that.)
+3. Run the `load-docker-container` script to move the image tarballs into the Docker Registry container. See the script for usage.
+4. Start _Ociregistry_ server on port 8888, exposing metrics on port 2112, on the `/metrics` path. E.g.:
+   ```sh
+   bin/ociregistry\
+     --config-file ./testing/load/config.yaml\
+     --image-path ~/tmp/ociregistry-cache\
+     --log-level info\
+     serve\
+     --port 8888\
+     --metrics 2112
+   ```
+5. Start Prometheus and Grafana. (See `observability/start-containers`.)
 
 ## Test Execution
 
@@ -73,8 +82,8 @@ The preparation steps are:
     go run .\
       --pullthrough-url=ubuntu.me:8888\
       --registry-url=ubuntu.me:5000\
-      --patterns=-0001,-0002,-0003\
-      --iteration-seconds=30\
+      --patterns=-0001,-0002,-0003,-0004,-0005\
+      --iteration-seconds=60\
       --tally-seconds=15
     ```
 

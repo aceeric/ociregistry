@@ -12,7 +12,8 @@
 # wu0dnetv4s-597p54o2q8-0001:v494.843
 #
 # Each image has 5 layers (hard-coded). You specify the layer sizes on the command line
-# to suport testing different blob sizes. E.g.: 42,123456,10K,30M,1.2G.
+# to suport testing different blob sizes. E.g.: 42,123456,10K,30M,1.2G. The load test
+# used 50,50,50,50,50 resulting in a small image.
 #
 # The script adds files to the target directory on each run. If you want a clean start
 # then remove the target directory before running the script.

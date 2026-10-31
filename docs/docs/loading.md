@@ -16,15 +16,16 @@ The image store is persisted to the file system. This includes blobs and manifes
 ```text
 /var/lib/ociregistry
 ├── blobs
-├── img
-└── lts
+└── manifests
 ```
 
 1. `blobs` are where the blobs are stored.
-2. `img` stores the non-`latest`-tagged image manifests.
-3. `lts` stores the `latest`-tagged image manifests. (See _About "Latest"_ below.)
+2. `manifests` stores the manifests.
 
-Everything is stored by digest. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
+Blobs are stored by digest. Manifests are stored by one file named by the SHA-256 digest of the canonical manifest URL. When the server starts it loads everything into an in-memory representation. Each new pull through the server while it is running updates both the in-memory representation of the image store as well as the persistent state on the file system.
+
+!!! Note
+    As of version 2.0.0 the filesystem layout changed. When you start the server (via the `serve` subcommand) or when you use the `migrate-cache` sub-command the pre-2.0.0 manifests in `img` and `lts` are migrated to `manifests` and a marker is written. The `img` and `lts` directories remain until you remove them but the server will not "see" those directories after migration to the 2.0.0 storage scheme.
 
 The software uses a data structure called a [ManifestHolder](https://github.com/aceeric/imgpull/blob/e545697c45354370cf31d7bdf745e8ea55db1edb/pkg/imgpull/manifest_holder.go#L74) to hold all the image metadata and the actual manifest bytes from the upstream registry. These are simply serialized to the file system as JSON. (So you can find and inspect them if needed for troubleshooting with `grep`, `cat`, and `jq`.)
 
@@ -48,13 +49,11 @@ The `Bytes` field has the actual manifest bytes from the upstream. You can see t
 
 ## Loading behavior
 
-Loading is additive, meaning if you run the load command to load 100 images, then run it again to load 100 different images, your image cache will have 200 images. If you load 100 images, and then later load the same 100 images again, the server will detect during the second load that there is nothing to do. And of course, if you first load A, B, and C, and then later load C, D, and E, then the cache will hold A, B, C, and D.
+Loading is additive, meaning if you run the load command to load 100 images, then run it again to load 100 different images, your image cache will have 200 images. If you load 100 images, and then later load the same 100 images again, the server will detect during the second load that there is nothing to do. And of course, if you first load A, B, and C, and then later load C, D, and E, then the cache will hold A, B, C, D, and E.
 
-## About "Latest"
+## Canonicalization
 
-Internally, `latest`-tagged images are stored side-by-side with non-latest images and treated as separate manifests. This enables the server to support cases that occur in development environments where `latest` images are in a constant state of flux. Storing `latest` images this way works in tandem with the `--always-pull-latest` flag as follows:
+The server canonicalizes images on intake:
 
-| Action | `--always-pull-latest` {: .nowrap-column } | Result |
-|-|-|-|
-| Pull `foo:latest` | `false` (the default) | The image is pulled exactly once. All subsequent pulls return the same image regardless of what happens in the upstream. |
-| Pull `foo:latest` {: .nowrap-column } | `true` | The image is pulled from the upstream on each pull from the pull-through server **for each client**. Each pull completely replaces the prior pull. In other words - for latest images the server is a stateless proxy. (This could consume a fair bit of network bandwidth.) |
+- For every registry the registry host and repository are lowercased, and so is a digest; tags keep their case
+- For legacy reasons it is possible to pull `docker.io/hello-world:latest` even though the canonical url is `docker.io/library/hello-world:latest`. Since canonicalization happens in ontake, it is always possible to re-pull `docker.io/hello-world:latest` even though internally it is cached with the `library` segment.

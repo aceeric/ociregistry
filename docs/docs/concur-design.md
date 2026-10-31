@@ -25,7 +25,7 @@ Here is how that looks:
 1. The red goroutine accesses the image from the cache, sychronized.
 1. The red goroutine exits the synchronization block and serves the image asynchronously.
 
-Pull synchronization (from upstreams) is by image tag, and is separate from the synchronization for images in cache. In other words, ten clients pulling hello-world:**v3** because it is un-cached and ten other clients pulling hello-world:**v2** that is un-cached and ten other clients accessing hello-world:**v1** from cache are three disjoint synchronization contexts that don't effect each other.
+Pull synchronization (from upstreams) is by canonical image url, and is separate from the synchronization for images in cache. In other words, ten clients pulling hello-world:**v3** because it is un-cached and ten other clients pulling hello-world:**v2** that is un-cached and ten other clients accessing hello-world:**v1** from cache are three disjoint synchronization contexts that don't effect each other.
 
 ## Blob synchronization
 
@@ -34,3 +34,16 @@ The concurrency design for blobs is a little different. The reason is that there
 This enables many concurrent pulls with very minimal sycnhronization overhead, but supports the infrequent addition of blobs resulting from new image pulls, and the removal of blobs as a result of image pruning. When blobs are added because of new pulls, or removed because of pruning, this will temporarily lock the blob cache. The server offers optimization techniques for this. For example, when configuring background pruning, you can configure _Ociregistry_ to prune small sets with greater frequency.
 
 For blobs, only the digest is cached in memory. This is used to efficiently determine if the blob is cached. Whereas manifests are served from memory, blobs are served from the file system.
+
+## Pruning
+
+Pruning can be performed three ways:
+
+1. From the command line: `ociregistry prune ...`
+2. From the admin REST API: `curl -X DELETE "http://hostname:8080/cmd/prune..."`
+3. As a scheduled background process.
+
+For #2 and #3, when pruning starts, it:
+
+ - blocks upstream pulls that commence after pruning, and
+ - is blocked if upstream pulls are already in progress. In this case the process waits up to 10 seconds and is then skipped (scheduled) or returns 503 (REST API).

@@ -10,12 +10,13 @@ USAGE:
    ociregistry [global options] [command [command options]]
 
 COMMANDS:
-   serve    Runs the server
-   load     Loads the image cache
-   list     Lists the cache as it is on the file system
-   prune    Prunes the cache on the filesystem (server should not be running)
-   version  Displays the version
-   help, h  Shows a list of commands or help for one command
+   serve          Runs the pull-through registry
+   load           Loads the image cache using the server as a cli
+   list           Lists the cache as it is on the file system
+   prune          Prunes the cache on the filesystem
+   migrate-cache  Migrates the cache from the legacy (pre v2.n.n) layout
+   version        Displays the server version.
+   help, h        Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
    --log-level string    Sets the minimum value for logging: debug, warn, info, or error (default: "error")

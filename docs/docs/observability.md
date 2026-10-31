@@ -25,8 +25,8 @@ The _Ociregistry_ metrics are a narrower set than the Go Runtime metrics, reflec
 | Blob Pulls | Like manifest pulls, this is the count of blob pulls. Since most manifests contain many blobs, this is expected to be a larger number than the sum of cached and un-cached pulls. |
 | Blob Bytes On Disk | Total blob bytes on the file system. |
 | Manifest Bytes On Disk | Total manifest bytes on the file system. |
-| Cached Manifest Count | Number of manifests in the in-mem cache. Since most images you pull consist of a multi-arch image list manifest, and an os/arch-specific image, this count will always be greater than the number of manifest files on the file system. The goal here is to understand memory footprint.  |
-| Cached Blob Count | Same as cached manifest count. However, since only the blob digest is cached in-mem, and only cached once, this _should_ match the file system blob count. |
+| Cached Manifest Count | Number of manifests in the in-mem cache. |
+| Cached Blob Count | This _should_ match the file system blob count. |
 | V2 Api Endpoint Hits | Total hits against the V2 OCI Distribution Server spec endpoints _that are implemented by the server_. |
 | Api Errors | This is the count of ant API call that results in an error. For example, if one client undertakes an image pull and starts requesting the blobs for an image, and another client simultaneously prunes that image and blobs, then the first client may request a blob that is no longer cached. This is handled as an error by the server. |
 
@@ -79,7 +79,7 @@ From top left to right, and then down, the dashboard shows:
 
 There are a couple of things to be aware of regarding manifest statistics:
 
-1. The dashboard counts manifests in the in-memory cache. Most images cached by the server consist of two manifests: a multi-platform _image list_ manifest and an OS+architecture _image manifest_. Further, when a manifest is cached in memory by tag, it is stored twice: once by tag and once by digest. Because of this the count of cached manifests - being a memory count - will always be higher than the number of manifest files on the file system. The thing to remember is that the dashboard metrics are memory object counters.
+1. The dashboard counts manifests in the in-memory cache.
 2. The manifest pull rate also reflects the fact that a typical client image pull consists of first an image list manifest pull (by tag), then an image manifest pull (by digest.) Therefore, the stats you see in the dashboard will almost always be higher a client-centric count of image pulls.
 
 ## Summary

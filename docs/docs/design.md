@@ -8,7 +8,7 @@ Narrative:
 
 1. A client (in this case - `containerd`) initiates an image pull. The image pull consists of a series of REST API calls. The API calls are handled by the server's implementation of a subset of the [OCI Distribution Spec](https://github.com/opencontainers/distribution-spec).
 1. The API is just a veneer that delegates to the server implementation.
-1. The server checks the local cache and if the image is in cache it is immediately returned from cache.
+1. The server checks the local cache and if the image is in cache it is immediately returned from cache (unless the url matches a `--no-cache` pattern.)
 1. If the image is not in cache, the server calls the embedded [ImgPull](https://github.com/aceeric/imgpull) library to pull the image from the upstream registry. The server knows which upstream to pull from because `containerd` appends a query parameter (e.g. `?ns=registry.k8s.io`) to each API call.
    > The server also supports in-path upstreams, e.g.: `docker pull ociregistry.host/registry.k8s.io/pause:3.8`
 1. The embedded image puller library pulls the image from the upstream registry and returns it to the server.
@@ -79,6 +79,7 @@ project root
 | `impl/pullrequest` | Abstracts the URL parts of an image pull. |
 | `impl/serialize` | Reads/writes from/to the file system. |
 | `impl/handlers.go` | Has the code for the subset of the OCI Distribution Server API spec that the server implements. |
+| `impl/cmd_handlers.go` | Has the code for the administrative REST api. |
 | `impl/ociregistry.go` | A veneer that the embedded [Echo](https://echo.labstack.com/) server calls that simply delegates to `impl/handlers.go`. See the next section - _REST API Implementation_ for some details on the REST API. |
 | `mock` | Runs a mock upstream OCI Distribution server used by the unit tests. |
 

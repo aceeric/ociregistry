@@ -96,18 +96,18 @@ find /tmp/images
 Result:
 
 ```shell
-/tmp/images
+/tmp/images/
+/tmp/images/manifests
+/tmp/images/manifests/ebb95b5ed1df70281d71b8216167b60a02a38454baa1990a684c8165da7ff213
+/tmp/images/manifests/45df402f29c2b3f0492c36e17fc600eaf107f8e1526950326c62e9ca4e8cbef4
 /tmp/images/blobs
 /tmp/images/blobs/fcb6f6d2c9986d9cd6a2ea3cc2936e5fc613e09f1af9042329011e43057f3265
 /tmp/images/blobs/e5dbef90bae3c9df1dfd4ae7048c56226f6209d538c91f987aff4f54e888f566
 /tmp/images/blobs/e8c73c638ae9ec5ad70c49df7e484040d889cca6b4a9af056579c3d058ea93f0
-etc..
-/tmp/images/img
-/tmp/images/img/019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c
-/tmp/images/img/a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
+etc...
 ```
 
-The manifest list was saved in: `images/img/a4afe5bf0ee...` and the image manifest was saved in: `images/img/019d7877d1...`.
+The manifest list was saved in: `images/manifests/45df402f29...` and the image manifest was saved in: `images/manifest/ebb95b5ed1...`. These values are digests of the **URLs** - not the manifest digests.
 
 > When you curled the image manifest the server pulled and cached the blobs at the same time and stored them in `images/blobs`
 

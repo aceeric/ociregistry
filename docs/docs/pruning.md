@@ -9,6 +9,9 @@ The compiled server binary can be used as a CLI to prune the cache on the file s
 !!! Important
     The server must be stopped while pruning using the binary as a CLI because the CLI only manipulates the file system, not the in-memory representation of the cache. Pruning removes manifest lists, manifests, and possibly blobs (more on blobs below.)
 
+!!! Note
+    As of version 2.0.0 the file system manifest storage scheme changed. The prune sub-command will detect whether the cache has been migrated from the pre-2.0.0 structure and if it has not, the prune sub-command will error with this message: "You must manually migrate the cache using the migrate-cache command, or run the serve command which automatically migrates the cache." The same applies to `list` and `load`.
+
 ## List Images
 
 Generally, it is expected that you will use the server binary as a CLI to list the images before deciding which images to prune. E.g.:
@@ -34,24 +37,28 @@ docker.io/kubernetesui/dashboard-api@sha256:dcc897f8...
 
 ## Dry Run
 
-It is strongly recommended to use the `--dry-run` arg to develop your pruning expression. Then remove `--dry-run` to actually prune the cache. When `--dry-run` is specified, the CLI shows you exactly what will be pruned but does not actually modify the file system.
+Dry run is enabled by default. Therefore, to actually prune you must specify `--dry-run false`.
 
 ## By Pattern
 
 Specify `--pattern` with single parameter consisting of one or more manifest URL patterns separated by commas. The patterns are Golang regular expressions as documented in the [regexp/syntax](https://pkg.go.dev/regexp/syntax) package documentation. The expressions on the command line are passed _directly_ to the Golang `regex` parser _as received from the shell_, and are matched to manifest URLs. As such, shell expansion and escaping must be taken into consideration. Simplicity wins the day here. Examples:
 
 ```shell
-bin/ociregistry prune --pattern kubernetesui/dashboard:v2.7.0 --dry-run
-bin/ociregistry prune --pattern docker.io --dry-run
-bin/ociregistry prune --pattern curl,cilium --dry-run
+bin/ociregistry prune --pattern kubernetesui/dashboard:v2.7.0
+bin/ociregistry prune --pattern docker.io
+bin/ociregistry prune --pattern curl,cilium
 ```
+
+> Add `--dry-run false` to the commands above to actually prune.
+
+Patterns match the canonical URL. The server stores manifests in their canonical form. This is really only applicable to the _docker/library_ case. For example, `--pattern docker.io/hello-world` won’t match the cached `docker.io/library/hello-world` manifest.
 
 ## By Create Date/time
 
-The `--prune-before` option accepts a single parameter consisting of a local date/time in the form `YYYY-MM-DDTHH:MM:SS`. All manifests created **before** that time stamp will be selected. Example:
+The `--date` option accepts a single parameter consisting of a local date/time in the form `YYYY-MM-DDTHH:MM:SS`. All manifests created **before** that time stamp will be selected. Example:
 
 ```shell
-bin/ociregistry prune --date 2024-03-01T22:17:31 --dry-run
+bin/ociregistry prune --date 2024-03-01T22:17:31
 ```
 
 The intended workflow is to use the CLI with `list` sub-command to determine desired a cutoff date and then to use that date as an input to the `prune` sub-command.
@@ -61,7 +68,7 @@ The intended workflow is to use the CLI with `list` sub-command to determine des
 Generally, but not always, image list manifests have tags, and image manifests have digests. This is because in most cases, upstream images are multi-architecture. For example, this command specifies a tag:
 
 ```shell
-bin/ociregistry prune --pattern calico/typha:v3.27.0 --dry-run
+bin/ociregistry prune --pattern calico/typha:v3.27.0
 ```
 
 In this case, on a Linux/amd64 machine running the server the CLI will find **two** manifests:

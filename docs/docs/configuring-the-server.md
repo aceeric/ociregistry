@@ -2,6 +2,9 @@
 
 The server will accept configuration on the command line, or via a configuration yaml file. Most of the configuration file settings map directly to the command line. The exceptions are the `pruneConfig`, `registries`, and `serverTlsConfig` entries which are only accepted in the configuration file at this time, being too complex to easily represent as command line args.
 
+!!! Note
+    As of server version 2.0.0, strict parsing of the config yaml is implemented. A parse error will prevent the server from running.
+
 As one would expect the following values provide configuration with the lowest priority on the bottom and the highest priority on the top:
 
 ```mermaid
@@ -35,11 +38,13 @@ logLevel: error
 logFile:
 preloadImages:
 imageFile:
+resolveRef:
 port: 8080
 #os: omit to use the server OS
 #arch: omit to use the server architecture
 pullTimeout: 60000
 alwaysPullLatest: false
+noCache: []
 airGapped: false
 helloWorld: false
 defaultNs:
@@ -61,11 +66,13 @@ serverTlsConfig: {}
 |`logFile` | Path spec | - | `--log-file` | Empty means log to stderr. If you specify a file, the logging is directed to the file. |
 |`preloadImages` | Path spec | - | `--preload-images` | Used by the `serve` subcommand to pre-load images before starting the server. See "Loading Images" below. |
 |`imageFile` | Path spec | - | `--image-file` | Used by the `load` subcommand to load images while the server is not running (expects exclusive access to the image cache.) See "Loading Images" below. |
+| `resolveRef` | string | n/a | `--resolve-ref` | Don't use this field in the configuration yaml file. This is a very narrow use case for single-image tarballs. See the load sub-command, e.g. `ociregistry load --help` |
 |`port` | Integer | 8080 | `--port` | The port to serve on |
 |`os` | keyword | runtime.GOOS | `--os` | If loading or preloading, the OS and arch. If empty, then defaults to the host running the server. So usually comment these out. |
 |`arch` | keyword | runtime.GOARCH | `--arch` | " |
 |`pullTimeout` | Integer | 60000 | `--pull-timeout` | Number of milliseconds before a pull from an upstream will time out. |
-| `alwaysPullLatest` {: .nowrap-column } | Boolean | false | `--always-pull-latest` | If true, then whenever a latest tag is pulled, the server will always pull from the upstream - in other words it acts like a basic proxy. Useful when supporting dev environments where latest is frequently changing. |
+| `alwaysPullLatest` {: .nowrap-column } | Boolean | false | `--always-pull-latest` | As of version 2.0.0, this is internally implemented as `--no-cache ':latest$'`. See the _No Cache_ section below. |
+|`noCache` | String list | `[]` | `--no-cache pattern` [`--no-cache pattern`] | See the _No Cache_ section below. |
 |`airGapped` | Boolean | false | `--air-gapped` | If true, will not attempt to pull from an upstream when an image is requested that is not cached. |
 |`helloWorld` | Boolean | false | `--hello-world` | For testing. Only serves 'docker.io/hello-world:latest' from embedded blobs and manifests |
 |`defaultNs` | String | Empty | `--default-ns` | Allows pulling without an explicit namespace. Otherise, a namespace is required either in-path (`docker pull ociregistry:8080/docker.io/hello-world`) or as a query param the way `containerd` does it when registry mirroring is configured in the `containerd` `config.toml`. E.g. if `--default-ns=docker.io` then `docker pull ociregistry:8080/hello-world` will pull from `docker.io`, otherwise it is an error. |
@@ -75,6 +82,17 @@ serverTlsConfig: {}
 |`registries` | List of dictionary | `[]` | n/a | Upstream registries configuration. See further down for registry configuration. |
 |`pruneConfig` | Dictionary | see below | n/a | Prune configuration. Pruning is disabled by default. See further down for prune configuration. |
 |`serverTlsConfig` | Dictionary | `{}` | n/a | Configures TLS with downstream (client) pullers, e.g. containerd. By default, serves over HTTP. See server tls configuration further down. |
+
+## No Cache
+
+The `noCache` config entry (or `--no-cache` arg) works as follows:
+
+- The value is a Go regex. In the config yaml it's a list, and on the command line it's a repeatable arg, e.g. `--no-cache foo --no-cache bar`
+- It's only available in the `serve` sub-command
+- Each arg value is matched against the canonical URLs cached in the server or some subset, including digest URLs. The server canonicalizes urls on intake. Meaning you can pull by alias but pruning requires the `--no-cache` arg to use the canonical url. E.g. if you pull `docker.io/hello-world:latest`, to always re-pull requires `--no-cache docker.io/library/hello-world:latest` or some matching subset.
+- The patterns provided on the command line **replace** those in the config file rather than being merged
+- An invalid regex is a startup error
+- The cached copy is served if the upstream pull fails
 
 ## Loading Images
 
@@ -261,9 +279,10 @@ pruneConfig:
   enabled: true
   duration: 30d
   type: accessed
+  expr:
   frequency: 1d
   count: -1
-  dryRun: false
+  dryRun: true
 ```
 
 ## Prune configuration keys and values
@@ -272,9 +291,13 @@ pruneConfig:
 |-|-|-|
 | `enabled` | Boolean | If true, enables background pruning. |
 | `duration` | Duration expression | E.g.: `30d`. The value is interpreted based on the prune `type` below. Valid time units are `ns` (nanoseconds), `us` or `µs` (microseconds), `ms` (milliseconds), `s` (seconds), `m` (minutes), `h` (hours), and `d` (days). |
-| `type` | Keyword | Valid values are `accessed` and `created`. If `accessed`, then the server prunes images that have not been pulled in `duration` amount of time. If `created`, then the server prunes images whose create date is older than `duration` time ago. |
+| `type` | Keyword | Valid values are `pattern`, `accessed` and `created`. If `accessed`, then the server prunes images that have not been pulled in `duration` amount of time. If `created`, then the server prunes images whose create date is older than `duration` time ago. |
+| `expr` | URL regex | E.g. `calico`. Only used if `type` is `pattern`. |
 | `frequency`| Duration expression | E.g.: `1d`. Run the background pruner with this frequency. The time units are the same as for `duration`. |
 | `count` | Integer | The number of images to prune on each run of the background pruner. A value of `-1` means no limit to the number of images pruned. |
-| `dryRun` | Boolean | If `true` then just log messages but don't actually prune. For testing and troubleshooting. |
+| `dryRun` | Boolean | Defaults to true: just logs messages but doesn't actually prune. For testing and troubleshooting. Set `dryRun: false` to actually prune. |
 
-> Since pruning locks the cache, a good strategy is to limit the number of pruned images on each invocation of the pruner and run with greater frequency.
+## Important about prune
+
+- A prune blocks new upstream pulls while it runs. Cached pulls aren’t affected.
+- If upstream pulls are still running after 10 seconds, the prune is skipped until the next run.

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2.0.0
+
+01-Nov-2026
+
+1. Release tag for items listed in `2.0.0-prerelease` below. Please see the [Release Notes](release_notes/2.0.0.md).
+2. Module updates: aceeric/imgpull v1.16.0
+
 ## 2.0.0-prerelease
 
 26-Oct-2026

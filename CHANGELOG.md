@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 2.1.0
+
+09-Nov-2026
+
+1. Add GitHub releases
+
 ## 2.0.0
 
 01-Nov-2026

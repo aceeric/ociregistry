@@ -24,12 +24,16 @@ type MHReader struct {
 	mh        []imgpull.ManifestHolder
 	withBlobs bool
 	idx       int
+	// pending holds the part of the current entry that hasn't been read yet
+	pending []byte
 }
 
 // Type BlobReader is a reader over a list of blobs
 type BlobReader struct {
 	blobs []blobResult
 	idx   int
+	// pending holds the part of the current entry that hasn't been read yet
+	pending []byte
 }
 
 // type blobResult is a blob and its ref counts
@@ -63,11 +67,24 @@ func NewMFReaderWithBlobs(mh []imgpull.ManifestHolder) *MHReader {
 	}
 }
 
-// Read reads from the manifest reader in the receiver.
+// Read reads from the manifest reader in the receiver. An entry longer than b is returned
+// across several calls.
 func (mhr *MHReader) Read(b []byte) (n int, err error) {
-	if mhr.idx >= len(mhr.mh) {
-		return 0, io.EOF
+	if len(mhr.pending) == 0 {
+		if mhr.idx >= len(mhr.mh) {
+			return 0, io.EOF
+		}
+		mhr.pending = mhr.nextEntry()
+		mhr.idx++
 	}
+	n = copy(b, mhr.pending)
+	mhr.pending = mhr.pending[n:]
+	return n, nil
+}
+
+// nextEntry formats the manifest at the reader's index: the column header before the
+// first manifest, the manifest line, and its blobs if the reader shows blobs.
+func (mhr *MHReader) nextEntry() []byte {
 	mh := mhr.mh[mhr.idx]
 	var digests []string
 	if mhr.withBlobs {
@@ -94,9 +111,7 @@ func (mhr *MHReader) Read(b []byte) (n int, err error) {
 			line.WriteString(fmt.Sprintf("- %s\n", digest))
 		}
 	}
-	n = copy(b, line.String())
-	mhr.idx++
-	return n, nil
+	return []byte(line.String())
 }
 
 // GetManifestsCompare traverses the in-mem manifest cache and evaluates each manifest
@@ -122,20 +137,23 @@ func GetManifestsCompare(comparer ManifestComparer, count int) []imgpull.Manifes
 	return mhs
 }
 
-// Read reads from the blob reader in the receiver
+// Read reads from the blob reader in the receiver. An entry longer than b is returned
+// across several calls.
 func (br *BlobReader) Read(b []byte) (n int, err error) {
-	if br.idx >= len(br.blobs) {
-		return 0, io.EOF
+	if len(br.pending) == 0 {
+		if br.idx >= len(br.blobs) {
+			return 0, io.EOF
+		}
+		blob := br.blobs[br.idx]
+		hdr := ""
+		if br.idx == 0 {
+			hdr = "URL REFCNT\n"
+		}
+		br.pending = []byte(fmt.Sprintf("%s%s %d\n", hdr, blob.digest, blob.refCnt))
+		br.idx++
 	}
-	blob := br.blobs[br.idx]
-
-	hdr := ""
-	if br.idx == 0 {
-		hdr = "URL REFCNT\n"
-	}
-	line := fmt.Sprintf("%s%s %d\n", hdr, blob.digest, blob.refCnt)
-	n = copy(b, line)
-	br.idx++
+	n = copy(b, br.pending)
+	br.pending = br.pending[n:]
 	return n, nil
 }
 

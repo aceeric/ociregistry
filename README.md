@@ -5,6 +5,7 @@
 [![Go Vuln Check](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml/badge.svg)](https://github.com/aceeric/ociregistry/actions/workflows/vulncheck.yml)
 [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/ociregistry)](https://artifacthub.io/packages/search?repo=ociregistry)
 ![coverage](https://raw.githubusercontent.com/aceeric/ociregistry/badges/.badges/main/coverage.svg)
+[![Release](https://img.shields.io/github/v/release/aceeric/ociregistry)](https://github.com/aceeric/ociregistry/releases/latest)
 
 _Ociregistry_ is a **pull-only**, **pull-through**, **caching** OCI Distribution server. That means:
 

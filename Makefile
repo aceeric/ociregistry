@@ -5,6 +5,8 @@ DATETIME       := $(shell date -u +%Y-%m-%dT%T.%2NZ)
 REGISTRY       := quay.io
 ORG            := appzygy
 CHART_VERSION  := $(shell grep '^version:' ${ROOT}/charts/ociregistry/Chart.yaml | awk '{print $$2}')
+DIST           := $(ROOT)/dist
+RELEASE_ARCHES ?= amd64 arm64
 
 .PHONY : all
 all:
@@ -93,6 +95,38 @@ old-image:
 	 --build-arg GO_VERSION=$(GO_VERSION)\
 	 $(ROOT)
 
+.PHONY: image-archive # run after 'make image' so the buildx builder cache is warm
+image-archive:
+	mkdir -p $(DIST)
+	docker buildx build --platform linux/arm64,linux/amd64\
+	 --builder=ociregistry\
+	 --provenance=false --sbom=false\
+	 --output type=oci,dest=$(DIST)/ociregistry-image_$(SERVER_VERSION).oci.tar\
+	 --tag $(REGISTRY)/$(ORG)/ociregistry:$(SERVER_VERSION)\
+	 --build-arg SERVER_VERSION=$(SERVER_VERSION)\
+	 --build-arg DATETIME=$(DATETIME)\
+	 --build-arg GO_VERSION=$(GO_VERSION)\
+	 $(ROOT)
+
+.PHONY: release-binaries
+release-binaries:
+	rm -rf $(DIST)/binaries && mkdir -p $(DIST)/binaries
+	set -e; for arch in $(RELEASE_ARCHES); do\
+	  name=ociregistry_$(SERVER_VERSION)_linux_$$arch;\
+	  stage=$(DIST)/binaries/$$name;\
+	  mkdir -p $$stage/bin;\
+	  GOOS=linux GOARCH=$$arch CGO_ENABLED=0 go build -trimpath\
+	   -ldflags "-s -w -X 'main.buildVer=$(SERVER_VERSION)' -X 'main.buildDtm=$(DATETIME)'"\
+	   -o $$stage/bin/ociregistry $(ROOT)/cmd;\
+	  cp -r $(ROOT)/systemd-service $(ROOT)/LICENSE $(ROOT)/README.md $$stage/;\
+	  tar -czf $(DIST)/$$name.tar.gz -C $(DIST)/binaries $$name;\
+	done
+	rm -rf $(DIST)/binaries
+
+.PHONY: release-notes
+release-notes:
+	@$(ROOT)/scripts/release-notes $(SERVER_VERSION)
+
 .PHONY: helm-docs # requires https://github.com/norwoodj/helm-docs
 helm-docs:
 	helm-docs --chart-search-root $(ROOT)/charts
@@ -180,6 +214,15 @@ server-install    Runs systemd-service/manual-install to install the server as a
 image             Builds the server '$(SERVER_VERSION)' OCI image and and pushes it to the
                   '$(REGISTRY)' OCI distribution server, in the '$(ORG)' user/org.
                   Requires the appropriate push permissions, of course.
+
+image-archive     Builds the multi-arch server image as an OCI archive in 'dist/' (no push).
+                  Run after 'make image' so the build cache is reused.
+
+release-binaries  Builds linux binaries for '$(RELEASE_ARCHES)' and packages each one, with the
+                  systemd-service files, as a tarball in 'dist/'.
+
+release-notes     Prints the GitHub release notes for SERVER_VERSION: the CHANGELOG.md
+                  section plus the commits since the previous release tag.
 
 helm-docs         Builds the Helm chart README from values and the README template.
                   Requires 'go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest'.

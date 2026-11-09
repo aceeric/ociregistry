@@ -17,7 +17,7 @@ ARG SERVER_VERSION
 ARG DATETIME
 
 RUN CGO_ENABLED=0 go build\
-    -ldflags "-X 'main.buildVer=v$SERVER_VERSION' -X 'main.buildDtm=$DATETIME'" -a -o server cmd/*.go
+    -ldflags "-X 'main.buildVer=$SERVER_VERSION' -X 'main.buildDtm=$DATETIME'" -a -o server cmd/*.go
 
 FROM gcr.io/distroless/static:nonroot
 

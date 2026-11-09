@@ -28,3 +28,7 @@ The goals of the project are:
 
 1. Implement a narrow set of use cases, mostly around serving as a caching mirror for Kubernetes clusters.
 2. Be simple, performant, and reliable.
+
+## Download
+
+You can download the latest release binaries using this link: [https://github.com/aceeric/ociregistry/releases/latest](https://github.com/aceeric/ociregistry/releases/latest){target=_blank}

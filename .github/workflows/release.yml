@@ -1,0 +1,122 @@
+name: Release
+
+# Pushing a version tag (e.g. 2.1.0, or 2.1.0-rc1 for a pre-release) publishes the image
+# and chart to Quay, then creates a GitHub release with binaries, the image archive, the
+# chart package and checksums attached.
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+*'
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  # Catch a forgotten checklist step before anything is pushed to Quay.
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v6
+
+      - name: Check chart version and changelog
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          ver="$tag"
+          chart_ver="$(awk '/^version:/ {print $2}' charts/ociregistry/Chart.yaml)"
+          if [[ "$ver" == *-* ]]; then
+            echo "Pre-release $tag: skipping strict checks (chart version is $chart_ver)"
+            exit 0
+          fi
+          rc=0
+          if [[ "$chart_ver" != "$ver" ]]; then
+            echo "::error::Chart.yaml version is $chart_ver but the tag is $tag. Run 'make bump-chart CHART_VERSION_NEW=$ver'."
+            rc=1
+          fi
+          if ! grep -qx "## $ver" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no '## $ver' section."
+            rc=1
+          fi
+          exit $rc
+
+  server:
+    needs: preflight
+    uses: ./.github/workflows/server.yml
+    secrets: inherit
+
+  chart:
+    needs: preflight
+    uses: ./.github/workflows/chart.yml
+    secrets: inherit
+
+  binaries:
+    needs: preflight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v6
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Build release binaries
+        shell: bash
+        run: |
+          make release-binaries SERVER_VERSION=${{ github.ref_name }}
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v7
+        with:
+          name: binaries
+          path: dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 3
+
+  github_release:
+    needs: [server, chart, binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # full history and tags, for the commit list
+
+      - name: Download build outputs
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Write checksums
+        shell: bash
+        run: |
+          cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS
+
+      - name: Write release notes
+        shell: bash
+        run: |
+          scripts/release-notes "${GITHUB_REF_NAME}" > release-notes.md
+          cat release-notes.md
+
+      - name: Create the GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          flags=()
+          [[ "$tag" == *-* ]] && flags+=(--prerelease)
+          if gh release view "$tag" > /dev/null 2>&1; then
+            # Re-run of a failed workflow: refresh the assets and notes.
+            gh release upload "$tag" dist/* --clobber
+            gh release edit "$tag" --notes-file release-notes.md
+          else
+            gh release create "$tag" dist/* --verify-tag --title "$tag" \
+              --notes-file release-notes.md "${flags[@]}"
+          fi

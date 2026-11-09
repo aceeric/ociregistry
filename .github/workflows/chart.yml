@@ -1,9 +1,8 @@
 name: Chart
 
+# Called by release.yml on a version tag.
 on:
-  push:
-    tags:        
-      - '**'
+  workflow_call:
 
 jobs:
   publish_chart:
@@ -35,3 +34,11 @@ jobs:
         shell: bash
         run: |
           make helm-push
+
+      - name: Upload the chart package
+        uses: actions/upload-artifact@v7
+        with:
+          name: chart
+          path: ociregistry-*.tgz
+          if-no-files-found: error
+          retention-days: 3

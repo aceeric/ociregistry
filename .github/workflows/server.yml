@@ -1,10 +1,9 @@
 name: Server
 
+# Called by release.yml on a version tag. Can also be run by hand.
 on:
   workflow_dispatch:
-  push:
-    tags:        
-      - '**'
+  workflow_call:
 
 jobs:
   test:
@@ -44,3 +43,16 @@ jobs:
         shell: bash
         run: |
           make image SERVER_VERSION=${{ github.ref_name }}
+
+      - name: Save the server image as an OCI archive
+        shell: bash
+        run: |
+          make image-archive SERVER_VERSION=${{ github.ref_name }}
+
+      - name: Upload the image archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: image-archive
+          path: dist/*.oci.tar
+          if-no-files-found: error
+          retention-days: 3

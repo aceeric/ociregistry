@@ -87,20 +87,20 @@ func (r *OciRegistry) handleV2BlobsDigest(w http.ResponseWriter, req *http.Reque
 }
 
 // GET /v2/
-func (r *OciRegistry) handleV2Default(w http.ResponseWriter, req *http.Request) {
+func (r *OciRegistry) handleV2Default(w http.ResponseWriter, _ *http.Request) {
 	metrics.IncV2ApiEndpointHits()
 	writeJSON(w, http.StatusOK, "true")
 }
 
 // HEAD /v2/
-func (r *OciRegistry) handleV2HeadDefault(w http.ResponseWriter, req *http.Request) {
+func (r *OciRegistry) handleV2HeadDefault(w http.ResponseWriter, _ *http.Request) {
 	metrics.IncV2ApiEndpointHits()
 	writeJSON(w, http.StatusOK, "true")
 }
 
 // GET /v2/auth. The server doesn't do anything with tokens but if the client wants a token
 // it gets one.
-func (r *OciRegistry) handleV2Auth(w http.ResponseWriter, req *http.Request, params models.V2AuthParams) {
+func (r *OciRegistry) handleV2Auth(w http.ResponseWriter, _ *http.Request, _ models.V2AuthParams) {
 	metrics.IncV2ApiEndpointHits()
 	body := struct {
 		Token string `json:"token"`

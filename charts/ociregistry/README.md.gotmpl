@@ -214,7 +214,7 @@ serverConfig:
 
 ## Volumetrics
 
-The server stores each image manifest in memory twice - once by digest and once by tag for fast retrieval. The 64-byte blob digests are also cached in memory. Each image manifest is a different size, and each image has a different number of blobs. So there is no such thing as a typical cache configuration. If you consider 5K as a hypothetical average manifest size and approximately 5 as a hypothetical average number of blobs per image, then the amount of memory required to cache 1,500 image manifests and blob digests in memory is less than 10Mb.
+The server stores each image manifest in memory. The 64-byte blob digests are also cached in memory. Each image manifest is a different size, and each image has a different number of blobs. So there is no such thing as a typical cache configuration. If you consider 5K as a hypothetical average manifest size and approximately 5 as a hypothetical average number of blobs per image, then the amount of memory required to cache 1,500 image manifests and blob digests in memory is less than 10Mb.
 
 However, the bulk of the server's work in the steady state is serving blobs. Serving blobs requires a lot of file system reads. This _can_ result in the OS caching a large volume of file pages in memory. This OS cache is **not** visible to the go runtime and can consume the entire host memory. The typical scenario in which this occurs is when a large number of pods request the same set of images, resulting in the server reading the same blobs from the file system concurrently.
 

@@ -2,7 +2,24 @@ name: Release
 
 # Pushing a version tag (e.g. 2.1.0, or 2.1.0-rc1 for a pre-release) publishes the image
 # and chart to Quay, then creates a GitHub release with binaries, the image archive, the
-# chart package and checksums attached.
+# chart package and checksums attached. Jobs:
+#
+# preflight       For a final (non-pre-release) tag, fails if `Chart.yaml` `version` doesn't
+#                 match the tag or `CHANGELOG.md` has no `## n.nn.n` section. Nothing proceeds
+#                 if this fails.
+#
+# server          Runs server.yml - runs the unit tests, pushes the multi-arch image to quay.io,
+#                 and saves it as an OCI archive
+#
+# chart           Runs chart.yml - packages the chart and pushes it to quay.io.
+#
+# binaries        Builds linux/amd64 and linux/arm64 binaries
+#
+# github_release  Creates the GitHub release with the binaries, image archive, chart package
+#                 and `SHA256SUMS` attached. The notes are the CHANGELOG section plus the
+#                 commits since the previous release (`scripts/release-notes`). Tags
+#                 containing dash are marked as pre-releases.
+
 on:
   push:
     tags:

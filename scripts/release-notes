@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
 #
-# Prints GitHub release notes (markdown) for a tag to stdout:
+# Prints GitHub release notes (markdown) for a commit ref to stdout:
+#
 #   1. The matching '## <version>' section of CHANGELOG.md, if present
 #   2. A link to release_notes/<version>.md, if present
 #   3. How to get the image and chart
 #   4. The commits since the previous final (non-prerelease) release tag
 #
-# Usage: scripts/release-notes <tag>
+# Usage: scripts/release-notes <ref>
+#
+# ...where 'ref' is a digest, branch, or tag.
 #
 
 set -euo pipefail
 
 if [[ "$#" -ne 1 ]]; then
-  echo "usage: release-notes <tag>"
+  echo "usage: release-notes <commit ref>"
   exit 1
 fi
 
 tag="$1"
 
-if ! git rev-parse --verify refs/tags/$tag &>/dev/null; then
+if ! git rev-parse --verify $tag &>/dev/null; then
   echo "no such tag: $tag"
   exit 1
 fi

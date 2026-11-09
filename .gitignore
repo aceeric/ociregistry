@@ -5,3 +5,4 @@ cover.out
 *.tar
 *.tgz
 charts/ociregistry/README.md
+dist/

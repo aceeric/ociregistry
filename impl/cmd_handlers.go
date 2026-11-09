@@ -12,18 +12,16 @@ import (
 	"github.com/aceeric/ociregistry/impl/cache"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
-	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
 
 // GET /cmd/stop
-func (r *OciRegistry) CmdStop(ctx echo.Context) error {
+func (r *OciRegistry) CmdStop(w http.ResponseWriter, req *http.Request) {
 	r.shutdownCh <- true
-	return nil
 }
 
 // GET /cmd/manifest/list?pattern=...
-func (r *OciRegistry) CmdManifestlist(ctx echo.Context, params models.CmdManifestlistParams) error {
+func (r *OciRegistry) CmdManifestlist(w http.ResponseWriter, req *http.Request, params models.CmdManifestlistParams) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("handled panic: %s", err)
@@ -31,17 +29,19 @@ func (r *OciRegistry) CmdManifestlist(ctx echo.Context, params models.CmdManifes
 	}()
 	comparer, err := makeComparer(params.Pattern, nil)
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, "invalid parameters\n")
+		writeString(w, http.StatusBadRequest, "invalid parameters\n")
+		return
 	}
 	manifests := cache.GetManifestsCompare(comparer, count(params.Count))
 	if len(manifests) == 0 {
-		return ctx.String(http.StatusOK, "no manifests found\n")
+		writeString(w, http.StatusOK, "no manifests found\n")
+		return
 	}
-	return ctx.Stream(http.StatusOK, "text/plain", cache.NewMFReader(manifests))
+	writeStream(w, http.StatusOK, "text/plain", cache.NewMFReader(manifests))
 }
 
 // GET /cmd/blob/list?substr=...
-func (r *OciRegistry) CmdBloblist(ctx echo.Context, params models.CmdBloblistParams) error {
+func (r *OciRegistry) CmdBloblist(w http.ResponseWriter, req *http.Request, params models.CmdBloblistParams) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("handled panic: %s", err)
@@ -53,14 +53,15 @@ func (r *OciRegistry) CmdBloblist(ctx echo.Context, params models.CmdBloblistPar
 	}
 	blobs := cache.GetBlobsSubstr(substr, count(params.Count))
 	if len(blobs) == 0 {
-		return ctx.String(http.StatusOK, "no manifests found\n")
+		writeString(w, http.StatusOK, "no manifests found\n")
+		return
 	}
-	return ctx.Stream(http.StatusOK, "text/plain", cache.NewBlobReader(blobs))
+	writeStream(w, http.StatusOK, "text/plain", cache.NewBlobReader(blobs))
 }
 
 // GET cmd/image/list?digest=... or cmd/image/list?pattern=...
 // If digest, then manifests with layers matching the digest substr are returned
-func (r *OciRegistry) CmdImagelist(ctx echo.Context, params models.CmdImagelistParams) error {
+func (r *OciRegistry) CmdImagelist(w http.ResponseWriter, req *http.Request, params models.CmdImagelistParams) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("handled panic: %s", err)
@@ -68,20 +69,22 @@ func (r *OciRegistry) CmdImagelist(ctx echo.Context, params models.CmdImagelistP
 	}()
 	comparer, err := makeComparer(params.Pattern, params.Digest)
 	if err != nil {
-		return ctx.String(http.StatusBadRequest, "invalid parameters\n")
+		writeString(w, http.StatusBadRequest, "invalid parameters\n")
+		return
 	}
 
 	manifests := cache.GetManifestsCompare(comparer, count(params.Count))
 	if len(manifests) == 0 {
-		return ctx.String(http.StatusOK, "no manifests found\n")
+		writeString(w, http.StatusOK, "no manifests found\n")
+		return
 	}
-	return ctx.Stream(http.StatusOK, "text/plain", cache.NewMFReaderWithBlobs(manifests))
+	writeStream(w, http.StatusOK, "text/plain", cache.NewMFReaderWithBlobs(manifests))
 }
 
 // GET /cmd/image/cache?digestLen=n
 // Shows the in-memory manifest cache: every entry, then every digest alias with its tags.
 // Digests are shortened to digestLen hex characters; the default, 64, shows them in full.
-func (r *OciRegistry) CmdImagecache(ctx echo.Context, params models.CmdImagecacheParams) error {
+func (r *OciRegistry) CmdImagecache(w http.ResponseWriter, req *http.Request, params models.CmdImagecacheParams) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("handled panic: %s", err)
@@ -92,13 +95,14 @@ func (r *OciRegistry) CmdImagecache(ctx echo.Context, params models.CmdImagecach
 		digestLen = *params.DigestLen
 	}
 	if digestLen < 1 {
-		return ctx.String(http.StatusBadRequest, "invalid parameters\n")
+		writeString(w, http.StatusBadRequest, "invalid parameters\n")
+		return
 	}
-	return ctx.String(http.StatusOK, cache.DumpCache(digestLen))
+	writeString(w, http.StatusOK, cache.DumpCache(digestLen))
 }
 
 // DELETE /cmd/prune?type=...&dur=...&expr=...&dryRun=
-func (r *OciRegistry) CmdPrune(ctx echo.Context, params models.CmdPruneParams) error {
+func (r *OciRegistry) CmdPrune(w http.ResponseWriter, req *http.Request, params models.CmdPruneParams) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Errorf("handled panic: %s", err)
@@ -107,11 +111,13 @@ func (r *OciRegistry) CmdPrune(ctx echo.Context, params models.CmdPruneParams) e
 	cnt := count(params.Count)
 	logs, err := cache.Prune(params.Type, params.Dur, params.Expr, params.DryRun, &cnt)
 	if errors.Is(err, cache.ErrPruneBusy) {
-		return ctx.String(http.StatusServiceUnavailable, err.Error())
+		writeString(w, http.StatusServiceUnavailable, err.Error())
+		return
 	} else if err != nil {
-		return ctx.String(http.StatusBadRequest, err.Error())
+		writeString(w, http.StatusBadRequest, err.Error())
+		return
 	}
-	return ctx.Stream(http.StatusOK, "text/plain", strings.NewReader(logs))
+	writeStream(w, http.StatusOK, "text/plain", strings.NewReader(logs))
 }
 
 // makeComparer makes a comparer. If pattern is non-nil, it is used, else if digest is

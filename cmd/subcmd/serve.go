@@ -3,6 +3,7 @@ package subcmd
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -23,8 +24,7 @@ import (
 	"github.com/aceeric/ociregistry/impl/metrics"
 	"github.com/aceeric/ociregistry/impl/preload"
 
-	"github.com/labstack/echo/v4"
-	middleware "github.com/oapi-codegen/echo-middleware"
+	middleware "github.com/oapi-codegen/nethttp-middleware"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -90,17 +90,9 @@ func Serve(buildVer string, buildDtm string) error {
 	pruneStoppedCh := make(chan bool)
 	ociRegistry := impl.NewOciRegistry(shutdownCh)
 
-	// Echo router
-	e := echo.New()
-	e.HideBanner = true
-	e.HidePort = true
-
-	// Use our validation middleware to check all requests against the OpenAPI schema.
-	e.Use(middleware.OapiRequestValidator(swagger))
-
-	api.RegisterHandlers(e, ociRegistry)
-
-	e.Use(globals.GetEchoLoggingFunc())
+	// The generated router dispatches requests to the registry handlers. Each request is
+	// logged, then validated against the OpenAPI schema before it is routed.
+	handler := globals.LoggingMiddleware(middleware.OapiRequestValidator(swagger)(api.Handler(ociRegistry)))
 
 	if err := cache.RunPruner(stopPruneCh, pruneStoppedCh); err != nil {
 		return fmt.Errorf("error starting the pruner: %s", err)
@@ -115,37 +107,27 @@ func Serve(buildVer string, buildDtm string) error {
 	fmt.Fprintf(os.Stderr, startupBanner, buildVer, buildDtm, time.Unix(0, time.Now().UnixNano()), config.GetPort(),
 		os.Getuid(), os.Getgid(), os.Getpid(), tlsMsg(), strings.Join(os.Args, " "))
 
-	// Create the listener here rather than letting Echo create it in its goroutine: Echo uses a
-	// listener that is already set, so nothing has to wait or poll for it, nothing reads it
-	// while Echo writes it, and a port that can't be bound is an ordinary startup error.
+	// Create the listener here rather than in the server goroutine: nothing has to wait or poll
+	// for it, and a port that can't be bound is an ordinary startup error.
 	addr := net.JoinHostPort(config.GetHost(), strconv.Itoa(int(config.GetPort())))
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("unable to listen on %s: %w", addr, err)
 	}
 	if tlsCfg != nil {
-		e.TLSListener = tls.NewListener(ln, tlsCfg)
-		setListener(e.TLSListener)
-	} else {
-		e.Listener = ln
-		setListener(ln)
+		ln = tls.NewListener(ln, tlsCfg)
+	}
+	setListener(ln)
+
+	server := &http.Server{
+		Addr:    addr,
+		Handler: handler,
 	}
 
 	// start the API server
 	go func() {
-		if tlsCfg != nil {
-			s := http.Server{
-				Addr:      addr,
-				Handler:   e,
-				TLSConfig: tlsCfg,
-			}
-			if err := e.StartServer(&s); err != http.ErrServerClosed {
-				e.Logger.Fatal("shutting down the server. error:", err)
-			}
-		} else {
-			if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
-				e.Logger.Fatal("shutting down the server. error:", err)
-			}
+		if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("shutting down the server. error: %s", err)
 		}
 	}()
 
@@ -165,8 +147,8 @@ func Serve(buildVer string, buildDtm string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	if err := e.Server.Shutdown(ctx); err != nil {
-		log.Errorf("echo server shutdown encountered an error: %s", err)
+	if err := server.Shutdown(ctx); err != nil {
+		log.Errorf("server shutdown encountered an error: %s", err)
 	}
 
 	if config.GetPruneConfig().Enabled {

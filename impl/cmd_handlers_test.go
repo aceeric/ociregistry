@@ -17,7 +17,6 @@ import (
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/serialize"
-	"github.com/labstack/echo/v4"
 )
 
 var orgs = []string{"foo", "bar", "baz"}
@@ -64,10 +63,9 @@ func TestCmdApi(t *testing.T) {
 		t.FailNow()
 	}
 	r := NewOciRegistry(nil)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	tests := []struct {
-		testFun      func(*OciRegistry, echo.Context, *httptest.ResponseRecorder) bool
+		testFun      func(*OciRegistry, *httptest.ResponseRecorder, *http.Request) bool
 		expRespLines int
 	}{
 		{testFun: testGetManifestList, expRespLines: 2},
@@ -79,8 +77,7 @@ func TestCmdApi(t *testing.T) {
 	}
 	for _, tst := range tests {
 		rec := httptest.NewRecorder()
-		ctx := e.NewContext(req, rec)
-		if !tst.testFun(r, ctx, rec) {
+		if !tst.testFun(r, rec, req) {
 			t.FailNow()
 		}
 		res := rec.Result()
@@ -98,39 +95,39 @@ func TestCmdApi(t *testing.T) {
 
 // GET /cmd/manifest/list?pattern=...
 // returns header line, one manifest line
-func testGetManifestList(r *OciRegistry, ctx echo.Context, rec *httptest.ResponseRecorder) bool {
-	r.CmdManifestlist(ctx, models.CmdManifestlistParams{Pattern: &orgs[1]})
-	return ctx.Response().Status == 200
+func testGetManifestList(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
+	r.CmdManifestlist(rec, req, models.CmdManifestlistParams{Pattern: &orgs[1]})
+	return rec.Code == 200
 }
 
 // GET /cmd/blob/list?substr=...
 // returns header line, one blob line
-func testGetBlobList(r *OciRegistry, ctx echo.Context, rec *httptest.ResponseRecorder) bool {
+func testGetBlobList(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
 	substr := "74cc54e27dc"
-	r.CmdBloblist(ctx, models.CmdBloblistParams{Substr: &substr})
-	return ctx.Response().Status == 200
+	r.CmdBloblist(rec, req, models.CmdBloblistParams{Substr: &substr})
+	return rec.Code == 200
 }
 
 // GET cmd/image/list?digest=... or cmd/image/list?pattern=...
 // since for the test data all the manifests have the same blobs all manifests are returned so
 // returns header line and 3X: manifest line, two blob lines
-func testGetImgList(r *OciRegistry, ctx echo.Context, rec *httptest.ResponseRecorder) bool {
+func testGetImgList(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
 	md := "e6590344b1a5dc518829d"
-	r.CmdImagelist(ctx, models.CmdImagelistParams{Digest: &md})
-	return ctx.Response().Status == 200
+	r.CmdImagelist(rec, req, models.CmdImagelistParams{Digest: &md})
+	return rec.Code == 200
 }
 
 // DELETE /cmd/prune?type=...&dur=...&expr=...&dryRun=
 // returns two log entries:
 // time=... level=info msg="begin prune..."
 // time=... level=info msg="doPrune..."
-func testPrune(r *OciRegistry, ctx echo.Context, rec *httptest.ResponseRecorder) bool {
+func testPrune(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
 	expr := "docker.io/library/" + orgs[2]
-	r.CmdPrune(ctx, models.CmdPruneParams{
+	r.CmdPrune(rec, req, models.CmdPruneParams{
 		Type: "pattern",
 		Expr: &expr,
 	})
-	return ctx.Response().Status == 200
+	return rec.Code == 200
 }
 
 // setupTests create three manifests each with the same single blob. Create an orphaned
@@ -174,15 +171,15 @@ func setupTests() (string, error) {
 // GET /cmd/image/cache?digestLen=...
 // returns the entries heading, blank, header, the three manifests (the prune test is a dry
 // run), blank, the aliases heading, blank, header, and for each manifest its alias and tag
-func testImageCache(r *OciRegistry, ctx echo.Context, rec *httptest.ResponseRecorder) bool {
+func testImageCache(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
 	n := 12
-	r.CmdImagecache(ctx, models.CmdImagecacheParams{DigestLen: &n})
-	return ctx.Response().Status == 200 && strings.Contains(rec.Body.String(), "03b62250a3cb...")
+	r.CmdImagecache(rec, req, models.CmdImagecacheParams{DigestLen: &n})
+	return rec.Code == 200 && strings.Contains(rec.Body.String(), "03b62250a3cb...")
 }
 
 // GET /cmd/image/cache?digestLen=0 is rejected
-func testImageCacheBadLen(r *OciRegistry, ctx echo.Context, rec *httptest.ResponseRecorder) bool {
+func testImageCacheBadLen(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
 	n := 0
-	r.CmdImagecache(ctx, models.CmdImagecacheParams{DigestLen: &n})
-	return ctx.Response().Status == 400
+	r.CmdImagecache(rec, req, models.CmdImagecacheParams{DigestLen: &n})
+	return rec.Code == 400
 }

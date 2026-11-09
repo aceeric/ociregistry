@@ -16,7 +16,6 @@ import (
 	"github.com/aceeric/ociregistry/impl/serialize"
 	"github.com/aceeric/ociregistry/mock"
 
-	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -64,14 +63,13 @@ func TestManifestGetWithNs(t *testing.T) {
 	defer server.Close()
 
 	r := NewOciRegistry(nil)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	ctx := e.NewContext(req, rec)
+	var rec *httptest.ResponseRecorder
 	getCnt := 5
 	for range getCnt {
-		r.handleV2ManifestsReference(ctx, "latest", &url, http.MethodGet, "hello-world")
-		if ctx.Response().Status != 200 {
+		rec = httptest.NewRecorder()
+		r.handleV2ManifestsReference(rec, req, "latest", &url, http.MethodGet, "hello-world")
+		if rec.Code != 200 {
 			t.Fail()
 		}
 	}
@@ -105,15 +103,14 @@ func TestNeverCacheLatest(t *testing.T) {
 	defer server.Close()
 
 	r := NewOciRegistry(nil)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	ctx := e.NewContext(req, rec)
+	var rec *httptest.ResponseRecorder
 	getCnt := 5
 	expectCnt := getCnt * 2
 	for range getCnt {
-		r.handleV2ManifestsReference(ctx, "latest", &url, http.MethodGet, "hello-world")
-		if ctx.Response().Status != 200 {
+		rec = httptest.NewRecorder()
+		r.handleV2ManifestsReference(rec, req, "latest", &url, http.MethodGet, "hello-world")
+		if rec.Code != 200 {
 			t.Fail()
 		}
 	}
@@ -138,12 +135,11 @@ func TestBlobGetFails(t *testing.T) {
 	defer server.Close()
 
 	r := NewOciRegistry(nil)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	ctx := e.NewContext(req, rec)
-	r.handleV2BlobsDigest(ctx, "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a", "hello-world")
-	if ctx.Response().Status != 404 {
+	var rec *httptest.ResponseRecorder
+	rec = httptest.NewRecorder()
+	r.handleV2BlobsDigest(rec, req, "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a", "hello-world")
+	if rec.Code != 404 {
 		t.Fail()
 	}
 }
@@ -164,16 +160,16 @@ func TestPullImageAndBlob(t *testing.T) {
 	defer server.Close()
 
 	r := NewOciRegistry(nil)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	ctx := e.NewContext(req, rec)
-	r.handleV2ManifestsReference(ctx, "sha256:e2fc4e5012d16e7fe466f5291c476431beaa1f9b90a5c2125b493ed28e2aba57", &url, http.MethodGet, "hello-world")
-	if ctx.Response().Status != 200 {
+	var rec *httptest.ResponseRecorder
+	rec = httptest.NewRecorder()
+	r.handleV2ManifestsReference(rec, req, "sha256:e2fc4e5012d16e7fe466f5291c476431beaa1f9b90a5c2125b493ed28e2aba57", &url, http.MethodGet, "hello-world")
+	if rec.Code != 200 {
 		t.Fail()
 	}
-	r.handleV2BlobsDigest(ctx, "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a", "hello-world")
-	if ctx.Response().Status != 200 {
+	rec = httptest.NewRecorder()
+	r.handleV2BlobsDigest(rec, req, "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a", "hello-world")
+	if rec.Code != 200 {
 		t.Fail()
 	}
 }
@@ -184,10 +180,8 @@ type TestAuthToken struct {
 
 func TestHandleV2Auth(t *testing.T) {
 	r := NewOciRegistry(nil)
-	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	ctx := e.NewContext(req, rec)
+	var rec *httptest.ResponseRecorder
 	scope := "SCOPE"
 	service := "SERVICE"
 	params := models.V2AuthParams{
@@ -195,8 +189,9 @@ func TestHandleV2Auth(t *testing.T) {
 		Service:       &service,
 		Authorization: "AUTHORIZATION",
 	}
-	r.handleV2Auth(ctx, params)
-	if ctx.Response().Status != 200 {
+	rec = httptest.NewRecorder()
+	r.handleV2Auth(rec, req, params)
+	if rec.Code != 200 {
 		t.Fail()
 	}
 	token, err := io.ReadAll(rec.Body)
@@ -256,9 +251,9 @@ func noCacheServer(t *testing.T, airGapped bool, patterns ...string) (*OciRegist
 
 // getManifest gets a manifest through the handler and returns the response status.
 func getManifest(r *OciRegistry, ns string, ref string) int {
-	ctx := echo.New().NewContext(httptest.NewRequest(http.MethodGet, "/", nil), httptest.NewRecorder())
-	r.handleV2ManifestsReference(ctx, ref, &ns, http.MethodGet, "hello-world")
-	return ctx.Response().Status
+	rec := httptest.NewRecorder()
+	r.handleV2ManifestsReference(rec, httptest.NewRequest(http.MethodGet, "/", nil), ref, &ns, http.MethodGet, "hello-world")
+	return rec.Code
 }
 
 // Tests that a tag matching a --no-cache pattern is pulled from the upstream every time,

@@ -13,8 +13,6 @@ import (
 
 	_ "crypto/sha256"
 	_ "crypto/sha512"
-
-	"github.com/labstack/echo/v4"
 )
 
 // OciRegistry implements the OCI Distribution REST API.
@@ -30,7 +28,7 @@ type OciRegistry struct {
 	airGapped bool
 	// supports pull thru like 'docker pull ociregistry:8080/hello-word' (i.e. no namespace so assume docker.io)
 	defaultNs string
-	// allows to shut down the echo server
+	// allows to shut down the HTTP server
 	shutdownCh chan bool
 }
 
@@ -50,171 +48,171 @@ func NewOciRegistry(ch chan bool) *OciRegistry {
 }
 
 // GET /
-func (r *OciRegistry) Root(ctx echo.Context) error {
-	return ctx.JSON(http.StatusOK, nil)
+func (r *OciRegistry) Root(w http.ResponseWriter, req *http.Request) {
+	writeJSON(w, http.StatusOK, nil)
 }
 
 // GET /v2/auth
-func (r *OciRegistry) V2Auth(ctx echo.Context, params models.V2AuthParams) error {
-	return r.handleV2Auth(ctx, params)
+func (r *OciRegistry) V2Auth(w http.ResponseWriter, req *http.Request, params models.V2AuthParams) {
+	r.handleV2Auth(w, req, params)
 }
 
 // GET /v2/
-func (r *OciRegistry) V2Default(ctx echo.Context) error {
-	return r.handleV2Default(ctx)
+func (r *OciRegistry) V2Default(w http.ResponseWriter, req *http.Request) {
+	r.handleV2Default(w, req)
 }
 
 // HEAD /v2/
-func (r *OciRegistry) V2HeadDefault(ctx echo.Context) error {
-	return r.handleV2HeadDefault(ctx)
+func (r *OciRegistry) V2HeadDefault(w http.ResponseWriter, req *http.Request) {
+	r.handleV2HeadDefault(w, req)
 }
 
 // GET /v2/{s1}/blobs/{digest}
-func (r *OciRegistry) V2GetS1BlobsDigest(ctx echo.Context, s1 string, digest string) error {
-	return r.handleV2BlobsDigest(ctx, digest, s1)
+func (r *OciRegistry) V2GetS1BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, digest string) {
+	r.handleV2BlobsDigest(w, req, digest, s1)
 }
 
 // GET /v2/{s1}/{s2}/blobs/{digest}
-func (r *OciRegistry) V2GetS1S2BlobsDigest(ctx echo.Context, s1 string, s2 string, digest string) error {
-	return r.handleV2BlobsDigest(ctx, digest, s1, s2)
+func (r *OciRegistry) V2GetS1S2BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, s2 string, digest string) {
+	r.handleV2BlobsDigest(w, req, digest, s1, s2)
 }
 
 // GET /v2/{s1}/{s2}/{s3}/blobs/{digest}
-func (r *OciRegistry) V2GetS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, digest string) error {
-	return r.handleV2BlobsDigest(ctx, digest, s1, s2, s3)
+func (r *OciRegistry) V2GetS1S2S3BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, digest string) {
+	r.handleV2BlobsDigest(w, req, digest, s1, s2, s3)
 }
 
 // GET /v2/{s1}/{s2}/{s3}/{s4}/blobs/{digest}
-func (r *OciRegistry) V2GetS1S2S3S4BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, digest string) error {
-	return r.handleV2BlobsDigest(ctx, digest, s1, s2, s3, s4)
+func (r *OciRegistry) V2GetS1S2S3S4BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, s4 string, digest string) {
+	r.handleV2BlobsDigest(w, req, digest, s1, s2, s3, s4)
 }
 
 // HEAD /v2/{s1}/manifests/{reference}
-func (r *OciRegistry) V2HeadS1ManifestsReference(ctx echo.Context, s1 string, reference string, params models.V2HeadS1ManifestsReferenceParams) error {
-	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodHead, s1)
+func (r *OciRegistry) V2HeadS1ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, reference string, params models.V2HeadS1ManifestsReferenceParams) {
+	r.handleV2ManifestsReference(w, req, reference, params.Ns, http.MethodHead, s1)
 }
 
 // HEAD /v2/{s1}/{s2}/manifests/{reference}
-func (r *OciRegistry) V2HeadS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string, params models.V2HeadS1S2ManifestsReferenceParams) error {
-	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodHead, s1, s2)
+func (r *OciRegistry) V2HeadS1S2ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, reference string, params models.V2HeadS1S2ManifestsReferenceParams) {
+	r.handleV2ManifestsReference(w, req, reference, params.Ns, http.MethodHead, s1, s2)
 }
 
 // HEAD /v2/{s1}/{s2}/{s3}/manifests/{reference}
-func (r *OciRegistry) V2HeadS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string, params models.V2HeadS1S2S3ManifestsReferenceParams) error {
-	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodHead, s1, s2, s3)
+func (r *OciRegistry) V2HeadS1S2S3ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, reference string, params models.V2HeadS1S2S3ManifestsReferenceParams) {
+	r.handleV2ManifestsReference(w, req, reference, params.Ns, http.MethodHead, s1, s2, s3)
 }
 
 // HEAD /v2/{s1}/{s2}/{s3}/{s4}/manifests/{reference}
-func (r *OciRegistry) V2HeadS1S2S3S4ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, reference string, params models.V2HeadS1S2S3S4ManifestsReferenceParams) error {
-	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodHead, s1, s2, s3, s4)
+func (r *OciRegistry) V2HeadS1S2S3S4ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, s4 string, reference string, params models.V2HeadS1S2S3S4ManifestsReferenceParams) {
+	r.handleV2ManifestsReference(w, req, reference, params.Ns, http.MethodHead, s1, s2, s3, s4)
 }
 
 // GET /v2/{s1}/manifests/{reference}
-func (r *OciRegistry) V2GetS1ManifestsReference(ctx echo.Context, s1 string, reference string, params models.V2GetS1ManifestsReferenceParams) error {
-	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodGet, s1)
+func (r *OciRegistry) V2GetS1ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, reference string, params models.V2GetS1ManifestsReferenceParams) {
+	r.handleV2ManifestsReference(w, req, reference, params.Ns, http.MethodGet, s1)
 }
 
 // GET /v2/{s1}/{s2}/manifests/{reference}
-func (r *OciRegistry) V2GetS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string, params models.V2GetS1S2ManifestsReferenceParams) error {
-	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodGet, s1, s2)
+func (r *OciRegistry) V2GetS1S2ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, reference string, params models.V2GetS1S2ManifestsReferenceParams) {
+	r.handleV2ManifestsReference(w, req, reference, params.Ns, http.MethodGet, s1, s2)
 }
 
 // GET /v2/{s1}/{s2}/{s3}/manifests/{reference}
-func (r *OciRegistry) V2GetS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string, params models.V2GetS1S2S3ManifestsReferenceParams) error {
-	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodGet, s1, s2, s3)
+func (r *OciRegistry) V2GetS1S2S3ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, reference string, params models.V2GetS1S2S3ManifestsReferenceParams) {
+	r.handleV2ManifestsReference(w, req, reference, params.Ns, http.MethodGet, s1, s2, s3)
 }
 
 // GET /v2/{s1}/{s2}/{s3}/{s4}/manifests/{reference}
-func (r *OciRegistry) V2GetS1S2S3S4ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, reference string, params models.V2GetS1S2S3S4ManifestsReferenceParams) error {
-	return r.handleV2ManifestsReference(ctx, reference, params.Ns, http.MethodGet, s1, s2, s3, s4)
+func (r *OciRegistry) V2GetS1S2S3S4ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, s4 string, reference string, params models.V2GetS1S2S3S4ManifestsReferenceParams) {
+	r.handleV2ManifestsReference(w, req, reference, params.Ns, http.MethodGet, s1, s2, s3, s4)
 }
 
 // unimplemented methods of the OCI distribution spec
 
-func (r *OciRegistry) V2HeadS1S2S3S4BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, digest string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2HeadS1S2S3S4BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, s4 string, digest string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2HeadS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, digest string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2HeadS1S2S3BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, digest string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2HeadS1S2BlobsDigest(ctx echo.Context, s1 string, s2 string, digest string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2HeadS1S2BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, s2 string, digest string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2HeadS1BlobsDigest(ctx echo.Context, s1 string, digest string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2HeadS1BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, digest string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PostNameBlobsUploads(ctx echo.Context, name string, params models.V2PostNameBlobsUploadsParams) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2PostNameBlobsUploads(w http.ResponseWriter, req *http.Request, name string, params models.V2PostNameBlobsUploadsParams) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2GetNameBlobsUploadsReference(ctx echo.Context, name string, reference string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2GetNameBlobsUploadsReference(w http.ResponseWriter, req *http.Request, name string, reference string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PatchNameBlobsUploadsReference(ctx echo.Context, name string, reference string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2PatchNameBlobsUploadsReference(w http.ResponseWriter, req *http.Request, name string, reference string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutNameBlobsUploadsReference(ctx echo.Context, name string, reference string, params models.V2PutNameBlobsUploadsReferenceParams) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2PutNameBlobsUploadsReference(w http.ResponseWriter, req *http.Request, name string, reference string, params models.V2PutNameBlobsUploadsReferenceParams) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutS1S2S3S4ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, reference string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2PutS1S2S3S4ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, s4 string, reference string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2PutS1S2S3ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, reference string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2PutS1S2ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, reference string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2GetNameReferrersDigest(ctx echo.Context, name string, digest string, params models.V2GetNameReferrersDigestParams) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2GetNameReferrersDigest(w http.ResponseWriter, req *http.Request, name string, digest string, params models.V2GetNameReferrersDigestParams) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2GetNameTagsList(ctx echo.Context, name string, params models.V2GetNameTagsListParams) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2GetNameTagsList(w http.ResponseWriter, req *http.Request, name string, params models.V2GetNameTagsListParams) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteS1S2S3S4BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, digest string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2DeleteS1S2S3S4BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, s4 string, digest string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteS1S2S3BlobsDigest(ctx echo.Context, s1 string, s2 string, s3 string, digest string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2DeleteS1S2S3BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, digest string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteS1S2BlobsDigest(ctx echo.Context, s1 string, s2 string, digest string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2DeleteS1S2BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, s2 string, digest string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteS1BlobsDigest(ctx echo.Context, s1 string, digest string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2DeleteS1BlobsDigest(w http.ResponseWriter, req *http.Request, s1 string, digest string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteS1S2S3S4ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, s4 string, reference string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2DeleteS1S2S3S4ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, s4 string, reference string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteS1S2S3ManifestsReference(ctx echo.Context, s1 string, s2 string, s3 string, reference string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2DeleteS1S2S3ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, s3 string, reference string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteS1S2ManifestsReference(ctx echo.Context, s1 string, s2 string, reference string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2DeleteS1S2ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, s2 string, reference string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2DeleteS1ManifestsReference(ctx echo.Context, s1 string, reference string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2DeleteS1ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, reference string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }
 
-func (r *OciRegistry) V2PutS1ManifestsReference(ctx echo.Context, s1 string, reference string) error {
-	return ctx.NoContent(http.StatusMethodNotAllowed)
+func (r *OciRegistry) V2PutS1ManifestsReference(w http.ResponseWriter, req *http.Request, s1 string, reference string) {
+	w.WriteHeader(http.StatusMethodNotAllowed)
 }

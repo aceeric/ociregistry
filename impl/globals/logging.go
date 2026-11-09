@@ -2,12 +2,14 @@ package globals
 
 import (
 	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
-	"github.com/labstack/echo/v4"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -54,59 +56,111 @@ func xlatLogLevel(level string) log.Level {
 	return log.FatalLevel
 }
 
-// GetEchoLoggingFunc gets the distribution server logging function
-func GetEchoLoggingFunc() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			start := time.Now()
+// LoggingMiddleware logs each request with its status and latency. Server errors (5xx)
+// are logged at error level and client errors (4xx) at warn level.
+func LoggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		start := time.Now()
+		sw := &statusWriter{ResponseWriter: w}
 
-			err := next(c)
-			if err != nil {
-				c.Error(err)
-			}
+		next.ServeHTTP(sw, req)
 
-			req := c.Request()
-			res := c.Response()
-
-			// don't log the health check because it clutters the log and it is intended to
-			// be used by Kubernetes anyway so doesn't need to be logged
-			if req.RequestURI == "/health" {
-				return nil
-			}
-
-			// digests clutter the logs so shorten them
-			dgst := re.FindStringSubmatch(req.RequestURI)
-			if len(dgst) == 2 {
-				req.RequestURI = strings.Replace(req.RequestURI, dgst[1], dgst[1][:10], 1)
-			}
-
-			flds := make([]any, logFldcnt)
-			flds[0] = req.Method
-			flds[1] = req.RequestURI
-			flds[2] = res.Status
-			flds[3] = time.Since(start)
-			flds[4] = req.Host
-			flds[5] = c.RealIP()
-			if log.GetLevel() >= log.DebugLevel {
-				hdrs := make([]string, 0)
-				for key, values := range c.Request().Header {
-					hdrvals := strings.Join(values, ",")
-					hdrs = append(hdrs, fmt.Sprintf("%s: %s", key, hdrvals))
-				}
-				flds[6] = fmt.Sprintf("[%s]", strings.Join(hdrs, "; "))
-			}
-
-			switch {
-			case res.Status >= 500:
-				log.Errorf(msg, flds...)
-			case res.Status >= 400:
-				log.Warnf(msg, flds...)
-			case res.Status >= 300:
-				log.Infof(msg, flds...)
-			default:
-				log.Infof(msg, flds...)
-			}
-			return nil
+		// don't log the health check because it clutters the log and it is intended to
+		// be used by Kubernetes anyway so doesn't need to be logged
+		if req.RequestURI == "/health" {
+			return
 		}
+
+		// net/http sends 200 if the handler wrote nothing
+		status := sw.status
+		if status == 0 {
+			status = http.StatusOK
+		}
+
+		// digests clutter the logs so shorten them
+		uri := req.RequestURI
+		dgst := re.FindStringSubmatch(uri)
+		if len(dgst) == 2 {
+			uri = strings.Replace(uri, dgst[1], dgst[1][:10], 1)
+		}
+
+		flds := make([]any, logFldcnt)
+		flds[0] = req.Method
+		flds[1] = uri
+		flds[2] = status
+		flds[3] = time.Since(start)
+		flds[4] = req.Host
+		flds[5] = remoteIP(req)
+		if log.GetLevel() >= log.DebugLevel {
+			hdrs := make([]string, 0)
+			for key, values := range req.Header {
+				hdrvals := strings.Join(values, ",")
+				hdrs = append(hdrs, fmt.Sprintf("%s: %s", key, hdrvals))
+			}
+			flds[6] = fmt.Sprintf("[%s]", strings.Join(hdrs, "; "))
+		}
+
+		switch {
+		case status >= 500:
+			log.Errorf(msg, flds...)
+		case status >= 400:
+			log.Warnf(msg, flds...)
+		default:
+			log.Infof(msg, flds...)
+		}
+	})
+}
+
+// remoteIP returns the client address of the connection. Like Echo v4.16, it does not trust
+// the client-controlled X-Forwarded-For or X-Real-IP headers.
+func remoteIP(req *http.Request) string {
+	host, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		return req.RemoteAddr
 	}
+	return host
+}
+
+// statusWriter records the status code a handler sends, for logging.
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (s *statusWriter) WriteHeader(code int) {
+	if s.status == 0 {
+		s.status = code
+	}
+	s.ResponseWriter.WriteHeader(code)
+}
+
+func (s *statusWriter) Write(b []byte) (int, error) {
+	if s.status == 0 {
+		s.status = http.StatusOK
+	}
+	return s.ResponseWriter.Write(b)
+}
+
+// ReadFrom passes io.Copy through to the underlying connection, so blob downloads from a
+// file can use the kernel's sendfile instead of copying through a buffer.
+func (s *statusWriter) ReadFrom(src io.Reader) (int64, error) {
+	if s.status == 0 {
+		s.status = http.StatusOK
+	}
+	if rf, ok := s.ResponseWriter.(io.ReaderFrom); ok {
+		return rf.ReadFrom(src)
+	}
+	return io.Copy(s.ResponseWriter, src)
+}
+
+// Flush supports streaming handlers that flush partial responses.
+func (s *statusWriter) Flush() {
+	if f, ok := s.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+// Unwrap lets http.ResponseController reach the underlying ResponseWriter.
+func (s *statusWriter) Unwrap() http.ResponseWriter {
+	return s.ResponseWriter
 }

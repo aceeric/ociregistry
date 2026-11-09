@@ -5,7 +5,9 @@
 # imgpull, and shows the url from the list next to the url recorded in the pulled tarball's
 # manifest. The two should be identical.
 #
-# Usage: smoke-test.sh [server]       server defaults to localhost:8080
+# Usage: pull-all2 [server]
+#
+# (server defaults to localhost:8080)
 #
 # Environment:
 #   IMGPULL       the imgpull binary (default: imgpull on the PATH)

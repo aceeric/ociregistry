@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+#
+# Prints GitHub release notes (markdown) for a tag to stdout:
+#   1. The matching '## <version>' section of CHANGELOG.md, if present
+#   2. A link to release_notes/<version>.md, if present
+#   3. How to get the image and chart
+#   4. The commits since the previous final (non-prerelease) release tag
+#
+# Usage: scripts/release-notes <tag>
+#
+
+set -euo pipefail
+
+if [[ "$#" -ne 1 ]]; then
+  echo "usage: release-notes <tag>"
+  exit 1
+fi
+
+tag="$1"
+
+if ! git rev-parse --verify refs/tags/$tag &>/dev/null; then
+  echo "no such tag: $tag"
+  exit 1
+fi
+
+ver="$tag"
+# 2.1.0-rc1 -> 2.1.0
+base="${ver%%-*}"
+repo="${GITHUB_REPOSITORY:-aceeric/ociregistry}"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+
+# Previous final release: the highest X.Y.Z tag lower than this one.
+prev=""
+while read -r t; do
+  [[ "$t" == "$base" ]] && continue
+  if [[ "$(printf '%s\n%s\n' "$t" "$base" | sort -V | head -1)" == "$t" ]]; then
+    prev="$t"
+  fi
+done < <(git tag -l | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V)
+
+section="$(awk -v v="$ver" '
+  $0 == "## " v { found = 1; next }
+  found && /^## / { exit }
+  found { print }
+' CHANGELOG.md)"
+
+if [[ -n "${section//[[:space:]]/}" ]]; then
+  echo "## Changes"
+  echo "$section"
+  echo
+fi
+
+if [[ -f "release_notes/$ver.md" ]]; then
+  echo "See the [release notes](https://github.com/$repo/blob/$tag/release_notes/$ver.md) for details."
+  echo
+fi
+
+chart_ver="$(awk '/^version:/ {print $2}' charts/ociregistry/Chart.yaml)"
+cat <<EOF
+## Install
+
+Container image (linux/amd64, linux/arm64):
+
+\`\`\`
+docker pull quay.io/appzygy/ociregistry:$tag
+\`\`\`
+
+Helm chart:
+
+\`\`\`
+helm install ociregistry oci://quay.io/appzygy/helm-charts/ociregistry --version $chart_ver
+\`\`\`
+
+Air-gapped install: the \`ociregistry-image_$tag.oci.tar\` asset holds both platforms. Copy it
+into your own registry with \`skopeo copy --all oci-archive:ociregistry-image_$tag.oci.tar docker://<registry>/ociregistry:$tag\`.
+The \`ociregistry-$chart_ver.tgz\` asset can be installed directly with \`helm install ociregistry ./ociregistry-$chart_ver.tgz\`.
+
+Binaries: each \`ociregistry_${tag}_linux_<arch>.tar.gz\` contains \`bin/ociregistry\` and the
+\`systemd-service\` files. Verify downloads against \`SHA256SUMS\`.
+
+EOF
+
+echo "## Commits"
+if [[ -n "$prev" ]]; then
+  git log --no-merges --pretty='- %h %s' "$prev..$tag"
+  echo
+  echo "**Full diff**: https://github.com/$repo/compare/$prev...$tag"
+else
+  git log --no-merges --pretty='- %h %s' "$tag"
+fi

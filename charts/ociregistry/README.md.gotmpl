@@ -106,13 +106,13 @@ To generate this message, Docker took the following steps:
 
 ```shell
 time="2025-04-24T21:13:54Z" level=info msg="pulling manifest from upstream: \"docker.io/library/hello-world:latest\""
-time="2025-04-24T21:13:54Z" level=info msg="echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=501.131286ms host=localhost:31080 ip=10.200.0.232"
+time="2025-04-24T21:13:54Z" level=info msg="server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=501.131286ms host=localhost:31080 ip=10.200.0.232"
 time="2025-04-24T21:13:54Z" level=info msg="serving manifest from cache: \"docker.io/library/hello-world@sha256:c41088499908a59aae84b0a49c70e86f4731e588a737f1637e73c8c09d995654\""
-time="2025-04-24T21:13:54Z" level=info msg="echo server GET:/v2/library/hello-world/manifests/sha256:c410884999?ns=docker.io status=200 latency=2.267101ms host=localhost:31080 ip=10.200.0.232"
+time="2025-04-24T21:13:54Z" level=info msg="server GET:/v2/library/hello-world/manifests/sha256:c410884999?ns=docker.io status=200 latency=2.267101ms host=localhost:31080 ip=10.200.0.232"
 time="2025-04-24T21:13:54Z" level=info msg="pulling manifest from upstream: \"docker.io/library/hello-world@sha256:03b62250a3cb1abd125271d393fc08bf0cc713391eda6b57c02d1ef85efcc25c\""
-time="2025-04-24T21:13:55Z" level=info msg="echo server GET:/v2/library/hello-world/manifests/sha256:03b62250a3?ns=docker.io status=200 latency=612.467708ms host=localhost:31080 ip=10.200.0.232"
-time="2025-04-24T21:13:55Z" level=info msg="echo server GET:/v2/library/hello-world/blobs/sha256:74cc54e27d?ns=docker.io status=200 latency=234.948µs host=localhost:31080 ip=10.200.0.232"
-time="2025-04-24T21:13:55Z" level=info msg="echo server GET:/v2/library/hello-world/blobs/sha256:e6590344b1?ns=docker.io status=200 latency=232.113µs host=localhost:31080 ip=10.200.0.232"
+time="2025-04-24T21:13:55Z" level=info msg="server GET:/v2/library/hello-world/manifests/sha256:03b62250a3?ns=docker.io status=200 latency=612.467708ms host=localhost:31080 ip=10.200.0.232"
+time="2025-04-24T21:13:55Z" level=info msg="server GET:/v2/library/hello-world/blobs/sha256:74cc54e27d?ns=docker.io status=200 latency=234.948µs host=localhost:31080 ip=10.200.0.232"
+time="2025-04-24T21:13:55Z" level=info msg="server GET:/v2/library/hello-world/blobs/sha256:e6590344b1?ns=docker.io status=200 latency=232.113µs host=localhost:31080 ip=10.200.0.232"
 ```
 
 ### Run `hello-world` Pod again with a different name
@@ -129,13 +129,13 @@ These entries indicate that the _ociregistry_ server is serving from the image c
 
 ```shell
 time="2025-04-24T21:34:35Z" level=info msg="serving manifest from cache: \"docker.io/library/hello-world:latest\""
-time="2025-04-24T21:34:35Z" level=info msg="echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=204.413µs host=localhost:31080 ip=10.200.0.232"
+time="2025-04-24T21:34:35Z" level=info msg="server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=204.413µs host=localhost:31080 ip=10.200.0.232"
 time="2025-04-24T21:34:36Z" level=info msg="serving manifest from cache: \"docker.io/library/hello-world:latest\""
-time="2025-04-24T21:34:36Z" level=info msg="echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=358.099µs host=localhost:31080 ip=10.200.0.232"
+time="2025-04-24T21:34:36Z" level=info msg="server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=358.099µs host=localhost:31080 ip=10.200.0.232"
 time="2025-04-24T21:34:51Z" level=info msg="serving manifest from cache: \"docker.io/library/hello-world:latest\""
-time="2025-04-24T21:34:51Z" level=info msg="echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=313.859µs host=localhost:31080 ip=10.200.0.232"
+time="2025-04-24T21:34:51Z" level=info msg="server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=313.859µs host=localhost:31080 ip=10.200.0.232"
 time="2025-04-24T21:35:09Z" level=info msg="serving manifest from cache: \"docker.io/library/hello-world:latest\""
-time="2025-04-24T21:35:09Z" level=info msg="echo server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=836.294µs host=localhost:31080 ip=10.200.0.232"
+time="2025-04-24T21:35:09Z" level=info msg="server HEAD:/v2/library/hello-world/manifests/latest?ns=docker.io status=200 latency=836.294µs host=localhost:31080 ip=10.200.0.232"
 ```
 
 ## TLS

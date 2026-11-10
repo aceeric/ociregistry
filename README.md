@@ -68,7 +68,7 @@ Process id: 1
 Tls: none
 Command line: bin/ociregistry --log-level info --image-path /tmp/images serve --port 8080
 ----------------------------------------------------------------------
-INFO[0000] server is running                            
+INFO[0000] server is running
 ```
 
 ## Pull through the server
@@ -85,17 +85,17 @@ If you used `docker` you should see this output:
 
 ```shell
 v1.29.1: Pulling from registry.k8s.io/kube-scheduler
-aba5379b9c6d: Pull complete 
-e5dbef90bae3: Pull complete 
-fbe9343cb4af: Pull complete 
-fcb6f6d2c998: Pull complete 
-e8c73c638ae9: Pull complete 
-1e3d9b7d1452: Pull complete 
-4aa0ea1413d3: Pull complete 
-65efb1cabba4: Pull complete 
-13547472c521: Pull complete 
-53f492e4d27a: Pull complete 
-6523efc24f16: Pull complete 
+aba5379b9c6d: Pull complete
+e5dbef90bae3: Pull complete
+fbe9343cb4af: Pull complete
+fcb6f6d2c998: Pull complete
+e8c73c638ae9: Pull complete
+1e3d9b7d1452: Pull complete
+4aa0ea1413d3: Pull complete
+65efb1cabba4: Pull complete
+13547472c521: Pull complete
+53f492e4d27a: Pull complete
+6523efc24f16: Pull complete
 Digest: sha256:a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7
 Status: Downloaded newer image for localhost:8080/registry.k8s.io/kube-scheduler:v1.29.1
 localhost:8080/registry.k8s.io/kube-scheduler:v1.29.1
@@ -104,26 +104,26 @@ localhost:8080/registry.k8s.io/kube-scheduler:v1.29.1
 Observe the _Ociregistry_ logs showing how the server handled the pull:
 
 ```shell
-INFO[0199] get /v2/                                     
-INFO[0199] echo server GET:/v2/ status=200 latency=73.392µs host=localhost:8080 ip=127.0.0.1 
-INFO[0199] pulling manifest from upstream: "registry.k8s.io/kube-scheduler:v1.29.1" 
-INFO[0199] echo server HEAD:/v2/registry.k8s.io/kube-scheduler/manifests/v1.29.1 status=200 latency=507.437429ms host=localhost:8080 ip=127.0.0.1 
-INFO[0199] serving manifest from cache: "registry.k8s.io/kube-scheduler@sha256:a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7" 
-INFO[0199] echo server GET:/v2/registry.k8s.io/kube-scheduler/manifests/sha256:a4afe5bf0e status=200 latency=450.065µs host=localhost:8080 ip=127.0.0.1 
-INFO[0199] pulling manifest from upstream: "registry.k8s.io/kube-scheduler@sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c" 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/manifests/sha256:019d7877d1 status=200 latency=1.896723966s host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:406945b511 status=200 latency=989.121µs host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:aba5379b9c status=200 latency=1.206855ms host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:e5dbef90ba status=200 latency=1.072352ms host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:fbe9343cb4 status=200 latency=2.084094ms host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:fcb6f6d2c9 status=200 latency=971.832µs host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:e8c73c638a status=200 latency=843.471µs host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:1e3d9b7d14 status=200 latency=895.636µs host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:4aa0ea1413 status=200 latency=984.738µs host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:65efb1cabb status=200 latency=974.436µs host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:13547472c5 status=200 latency=1.461483ms host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:53f492e4d2 status=200 latency=2.265104ms host=localhost:8080 ip=127.0.0.1 
-INFO[0201] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:6523efc24f status=200 latency=70.020159ms host=localhost:8080 ip=127.0.0.1 
+INFO[0199] get /v2/
+INFO[0199] server GET:/v2/ status=200 latency=73.392µs host=localhost:8080 ip=127.0.0.1
+INFO[0199] pulling manifest from upstream: "registry.k8s.io/kube-scheduler:v1.29.1"
+INFO[0199] server HEAD:/v2/registry.k8s.io/kube-scheduler/manifests/v1.29.1 status=200 latency=507.437429ms host=localhost:8080 ip=127.0.0.1
+INFO[0199] serving manifest from cache: "registry.k8s.io/kube-scheduler@sha256:a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7"
+INFO[0199] server GET:/v2/registry.k8s.io/kube-scheduler/manifests/sha256:a4afe5bf0e status=200 latency=450.065µs host=localhost:8080 ip=127.0.0.1
+INFO[0199] pulling manifest from upstream: "registry.k8s.io/kube-scheduler@sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c"
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/manifests/sha256:019d7877d1 status=200 latency=1.896723966s host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:406945b511 status=200 latency=989.121µs host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:aba5379b9c status=200 latency=1.206855ms host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:e5dbef90ba status=200 latency=1.072352ms host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:fbe9343cb4 status=200 latency=2.084094ms host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:fcb6f6d2c9 status=200 latency=971.832µs host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:e8c73c638a status=200 latency=843.471µs host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:1e3d9b7d14 status=200 latency=895.636µs host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:4aa0ea1413 status=200 latency=984.738µs host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:65efb1cabb status=200 latency=974.436µs host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:13547472c5 status=200 latency=1.461483ms host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:53f492e4d2 status=200 latency=2.265104ms host=localhost:8080 ip=127.0.0.1
+INFO[0201] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:6523efc24f status=200 latency=70.020159ms host=localhost:8080 ip=127.0.0.1
 ```
 
 Note the occurrence of `pulling manifest from upstream` in the logs above.
@@ -143,16 +143,16 @@ docker pull localhost:8080/registry.k8s.io/kube-scheduler:v1.29.1
 The more recent _Ociregistry_ log entries show:
 
 ```shell
-INFO[0784] get /v2/                                     
-INFO[0784] echo server GET:/v2/ status=200 latency=36.735µs host=localhost:8080 ip=127.0.0.1 
-INFO[0784] serving manifest from cache: "registry.k8s.io/kube-scheduler:v1.29.1" 
-INFO[0784] echo server HEAD:/v2/registry.k8s.io/kube-scheduler/manifests/v1.29.1 status=200 latency=127.739µs host=localhost:8080 ip=127.0.0.1 
-INFO[0784] serving manifest from cache: "registry.k8s.io/kube-scheduler@sha256:a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7" 
-INFO[0784] echo server GET:/v2/registry.k8s.io/kube-scheduler/manifests/sha256:a4afe5bf0e status=200 latency=169.374µs host=localhost:8080 ip=127.0.0.1 
-INFO[0784] serving manifest from cache: "registry.k8s.io/kube-scheduler@sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c" 
-INFO[0784] echo server GET:/v2/registry.k8s.io/kube-scheduler/manifests/sha256:019d7877d1 status=200 latency=171.32µs host=localhost:8080 ip=127.0.0.1 
-INFO[0784] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:406945b511 status=200 latency=288.877µs host=localhost:8080 ip=127.0.0.1 
-INFO[0784] echo server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:e5dbef90ba status=200 latency=381.53µs host=localhost:8080 ip=127.0.0.1 
+INFO[0784] get /v2/
+INFO[0784] server GET:/v2/ status=200 latency=36.735µs host=localhost:8080 ip=127.0.0.1
+INFO[0784] serving manifest from cache: "registry.k8s.io/kube-scheduler:v1.29.1"
+INFO[0784] server HEAD:/v2/registry.k8s.io/kube-scheduler/manifests/v1.29.1 status=200 latency=127.739µs host=localhost:8080 ip=127.0.0.1
+INFO[0784] serving manifest from cache: "registry.k8s.io/kube-scheduler@sha256:a4afe5bf0eefa56aebe9b754cdcce26c88bebfa89cb12ca73808ba1d701189d7"
+INFO[0784] server GET:/v2/registry.k8s.io/kube-scheduler/manifests/sha256:a4afe5bf0e status=200 latency=169.374µs host=localhost:8080 ip=127.0.0.1
+INFO[0784] serving manifest from cache: "registry.k8s.io/kube-scheduler@sha256:019d7877d15b45951df939efcb941de9315e8381476814a6b6fdf34fc1bee24c"
+INFO[0784] server GET:/v2/registry.k8s.io/kube-scheduler/manifests/sha256:019d7877d1 status=200 latency=171.32µs host=localhost:8080 ip=127.0.0.1
+INFO[0784] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:406945b511 status=200 latency=288.877µs host=localhost:8080 ip=127.0.0.1
+INFO[0784] server GET:/v2/registry.k8s.io/kube-scheduler/blobs/sha256:e5dbef90ba status=200 latency=381.53µs host=localhost:8080 ip=127.0.0.1
 etc...
 ```
 

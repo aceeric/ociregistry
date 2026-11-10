@@ -80,7 +80,7 @@ project root
 | `impl/serialize` | Reads/writes from/to the file system. |
 | `impl/handlers.go` | Has the code for the subset of the OCI Distribution Server API spec that the server implements. |
 | `impl/cmd_handlers.go` | Has the code for the administrative REST api. |
-| `impl/ociregistry.go` | A veneer that the embedded [Echo](https://echo.labstack.com/) server calls that simply delegates to `impl/handlers.go`. See the next section - _REST API Implementation_ for some details on the REST API. |
+| `impl/ociregistry.go` | A veneer that the embedded go http server calls that simply delegates to `impl/handlers.go`. See the next section - _REST API Implementation_ for some details on the REST API. |
 | `mock` | Runs a mock upstream OCI Distribution server used by the unit tests. |
 
 ## REST API Implementation
@@ -106,7 +106,5 @@ The key components of the API scaffolding supported by OAPI-Codegen are shown be
 │   ├── ociregistry.yaml   (the openapi spec built initially with swagger)
 │   └── server.cfg.yaml    (modeled from pet store)
 └── cmd
-    └── ociregistry.go     (this is the server - which embeds the Echo server)
+    └── ociregistry.go     (this is the server - which embeds the standard go http server)
 ```
-
-I elected to use the [Echo](https://echo.labstack.com/) option to run the API. The **Echo** server is started by the [serve](https://github.com/aceeric/ociregistry/blob/main/cmd/subcmd/serve.go) sub-command of the _Ociregistry_ server.

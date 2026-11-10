@@ -13,7 +13,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const msg_base = "echo server %s:%s status=%d latency=%s host=%s ip=%s"
+const msg_base = "server %s:%s status=%d latency=%s host=%s ip=%s"
 const msg_debug = msg_base + " hdrs=%s"
 const srch = `.*sha256:([a-f0-9]{64}).*`
 
@@ -111,7 +111,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// remoteIP returns the client address of the connection. Like Echo v4.16, it does not trust
+// remoteIP returns the client address of the connection. Does not trust
 // the client-controlled X-Forwarded-For or X-Real-IP headers.
 func remoteIP(req *http.Request) string {
 	host, _, err := net.SplitHostPort(req.RemoteAddr)

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## TODO (2.2.0)
+
+1. Replace echo server with golang net.http since most API scaffolding already provided by oapi-codegen.
+
 ## 2.1.0
 
 09-Nov-2026

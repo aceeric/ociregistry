@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/aceeric/ociregistry/mock"
@@ -473,5 +474,26 @@ func TestUnknownKeys(t *testing.T) {
 		if err := SetConfigFromStr([]byte(cfg)); err != nil {
 			t.Errorf("%q: expected an empty configuration, got %v", cfg, err)
 		}
+	}
+}
+
+// Tests metaWriteFreq in the config file: a valid duration, the default when it isn't set, and
+// values that aren't positive durations, which are an error that leaves the configuration
+// unchanged.
+func TestMetaWriteFreq(t *testing.T) {
+	if err := SetConfigFromStr([]byte("metaWriteFreq: 30s\n")); err != nil || GetMetaWriteFreq() != 30*time.Second {
+		t.Fatalf("expected 30s, got %s %v", GetMetaWriteFreq(), err)
+	}
+	for _, bad := range []string{"5 minutes", "0s", "-1m", "5"} {
+		err := SetConfigFromStr([]byte("metaWriteFreq: " + bad + "\n"))
+		if err == nil || !strings.Contains(err.Error(), "positive duration") {
+			t.Errorf("%q: expected an error, got %v", bad, err)
+		}
+		if GetMetaWriteFreq() != 30*time.Second {
+			t.Errorf("%q: the configuration should be unchanged", bad)
+		}
+	}
+	if err := SetConfigFromStr([]byte("port: 8080\n")); err != nil || GetMetaWriteFreq() != 5*time.Minute {
+		t.Fatalf("expected the 5m default, got %s %v", GetMetaWriteFreq(), err)
 	}
 }

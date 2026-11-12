@@ -23,6 +23,7 @@ import (
 	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/metrics"
 	"github.com/aceeric/ociregistry/impl/preload"
+	"github.com/aceeric/ociregistry/impl/serialize"
 
 	middleware "github.com/oapi-codegen/nethttp-middleware"
 	log "github.com/sirupsen/logrus"
@@ -103,6 +104,11 @@ func Serve(buildVer string, buildDtm string) error {
 	if err := cache.Load(config.GetImagePath()); err != nil {
 		return fmt.Errorf("error loading the image cache: %s", err)
 	}
+	// journals pull dates to the file system in the background, against a crash. Stopping it
+	// is idempotent, so the deferred stop only matters if startup fails from here on: the
+	// journal is then applied the next time the cache is opened
+	cache.StartPullDateWriter(config.GetImagePath(), config.GetMetaWriteFreq())
+	defer cache.StopPullDateWriter()
 
 	fmt.Fprintf(os.Stderr, startupBanner, buildVer, buildDtm, time.Unix(0, time.Now().UnixNano()), config.GetPort(),
 		os.Getuid(), os.Getgid(), os.Getpid(), tlsMsg(), strings.Join(os.Args, " "))
@@ -158,6 +164,12 @@ func Serve(buildVer string, buildDtm string) error {
 		log.Infof("pruner stopped")
 	}
 	cache.WaitPulls()
+	// the final flush makes the pull dates file current, in case a manifest can't be written
+	cache.StopPullDateWriter()
+	log.Infof("updating manifest cache pull dates")
+	if err := cache.UpdateManifestPullDates(serialize.MhToFilesystem); err != nil {
+		return err
+	}
 	log.Infof("stopped")
 	return nil
 }

@@ -114,7 +114,7 @@ func TestLoad(t *testing.T) {
 		if err != nil {
 			t.Fail()
 		}
-		mh, _ := getManifestFromCache(pr, td)
+		mh, _ := getManifestFromCache(pr)
 		if reflect.DeepEqual(mh, emptyMH) {
 			t.Fail()
 		}
@@ -123,7 +123,7 @@ func TestLoad(t *testing.T) {
 		if err != nil {
 			t.Fail()
 		}
-		mh, _ = getManifestFromCache(pr, td)
+		mh, _ = getManifestFromCache(pr)
 		if reflect.DeepEqual(mh, emptyMH) {
 			t.Fail()
 		}
@@ -574,7 +574,7 @@ func TestDockerIoSpellingsShareCache(t *testing.T) {
 		if !IsCached(pr) {
 			t.Errorf("IsCached(%q) = false", pr.Url())
 		}
-		if _, found := getManifestFromCache(pr, td); !found {
+		if _, found := getManifestFromCache(pr); !found {
 			t.Errorf("getManifestFromCache(%q) not found", pr.Url())
 		}
 	}
@@ -731,18 +731,27 @@ func TestDigestRequestUpdatesTagEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, found := getManifestFromCache(byDigest, td)
+	StartPullDateWriter(td, time.Hour)
+	defer StopPullDateWriter()
+	got, found := getManifestFromCache(byDigest)
 	if !found || got.Pulled == "" {
 		t.Fatal("expected a hit with a pulled date")
 	}
 	if mc.len() != 1 || mc.entries["quay.io/org/app:v1"].Pulled != got.Pulled {
 		t.Fatalf("the tag entry should be updated in place: %d entries", mc.len())
 	}
-	if fromFs, _ := serialize.MhFromFilesystem("quay.io/org/app:v1", td); fromFs.Pulled != got.Pulled {
-		t.Fatal("the tag's file should have the new pulled date")
+	// the hit doesn't write the manifest file; the pull date goes to the pull dates file, for
+	// the tag url only, when the writer flushes
+	if fromFs, _ := serialize.MhFromFilesystem("quay.io/org/app:v1", td); fromFs.Pulled != mh.Pulled {
+		t.Fatal("the tag's manifest file should not be rewritten by a cache hit")
 	}
 	if _, found := serialize.MhFromFilesystem(byDigest.Url(), td); found {
 		t.Fatal("no file should be written for the digest url")
+	}
+	flushPullDates()
+	meta, err := serialize.ReadPullDates(td)
+	if err != nil || len(meta) != 1 || meta["quay.io/org/app:v1"].Pulled != got.Pulled {
+		t.Fatalf("expected the tag url's pull date in the pull dates file, got %v %v", meta, err)
 	}
 }
 

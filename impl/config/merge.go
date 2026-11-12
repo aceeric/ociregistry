@@ -51,6 +51,9 @@ func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 	if fromCmdline.AlwaysPullLatest || !config.AlwaysPullLatest {
 		config.AlwaysPullLatest = cfg.AlwaysPullLatest
 	}
+	if fromCmdline.MetaWriteFreq || config.MetaWriteFreq == "" {
+		config.MetaWriteFreq = cfg.MetaWriteFreq
+	}
 	if fromCmdline.NoCache {
 		// the command line patterns replace the config file's
 		config.NoCache = cfg.NoCache

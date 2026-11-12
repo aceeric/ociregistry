@@ -28,3 +28,13 @@ func CurTime() string {
 func ParseTime(dt string) (time.Time, error) {
 	return time.Parse(DateFormat, dt)
 }
+
+// LaterTime returns whichever of the passed date/times created by CurTime is later. An
+// empty value is earlier than any other. Values in DateFormat sort as strings, so no parsing
+// is needed.
+func LaterTime(a, b string) string {
+	if a > b {
+		return a
+	}
+	return b
+}

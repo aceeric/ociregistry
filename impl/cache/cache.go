@@ -143,7 +143,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 		if err != nil {
 			if forcePull {
 				// e.g. the upstream is unreachable: a cached copy is better than failing
-				if cached, found := getManifestFromCache(pr, imagePath); found {
+				if cached, found := getManifestFromCache(pr); found {
 					log.Warnf("serving the cached manifest for %q because the upstream pull failed: %s", url, err)
 					metrics.IncCachedPullsByNs(pr.Remote)
 					return cached, nil
@@ -162,7 +162,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 		case <-ch:
 			log.Infof("serving manifest from cache (after wait): %q", url)
 			metrics.IncCachedPullsByNs(pr.Remote)
-			mh, exists := getManifestFromCache(pr, imagePath)
+			mh, exists := getManifestFromCache(pr)
 			if !exists {
 				return emptyManifestHolder, fmt.Errorf("manifest not found (after wait) %q", url)
 			}
@@ -252,6 +252,14 @@ func Load(imagePath string) error {
 	if err := serialize.RemoveTempFiles(imagePath); err != nil {
 		return err
 	}
+	// the pull dates file must have been applied to the manifests (realMain does this before
+	// any command runs): if it were left, the pull date writer would overwrite it with only the
+	// urls pulled from now on, losing the pull dates it holds
+	if exists, err := serialize.PullDatesExist(imagePath); err != nil {
+		return err
+	} else if exists {
+		return fmt.Errorf("%s was not applied to the cache before loading it", serialize.PullDatesFile)
+	}
 	itemcnt := 0
 	err := serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, fi os.FileInfo) error {
 		pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
@@ -311,6 +319,8 @@ func IsCached(pr pullrequest.PullRequest) bool {
 
 // ResetCache supports unit tests
 func ResetCache() {
+	// a running writer would keep flushing the new pull dates
+	StopPullDateWriter()
 	cp = concurrentPulls{
 		pulls: make(map[string]chan struct{}),
 	}
@@ -318,6 +328,7 @@ func ResetCache() {
 	bc = blobCache{
 		blobs: map[string]int{},
 	}
+	pd = newPullDates()
 }
 
 // newManifestCache returns an empty manifest cache.
@@ -509,7 +520,7 @@ func addBlobsToCache(mh imgpull.ManifestHolder) {
 // from the upstream. If that pull fails, GetManifest serves the cached copy if there is one.
 func getManifestOrEnqueue(pr pullrequest.PullRequest, imagePath string, forcePull bool) (imgpull.ManifestHolder, chan struct{}, enqueueResult) {
 	if !forcePull {
-		if mh, exists := getManifestFromCache(pr, imagePath); exists {
+		if mh, exists := getManifestFromCache(pr); exists {
 			return mh, nil, cacheHit
 		}
 	}
@@ -520,9 +531,10 @@ func getManifestOrEnqueue(pr pullrequest.PullRequest, imagePath string, forcePul
 // getManifestFromCache gets a manifest from the in-mem manifest cache, or returns
 // an empty manifest holder if the manifest for the passed URL is not cached. If the
 // manifest exists, the 'Pulled' field of the entry that holds it is updated to the current
-// time and the manifest is written back to the file system. A request by digest that is
-// served from a tag entry updates that tag entry.
-func getManifestFromCache(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, bool) {
+// time, and the pull date is recorded for the pull date writer, which writes it to the file
+// system in the background (see pulldates.go). A request by digest that is served from a tag
+// entry updates that tag entry.
+func getManifestFromCache(pr pullrequest.PullRequest) (imgpull.ManifestHolder, bool) {
 	mc.Lock()
 	defer mc.Unlock()
 	mh, key, exists := mc.lookup(imageUrl(pr.Url()))
@@ -531,10 +543,7 @@ func getManifestFromCache(pr pullrequest.PullRequest, imagePath string) (imgpull
 	}
 	mh.Pulled = globals.CurTime()
 	mc.entries[key] = mh
-	if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
-		log.Errorf("error serializing manifest %q, the error was: %s", key, err)
-		return emptyManifestHolder, false
-	}
+	recordPull(key, mh.Pulled)
 	return mh, true
 }
 

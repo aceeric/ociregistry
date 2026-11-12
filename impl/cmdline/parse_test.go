@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/aceeric/ociregistry/impl/config"
 )
@@ -222,6 +223,7 @@ health: 9876
 helloWorld: true
 defaultNs: abc.io
 host: 2.3.4.5
+metaWriteFreq: 10m
 `
 
 var expectConfig = config.Configuration{
@@ -241,6 +243,7 @@ var expectConfig = config.Configuration{
 	HelloWorld:       true,
 	DefaultNs:        "abc.io",
 	Host:             "2.3.4.5",
+	MetaWriteFreq:    "10m",
 	// prune dry run defaults to true when the config file doesn't set it
 	PruneConfig: config.PruneConfig{DryRun: true},
 }
@@ -265,5 +268,64 @@ func TestMergeConfig(t *testing.T) {
 	newCfg := config.Get()
 	if !reflect.DeepEqual(newCfg, expectConfig) {
 		t.Fail()
+	}
+}
+
+// Tests --meta-write-freq: the default, both forms, and values that aren't positive durations.
+func TestParseMetaWriteFreq(t *testing.T) {
+	tests := []struct {
+		args    []string
+		want    string
+		fromCmd bool
+		wantErr bool
+	}{
+		{[]string{}, "5m", false, false},
+		{[]string{"--meta-write-freq", "30s"}, "30s", true, false},
+		{[]string{"--meta-write-freq=1h"}, "1h", true, false},
+		{[]string{"--meta-write-freq", "5 minutes"}, "", false, true},
+		{[]string{"--meta-write-freq=0s"}, "", false, true},
+		{[]string{"--meta-write-freq=-1m"}, "", false, true},
+	}
+	for _, tst := range tests {
+		ClearParse()
+		os.Args = append([]string{"bin/ociregistry", "serve"}, tst.args...)
+		fromCmdline, cfg, err := Parse()
+		if tst.wantErr {
+			if err == nil {
+				t.Errorf("%v: expected an error", tst.args)
+			}
+			continue
+		}
+		if err != nil || cfg.MetaWriteFreq != tst.want || fromCmdline.MetaWriteFreq != tst.fromCmd {
+			t.Errorf("%v: expected %q (from command line %t), got %q %t %v", tst.args, tst.want, tst.fromCmd, cfg.MetaWriteFreq, fromCmdline.MetaWriteFreq, err)
+		}
+	}
+}
+
+// Tests that --meta-write-freq overrides the config file, and that the config file's value is
+// kept when the flag isn't given (TestMergeConfig) or used when it's the only one.
+func TestMergeMetaWriteFreq(t *testing.T) {
+	for _, tst := range []struct {
+		file string
+		args []string
+		want time.Duration
+	}{
+		{"metaWriteFreq: 10m\n", []string{"--meta-write-freq", "30s"}, 30 * time.Second},
+		{"metaWriteFreq: 10m\n", []string{}, 10 * time.Minute},
+		{"port: 8080\n", []string{}, 5 * time.Minute},
+	} {
+		ClearParse()
+		if err := config.SetConfigFromStr([]byte(tst.file)); err != nil {
+			t.Fatal(err)
+		}
+		os.Args = append([]string{"bin/ociregistry", "serve"}, tst.args...)
+		fromCmdline, cfg, err := Parse()
+		if err != nil {
+			t.Fatal(err)
+		}
+		config.Merge(fromCmdline, cfg)
+		if got := config.GetMetaWriteFreq(); got != tst.want {
+			t.Errorf("%q %v: expected %s, got %s", tst.file, tst.args, tst.want, got)
+		}
 	}
 }

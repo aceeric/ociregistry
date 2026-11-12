@@ -83,6 +83,18 @@ func realMain() int {
 	globals.ConfigureLogging(config.GetLogLevel(), config.GetLogFile())
 	imgpull.SetConcurrentBlobs(int(config.GetPullTimeout()) * 1000)
 
+	// before any command uses the cache, apply the pull dates left by a server that didn't shut
+	// down cleanly, so the manifests hold the pull dates. Only a migrated cache can have the
+	// file, so for serve, which migrates later, this does nothing on an unmigrated cache.
+	// Skipped for migrate-cache, which may not write (--dry-run) and only converts the old
+	// layout, and in hello-world mode, whose cache is a new temporary directory.
+	if command != migrateCmd && !config.GetHelloWorld() {
+		if err := serialize.ReconcilePullDates(config.GetImagePath(), serialize.MhToFilesystem); err != nil {
+			fmt.Fprintf(os.Stderr, "unable to apply the pull dates file to the cache: %s\n", err)
+			return 1
+		}
+	}
+
 	switch command {
 	case loadCmd:
 		if err := preload.Load(config.GetImageFile(), config.GetResolveRef()); err != nil {

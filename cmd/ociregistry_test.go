@@ -256,3 +256,39 @@ func TestMigrateCacheCmdIncomplete(t *testing.T) {
 		t.Fatalf("expected exit 1, got %d", result)
 	}
 }
+
+// Tests that a command that uses the cache first applies a pull dates file left by a crash, and
+// refuses to run if the file can't be used, and that migrate-cache leaves the file alone.
+func TestReconcileGate(t *testing.T) {
+	td := t.TempDir()
+	if err := serialize.CreateDirs(td, true); err != nil {
+		t.Fatal(err)
+	}
+	mh := imgpull.ManifestHolder{Type: imgpull.V1ociManifest, ImageUrl: "quay.io/org/app:v1", Digest: strings.Repeat("d", 64),
+		Created: "2026-11-01T10:00:00", Pulled: "2026-11-01T10:00:00"}
+	serialize.MhToFilesystem(mh, td, true)
+	serialize.WritePullDates(td, map[string]serialize.UrlMeta{"quay.io/org/app:v1": {Pulled: "2026-11-09T17:09:25"}})
+	if result, stderr := runMain(t, "--image-path", td, "list"); result != 0 {
+		t.Fatalf("expected list to succeed, got %d %q", result, stderr)
+	}
+	if got, _ := serialize.MhFromFilesystem("quay.io/org/app:v1", td); got.Pulled != "2026-11-09T17:09:25" {
+		t.Fatalf("expected the journaled pull date to be applied, got %s", got.Pulled)
+	}
+	journal := filepath.Join(td, globals.ManifestPath, serialize.PullDatesFile)
+	if _, err := os.Stat(journal); !os.IsNotExist(err) {
+		t.Fatal("expected the pull dates file to be deleted")
+	}
+	os.WriteFile(journal, []byte("not json"), 0644)
+	if result, _ := runMain(t, "--image-path", td, "migrate-cache", "--dry-run"); result != 0 {
+		t.Fatalf("migrate-cache --dry-run: expected exit 0, got %d", result)
+	}
+	if b, _ := os.ReadFile(journal); string(b) != "not json" {
+		t.Fatal("migrate-cache must leave the pull dates file alone")
+	}
+	for _, args := range [][]string{{"list"}, {"prune", "--pattern", "foo"}, {"serve", "--port", "0"}} {
+		result, stderr := runMain(t, append([]string{"--image-path", td}, args...)...)
+		if result != 1 || !strings.Contains(stderr, "unable to apply the pull dates file") || !strings.Contains(stderr, "delete it") {
+			t.Errorf("%v: expected exit 1 and the pull dates message, got %d %q", args, result, stderr)
+		}
+	}
+}

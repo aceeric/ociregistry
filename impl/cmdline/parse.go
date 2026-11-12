@@ -160,6 +160,20 @@ var cmds = &cli.Command{
 						return nil
 					},
 				},
+				&cli.StringFlag{
+					Name:        "meta-write-freq",
+					Value:       config.DefaultMetaWriteFreq,
+					Usage:       "How often cache metadata (pull dates) is written to disk, e.g. 30s, 5m, 1h",
+					Destination: &cfg.MetaWriteFreq,
+					Validator: func(v string) error {
+						_, err := config.ParseMetaWriteFreq(v)
+						return err
+					},
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.MetaWriteFreq = true
+						return nil
+					},
+				},
 				&cli.IntFlag{
 					Name:        "health",
 					Usage:       "Port on which the server runs a /health endpoint for liveness/readiness",

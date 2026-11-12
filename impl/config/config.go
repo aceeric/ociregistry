@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"time"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/aceeric/ociregistry/impl/auth"
@@ -108,6 +109,7 @@ type Configuration struct {
 	Metrics          int              `yaml:"metrics"`
 	AlwaysPullLatest bool             `yaml:"alwaysPullLatest"`
 	NoCache          []string         `yaml:"noCache"`
+	MetaWriteFreq    string           `yaml:"metaWriteFreq"`
 	AirGapped        bool             `yaml:"airGapped"`
 	HelloWorld       bool             `yaml:"helloWorld"`
 	DefaultNs        string           `yaml:"defaultNs"`
@@ -140,6 +142,7 @@ type FromCmdLine struct {
 	Metrics          bool
 	AlwaysPullLatest bool
 	NoCache          bool
+	MetaWriteFreq    bool
 	AirGapped        bool
 	HelloWorld       bool
 	DefaultNs        bool
@@ -233,6 +236,37 @@ func GetNoCache() []string {
 	return config.NoCache
 }
 
+// DefaultMetaWriteFreq is how often the server writes cache metadata (pull dates) to the file
+// system if metaWriteFreq / --meta-write-freq isn't set.
+const DefaultMetaWriteFreq = "5m"
+
+// GetMetaWriteFreq returns how often the server writes cache metadata to the file system. The
+// value is validated where it enters the configuration (the config file by SetConfigFromStr,
+// the command line by the parser), so one that doesn't parse here is a bug: it's logged and the
+// default is used.
+func GetMetaWriteFreq() time.Duration {
+	freq := config.MetaWriteFreq
+	if freq == "" {
+		freq = DefaultMetaWriteFreq
+	}
+	d, err := ParseMetaWriteFreq(freq)
+	if err != nil {
+		log.Errorf("%s (should never happen) - using %s", err, DefaultMetaWriteFreq)
+		d, _ = ParseMetaWriteFreq(DefaultMetaWriteFreq)
+	}
+	return d
+}
+
+// ParseMetaWriteFreq parses a metaWriteFreq / --meta-write-freq value: a positive Go duration
+// such as 30s, 5m or 1h.
+func ParseMetaWriteFreq(freq string) (time.Duration, error) {
+	d, err := time.ParseDuration(freq)
+	if err != nil || d <= 0 {
+		return 0, fmt.Errorf("metaWriteFreq %q must be a positive duration such as 30s, 5m or 1h", freq)
+	}
+	return d, nil
+}
+
 // latestPattern is the --no-cache pattern that --always-pull-latest stands for.
 const latestPattern = ":latest$"
 
@@ -240,7 +274,6 @@ const latestPattern = ":latest$"
 // matches any of them is always pulled from the upstream. If alwaysPullLatest is set, the
 // pattern ':latest$' is included. The patterns are validated where they enter the
 // configuration (the config file by SetConfigFromStr, the command line by the parser).
-// But we trap errors anyway to be safe.
 func NoCachePatterns() []*regexp.Regexp {
 	patterns := slices.Clone(config.NoCache)
 	if config.AlwaysPullLatest && !slices.Contains(patterns, latestPattern) {
@@ -337,6 +370,10 @@ func SetConfigFromStr(configBytes []byte) error {
 		return err
 	} else if err := validateNoCache(cfg.NoCache); err != nil {
 		return err
+	} else if cfg.MetaWriteFreq != "" {
+		if _, err := ParseMetaWriteFreq(cfg.MetaWriteFreq); err != nil {
+			return err
+		}
 	}
 	config = cfg
 	return nil

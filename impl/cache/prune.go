@@ -305,9 +305,11 @@ func prune(mh imgpull.ManifestHolder, comparer ManifestComparer, imagePath strin
 
 // rmManifest removes the passed manifest's entry from the manifest cache, and its file from the
 // file system. Other entries with the same digest (other tags, or the digest url) are not
-// affected. The blobs for the manifest (if any) are *not* removed. The caller must hold mc.
+// affected. The url is removed from the pull dates file by the next flush. The blobs
+// for the manifest (if any) are *not* removed. The caller must hold mc.
 func rmManifest(mh imgpull.ManifestHolder, imagePath string, plog pruneLog) {
 	mc.drop(imageUrl(mh.ImageUrl))
+	recordRemove(imageUrl(mh.ImageUrl))
 	if err := serialize.RmManifest(imagePath, mh); err != nil {
 		plog.Errorf("error removing manifest %q from the file system. the error was: %s", mh.ImageUrl, err)
 	}

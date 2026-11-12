@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -483,6 +484,55 @@ func UpstreamAuthProviders(yield func(TokenAuth) bool) {
 			}
 		}
 	}
+}
+
+// Redacted returns a copy of the configuration that is safe to show: secrets that are set are
+// replaced by redactedValue, so it's still visible that they are set. The secrets are each
+// registry's password, static token and token provider options, and the password and token in
+// its parsed puller options, whose TLS configuration (which can hold private keys) is removed.
+// Names of environment variables and file paths are not secrets and are kept.
+func Redacted() Configuration {
+	cfg := config
+	cfg.Registries = slices.Clone(config.Registries)
+	for i := range cfg.Registries {
+		reg := &cfg.Registries[i]
+		reg.Auth.Password = redact(reg.Auth.Password)
+		reg.Auth.Token.Static = redact(reg.Auth.Token.Static)
+		reg.Auth.Token.ProviderOpts = redact(reg.Auth.Token.ProviderOpts)
+		reg.Opts.Password = redact(reg.Opts.Password)
+		reg.Opts.Token = redact(reg.Opts.Token)
+		reg.Opts.TlsCfg = nil
+	}
+	return cfg
+}
+
+// Marshal returns the redacted configuration (see Redacted) as "yaml", with the keys of the
+// config file, or "json", with the same keys.
+func Marshal(format string) ([]byte, error) {
+	b, err := yaml.Marshal(Redacted())
+	if err != nil || format == "yaml" {
+		return b, err
+	} else if format != "json" {
+		return nil, fmt.Errorf("unsupported format %q: must be yaml or json", format)
+	}
+	// via the yaml, so json has the same keys as the config file without a json tag per field
+	var v any
+	if err := yaml.Unmarshal(b, &v); err != nil {
+		return nil, err
+	}
+	b, err = json.MarshalIndent(v, "", "  ")
+	return append(b, '\n'), err
+}
+
+// redactedValue replaces a secret in the configuration shown by Redacted.
+const redactedValue = "*****"
+
+// redact returns redactedValue for a secret that is set, and an empty one unchanged.
+func redact(secret string) string {
+	if secret == "" {
+		return ""
+	}
+	return redactedValue
 }
 
 // validateNoCache returns an error naming the first noCache pattern that doesn't compile.

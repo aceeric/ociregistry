@@ -75,6 +75,9 @@ func TestCmdApi(t *testing.T) {
 		{testFun: testImageCache, expRespLines: 16},
 		{testFun: testImageCacheBadLen, expRespLines: 1},
 		{testFun: testPulldatelist, expRespLines: 1},
+		{testFun: testConfigYaml, expRespLines: -1},
+		{testFun: testConfigJson, expRespLines: -1},
+		{testFun: testConfigBadFormat, expRespLines: 1},
 	}
 	for _, tst := range tests {
 		rec := httptest.NewRecorder()
@@ -88,7 +91,8 @@ func TestCmdApi(t *testing.T) {
 			t.FailNow()
 		}
 		fmt.Print(string(body))
-		if strings.Count(string(body), "\n") != tst.expRespLines {
+		// a negative count means the output varies, so only the test function checks it
+		if tst.expRespLines >= 0 && strings.Count(string(body), "\n") != tst.expRespLines {
 			t.FailNow()
 		}
 	}
@@ -190,4 +194,25 @@ func testImageCacheBadLen(r *OciRegistry, rec *httptest.ResponseRecorder, req *h
 func testPulldatelist(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
 	r.CmdPulldatelist(rec, req, models.CmdPulldatelistParams{})
 	return rec.Code == 200 && rec.Body.String() == "no pull dates found\n"
+}
+
+// GET /cmd/config defaults to yaml
+func testConfigYaml(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
+	r.CmdConfig(rec, req, models.CmdConfigParams{})
+	return rec.Code == 200 && rec.Header().Get("Content-Type") == "application/yaml" && strings.Contains(rec.Body.String(), "imagePath: ")
+}
+
+// GET /cmd/config?format=json
+func testConfigJson(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
+	format := models.Json
+	r.CmdConfig(rec, req, models.CmdConfigParams{Format: &format})
+	return rec.Code == 200 && rec.Header().Get("Content-Type") == "application/json" && strings.Contains(rec.Body.String(), `"imagePath": `)
+}
+
+// GET /cmd/config?format=toml is rejected (the request validator rejects it before the handler
+// in the server)
+func testConfigBadFormat(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
+	format := models.CmdConfigParamsFormat("toml")
+	r.CmdConfig(rec, req, models.CmdConfigParams{Format: &format})
+	return rec.Code == 400
 }

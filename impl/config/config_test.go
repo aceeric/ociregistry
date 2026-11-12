@@ -1,6 +1,8 @@
 package config
 
 import (
+	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -495,5 +497,94 @@ func TestMetaWriteFreq(t *testing.T) {
 	}
 	if err := SetConfigFromStr([]byte("port: 8080\n")); err != nil || GetMetaWriteFreq() != 5*time.Minute {
 		t.Fatalf("expected the 5m default, got %s %v", GetMetaWriteFreq(), err)
+	}
+}
+
+// redactFixture is a config file with every secret set.
+const redactFixture = `imagePath: /var/lib/ociregistry
+registries:
+  - name: quay.io
+    auth:
+      user: frobozz
+      password: xyzzy-password
+      passwordFromEnv: QUAY_PASSWORD
+      token:
+        provider: ecr
+        providerOpts: xyzzy-provider-opts
+        static: xyzzy-static-token
+    tls:
+      key: /etc/certs/client.key
+    opts:
+      username: frobozz
+      password: xyzzy-opts-password
+      token: xyzzy-opts-token
+  - name: docker.io
+`
+
+// Tests that Redacted masks each secret that is set, leaves empty ones empty, keeps names and
+// paths, removes the parsed TLS configuration, and doesn't change the configuration itself.
+func TestRedacted(t *testing.T) {
+	if err := SetConfigFromStr([]byte(redactFixture)); err != nil {
+		t.Fatal(err)
+	}
+	config.Registries[0].Opts.TlsCfg = &tls.Config{}
+	reg := Redacted().Registries[0]
+	for name, got := range map[string]string{"password": reg.Auth.Password, "static": reg.Auth.Token.Static,
+		"providerOpts": reg.Auth.Token.ProviderOpts, "opts password": reg.Opts.Password, "opts token": reg.Opts.Token} {
+		if got != redactedValue {
+			t.Errorf("%s: expected %q, got %q", name, redactedValue, got)
+		}
+	}
+	if reg.Opts.TlsCfg != nil {
+		t.Error("the parsed TLS configuration should be removed")
+	}
+	if reg.Auth.User != "frobozz" || reg.Auth.PasswordFromEnv != "QUAY_PASSWORD" || reg.Tls.Key != "/etc/certs/client.key" || reg.Auth.Token.Provider != "ecr" {
+		t.Errorf("names and paths should be kept: %+v", reg)
+	}
+	if empty := Redacted().Registries[1]; empty.Auth.Password != "" || empty.Auth.Token.Static != "" {
+		t.Errorf("unset secrets should stay empty: %+v", empty.Auth)
+	}
+	if config.Registries[0].Auth.Password != "xyzzy-password" || config.Registries[0].Opts.TlsCfg == nil {
+		t.Error("Redacted must not change the configuration")
+	}
+}
+
+// Tests the yaml and json output: no secret appears in either, the yaml loads back as a config
+// file (so its keys are the config file's), the json has the same keys, and other formats are
+// an error.
+func TestMarshal(t *testing.T) {
+	if err := SetConfigFromStr([]byte(redactFixture)); err != nil {
+		t.Fatal(err)
+	}
+	y, err := Marshal("yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, err := Marshal("json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, out := range [][]byte{y, j} {
+		if strings.Contains(string(out), "xyzzy") {
+			t.Fatalf("a secret was not redacted:\n%s", out)
+		}
+	}
+	if err := SetConfigFromStr(y); err != nil {
+		t.Fatalf("the yaml should load as a config file: %s\n%s", err, y)
+	}
+	if GetImagePath() != "/var/lib/ociregistry" || GetRegistries()[0].Auth.Password != redactedValue {
+		t.Fatalf("expected the yaml to round trip, got %+v", Get())
+	}
+	var m map[string]any
+	if err := json.Unmarshal(j, &m); err != nil {
+		t.Fatalf("expected valid json: %s\n%s", err, j)
+	}
+	regs := m["registries"].([]any)
+	auth := regs[0].(map[string]any)["auth"].(map[string]any)
+	if m["imagePath"] != "/var/lib/ociregistry" || auth["password"] != redactedValue || auth["passwordFromEnv"] != "QUAY_PASSWORD" {
+		t.Fatalf("expected the config file's keys in the json, got:\n%s", j)
+	}
+	if _, err := Marshal("toml"); err == nil {
+		t.Fatal("expected an error for an unsupported format")
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/aceeric/ociregistry/api/models"
 	"github.com/aceeric/ociregistry/impl/cache"
+	"github.com/aceeric/ociregistry/impl/config"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	log "github.com/sirupsen/logrus"
@@ -96,6 +97,36 @@ func (r *OciRegistry) CmdPulldatelist(w http.ResponseWriter, req *http.Request, 
 	} else {
 		writeString(w, http.StatusOK, "no pull dates found\n")
 	}
+}
+
+// GET /cmd/config?format=yaml|json
+// Shows the configuration in effect, from the config file and the command line, with secrets
+// redacted (see config.Redacted). format defaults to yaml.
+func (r *OciRegistry) CmdConfig(w http.ResponseWriter, req *http.Request, params models.CmdConfigParams) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Errorf("handled panic: %s", err)
+		}
+	}()
+	format := models.Yaml
+	if params.Format != nil {
+		format = *params.Format
+	}
+	if !format.Valid() {
+		writeString(w, http.StatusBadRequest, "invalid parameters\n")
+		return
+	}
+	b, err := config.Marshal(string(format))
+	if err != nil {
+		log.Errorf("error marshaling the configuration: %s", err)
+		writeString(w, http.StatusInternalServerError, "unable to show the configuration\n")
+		return
+	}
+	contentType := "application/yaml"
+	if format == models.Json {
+		contentType = "application/json"
+	}
+	writeBlob(w, http.StatusOK, contentType, b)
 }
 
 // GET /cmd/image/cache?digestLen=n

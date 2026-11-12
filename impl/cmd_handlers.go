@@ -81,6 +81,23 @@ func (r *OciRegistry) CmdImagelist(w http.ResponseWriter, req *http.Request, par
 	writeStream(w, http.StatusOK, "text/plain", cache.NewMFReaderWithBlobs(manifests))
 }
 
+// GET /cmd/pulldate/list?count=n
+// Shows the pull dates recorded since the server started, which the server journals to the
+// file system against a crash and writes to the manifests when it shuts down: url and pull date,
+// sorted by url. count defaults to 50, and -1 shows all.
+func (r *OciRegistry) CmdPulldatelist(w http.ResponseWriter, req *http.Request, params models.CmdPulldatelistParams) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Errorf("handled panic: %s", err)
+		}
+	}()
+	if out := cache.GetPullDates(count(params.Count)); out != "" {
+		writeString(w, http.StatusOK, out)
+	} else {
+		writeString(w, http.StatusOK, "no pull dates found\n")
+	}
+}
+
 // GET /cmd/image/cache?digestLen=n
 // Shows the in-memory manifest cache: every entry, then every digest alias with its tags.
 // Digests are shortened to digestLen hex characters; the default, 64, shows them in full.

@@ -36,6 +36,11 @@ type CmdPruneParams struct {
 	Count  *int    `form:"count,omitempty" json:"count,omitempty"`
 }
 
+// CmdPulldatelistParams defines parameters for CmdPulldatelist.
+type CmdPulldatelistParams struct {
+	Count *int `form:"count,omitempty" json:"count,omitempty"`
+}
+
 // V2AuthParams defines parameters for V2Auth.
 type V2AuthParams struct {
 	Scope         *string `form:"scope,omitempty" json:"scope,omitempty"`

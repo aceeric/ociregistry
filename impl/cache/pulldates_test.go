@@ -340,3 +340,33 @@ func TestPullDatesConcurrent(t *testing.T) {
 		}
 	}
 }
+
+// Tests the pull date listing: two columns sorted by url, at most count rows, a removal and a
+// repeated pull reflected, and nothing when no pull dates were recorded.
+func TestGetPullDates(t *testing.T) {
+	td := loadFixture(t, older, older)
+	if err := Load(td); err != nil {
+		t.Fatal(err)
+	}
+	startWriter(t, td)
+	if got := GetPullDates(50); got != "" {
+		t.Fatalf("expected nothing before any pull, got %q", got)
+	}
+	recordPull("quay.io/org/app:v2", older)
+	recordPull("docker.io/library/hello-world:latest", older)
+	recordPull("quay.io/org/app:v1", older)
+	recordPull("quay.io/org/app:v2", newer)
+	recordPull("quay.io/org/gone:v1", newer)
+	recordRemove("quay.io/org/gone:v1")
+	want := `URL                                   PULLED
+docker.io/library/hello-world:latest  2026-11-01T10:00:00
+quay.io/org/app:v1                    2026-11-01T10:00:00
+quay.io/org/app:v2                    2026-11-09T17:09:25
+`
+	if got := GetPullDates(50); got != want {
+		t.Fatalf("expected:\n%s\ngot:\n%s", want, got)
+	}
+	if got := GetPullDates(2); strings.Count(got, "\n") != 3 || strings.Contains(got, "app:v2") {
+		t.Fatalf("expected the header and the first 2 urls, got:\n%s", got)
+	}
+}

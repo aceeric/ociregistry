@@ -74,6 +74,7 @@ func TestCmdApi(t *testing.T) {
 		{testFun: testPrune, expRespLines: 2},
 		{testFun: testImageCache, expRespLines: 16},
 		{testFun: testImageCacheBadLen, expRespLines: 1},
+		{testFun: testPulldatelist, expRespLines: 1},
 	}
 	for _, tst := range tests {
 		rec := httptest.NewRecorder()
@@ -182,4 +183,11 @@ func testImageCacheBadLen(r *OciRegistry, rec *httptest.ResponseRecorder, req *h
 	n := 0
 	r.CmdImagecache(rec, req, models.CmdImagecacheParams{DigestLen: &n})
 	return rec.Code == 400
+}
+
+// GET /cmd/pulldate/list?count=...
+// nothing in these tests is served from the cache, so no pull dates are recorded
+func testPulldatelist(r *OciRegistry, rec *httptest.ResponseRecorder, req *http.Request) bool {
+	r.CmdPulldatelist(rec, req, models.CmdPulldatelistParams{})
+	return rec.Code == 200 && rec.Body.String() == "no pull dates found\n"
 }

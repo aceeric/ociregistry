@@ -3,7 +3,11 @@ package cache
 import (
 	"errors"
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 	"sync"
+	"text/tabwriter"
 	"time"
 
 	"github.com/aceeric/ociregistry/impl/serialize"
@@ -135,6 +139,33 @@ func flushPullDates() {
 		return
 	}
 	pd.written = version
+}
+
+// GetPullDates returns the pull dates recorded since the server started (the content of the
+// pull dates journal, which may be newer than the file) as two columns, URL and PULLED, sorted by
+// url, with at most count rows. Like a flush, it holds the lock only to copy the pull dates, and
+// formats the copy outside it. The empty string means no pull dates have been recorded.
+func GetPullDates(count int) string {
+	pd.mu.Lock()
+	urls := make(map[imageUrl]string, len(pd.urls))
+	for url, um := range pd.urls {
+		urls[url] = um.Pulled
+	}
+	pd.mu.Unlock()
+	if len(urls) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	tw := tabwriter.NewWriter(&sb, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(tw, "URL\tPULLED")
+	for i, url := range slices.Sorted(maps.Keys(urls)) {
+		if i >= count {
+			break
+		}
+		fmt.Fprintf(tw, "%s\t%s\n", url, urls[url])
+	}
+	tw.Flush()
+	return sb.String()
 }
 
 // UpdateManifestPullDates writes the in-mem pull dates to the manifests and deletes the pull

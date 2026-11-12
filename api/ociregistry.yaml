@@ -1435,3 +1435,14 @@ paths:
           description: ""
         '404':
           description: ""
+  /cmd/pulldate/list:
+    get:
+      operationId: cmd-pulldatelist
+      parameters:
+        - in: query
+          name: count
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ''

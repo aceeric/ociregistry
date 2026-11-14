@@ -20,10 +20,10 @@
 # Requires curl, imgpull, tar, jq and column (util-linux). Exits 1 if any url doesn't match.
 #
 # Output is cached in the script then printed columnarly. So the script is silent until it
-# completes. If you have a large image cache and you want something to look at the find the
-# "tmp.nnnnnn" directory in /tmp that the script creates and tail the results file. E.g.:
+# completes. If you have a large image cache and you want something to look at while the script
+# runs, it gives you a command to run when it starts. E.g.:
 #
-# tail -f /tmp/tmp.w0Jbfe2HE6/results
+# "Run this in another console to monitor progress: tail -f /tmp/tmp.1JmojkmdiY/results"
 #
 
 set -uo pipefail
@@ -44,12 +44,12 @@ trap 'rm -rf "$workdir"' EXIT
 tarfile="$workdir/image.tar"
 results="$workdir/results"
 
-echo "Run this in another console to monitor progress: tail -f $results"
-
 if ! list=$(curl -sf "http://$server/cmd/manifest/list?count=-1"); then
   echo "unable to list the manifests on $server" >&2
   exit 1
 fi
+
+echo "Run this in another console to monitor progress: tail -f $results"
 
 echo "$list" | while read -r url digest _; do
   # skip the header line, and the message the server returns for an empty cache

@@ -291,10 +291,10 @@ pruneConfig:
 |-|-|-|
 | `enabled` | Boolean | If true, enables background pruning. |
 | `duration` | Duration expression | E.g.: `30d`. The value is interpreted based on the prune `type` below. Valid time units are `ns` (nanoseconds), `us` or `µs` (microseconds), `ms` (milliseconds), `s` (seconds), `m` (minutes), `h` (hours), and `d` (days). |
-| `type` | Keyword | Valid values are `pattern`, `accessed` and `created`. If `accessed`, then the server prunes images that have not been pulled in `duration` amount of time. If `created`, then the server prunes images whose create date is older than `duration` time ago. |
+| `type` | Keyword | Valid values are `pattern`, `accessed` and `created`. If `accessed`, then the server prunes images that have not been pulled in `duration` amount of time. If `created`, then the server prunes images whose create date is older than `duration` time ago. If `pattern`, then `expr` has the pattern value. |
 | `expr` | URL regex | E.g. `calico`. Only used if `type` is `pattern`. |
 | `frequency`| Duration expression | E.g.: `1d`. Run the background pruner with this frequency. The time units are the same as for `duration`. |
-| `count` | Integer | The number of images to prune on each run of the background pruner. A value of `-1` means no limit to the number of images pruned. |
+| `count` | Integer | The number of images to prune on each run of the background pruner. A value of `-1` means no limit to the number of images pruned. If `0`, then the server interprets this as _undefined_ and defaults to `5`. |
 | `dryRun` | Boolean | Defaults to true: just logs messages but doesn't actually prune. For testing and troubleshooting. Set `dryRun: false` to actually prune. |
 
 ## Important about prune

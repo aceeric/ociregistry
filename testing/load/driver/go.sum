@@ -1,2 +1,4 @@
+github.com/aceeric/imgpull v1.17.0 h1:Uf+5wzt8fRQ+ZGj4vZCVDO1JurEOs+L6NUFJG1+TijY=
+github.com/aceeric/imgpull v1.17.0/go.mod h1:ceZ8dBhdKTn9b7QJaeQdvCprIsNe8sXgPBx+E4CjM+U=
 github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8Oi/yOhh5U=
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=

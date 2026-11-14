@@ -3,9 +3,12 @@ package subcmd
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -114,6 +117,69 @@ func TestPruneRequiresUtc(t *testing.T) {
 			t.Fatalf("%s: nothing should be pruned, %d of %d manifests left", crit[0], len(entries), manifestCnt)
 		}
 	}
+}
+
+// Tests that prune removes at most --count matches, the first ones in url order, all of them
+// with -1, and the default count when the config has none, and that the dry run output shows
+// the count.
+func TestPruneCount(t *testing.T) {
+	const cfgCount = `
+imagePath: %s
+pruneConfig:
+  type: pattern
+  expr: 'frobozz'
+  count: %d
+  dryRun: %t
+`
+	tests := []struct {
+		count    int
+		dryRun   bool
+		wantGone []int
+	}{
+		{3, true, nil},
+		{3, false, []int{0, 1, 2}},
+		{0, false, []int{0, 1, 2, 3, 4}}, // config.DefaultPruneCount
+		{-1, false, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+		{20, false, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+	}
+	for _, tst := range tests {
+		td, _, _, err := makeTestFiles(10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(td)
+		if err := config.SetConfigFromStr([]byte(fmt.Sprintf(cfgCount, td, tst.count, tst.dryRun))); err != nil {
+			t.Fatal(err)
+		}
+		out, err := captureStdout(Prune)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := range 10 {
+			_, found := serialize.MhFromFilesystem(fmt.Sprintf("foo.io/frobozz:x%dz", i), td)
+			if found == slices.Contains(tst.wantGone, i) {
+				t.Errorf("count %d dry run %t: x%dz expected pruned=%t", tst.count, tst.dryRun, i, slices.Contains(tst.wantGone, i))
+			}
+		}
+		if wantMsg := fmt.Sprintf("Prune blobs (dry run with count %d):", tst.count); tst.dryRun && !strings.Contains(out, wantMsg) {
+			t.Errorf("expected %q in the output, got:\n%s", wantMsg, out)
+		}
+	}
+}
+
+// captureStdout returns what the passed function writes to stdout, and its error.
+func captureStdout(f func() error) (string, error) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		return "", err
+	}
+	saved := os.Stdout
+	os.Stdout = w
+	ferr := f()
+	os.Stdout = saved
+	w.Close()
+	b, _ := io.ReadAll(r)
+	return string(b), ferr
 }
 
 // Test prune by date/time.

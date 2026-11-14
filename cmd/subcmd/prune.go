@@ -3,8 +3,10 @@ package subcmd
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/aceeric/ociregistry/impl/config"
@@ -39,6 +41,11 @@ var ErrNotUtc = errors.New("prune requires the manifest cache to have UTC dates 
 // get all the image manifest digests from the image list and if any of those images have
 // been cached, they will also be removed.
 //
+// As a safety, at most count (pruneConfig.Count, or config.DefaultPruneCount if it isn't set)
+// of the manifests that match the criteria are pruned, the first ones in url order, so a dry
+// run shows what the same prune would remove. The image manifests of a matching image list
+// are pruned with it and don't add to the count. A count of -1 prunes all the matches.
+//
 // Every manifest in the cache must have UTC dates, which the serve command converts them to
 // when it starts. Otherwise ErrNotUtc is returned, before anything is pruned.
 //
@@ -67,7 +74,12 @@ func Prune() error {
 	if err = serialize.WalkTheCache(config.GetImagePath(), handler); err != nil {
 		return err
 	}
-	return doPrune(config.GetImagePath(), pruneCfg.DryRun, matches)
+	count := pruneCfg.Count
+	if count == 0 {
+		count = config.DefaultPruneCount
+	}
+	limitMatches(matches, count)
+	return doPrune(config.GetImagePath(), pruneCfg.DryRun, count, matches)
 }
 
 // dateHandler finds manifests whose create date is earlier than the passed UTC date/time
@@ -124,11 +136,23 @@ func patternHandler(pattern string) (serialize.CacheEntryHandler, error) {
 	}, nil
 }
 
+// limitMatches removes all but the first count urls, in url order, from the passed matches. A
+// count of -1 keeps all of them.
+func limitMatches(matches map[string]match, count int) {
+	if count == -1 || len(matches) <= count {
+		return
+	}
+	urls := slices.Sorted(maps.Keys(matches))
+	for _, url := range urls[count:] {
+		delete(matches, url)
+	}
+}
+
 // doPrune removes manifests in the passed 'matches' map, along with any blobs that
 // can safely be removed for the image manifests in the map. A blob can be safely
 // removed if it is not referenced by any image manifest after all the manifest(s)
-// in the passed map are removed.
-func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
+// in the passed map are removed. The count is only shown in the dry run output.
+func doPrune(imagePath string, dryRun bool, count int, matches map[string]match) error {
 	blobs := serialize.GetAllBlobs(imagePath)
 	tallyBlobCount(blobs, imagePath)
 	if err := addImageManifests(matches, imagePath); err != nil {
@@ -139,7 +163,7 @@ func doPrune(imagePath string, dryRun bool, matches map[string]match) error {
 	}
 	dryRunMsg := ""
 	if dryRun {
-		dryRunMsg = " (dry run)"
+		dryRunMsg = fmt.Sprintf(" (dry run with count %d)", count)
 	}
 	fmt.Printf("Prune blobs%s:\n", dryRunMsg)
 	for blob, cnt := range blobs {

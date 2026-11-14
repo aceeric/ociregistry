@@ -79,6 +79,10 @@ type PruneConfig struct {
 	DryRun   bool   `yaml:"dryRun"`
 }
 
+// DefaultPruneCount is the default --count of the prune sub-command: the most manifests it
+// prunes, as a safety. It's also used for a prune config with no count.
+const DefaultPruneCount = 5
+
 // MigrateConfig configures the migrate-cache sub-command. It is only set from the
 // command line.
 type MigrateConfig struct {

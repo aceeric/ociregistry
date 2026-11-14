@@ -141,6 +141,22 @@ func TestParsePrune(t *testing.T) {
 		t.Fail()
 	}
 
+	// --count defaults to 5, accepts a positive number or -1, and rejects anything else
+	for args, want := range map[string]int{"": 5, "--count 2": 2, "--count=-1": -1, "--count 100": 100} {
+		ClearParse()
+		os.Args = append([]string{"bin/ociregistry", "prune", "--pattern", "frobozz"}, strings.Fields(args)...)
+		if fromCmdline, cfg, err := Parse(); err != nil || !fromCmdline.PruneConfig || cfg.PruneConfig.Count != want {
+			t.Errorf("%q: expected count %d, got %d %v", args, want, cfg.PruneConfig.Count, err)
+		}
+	}
+	for _, args := range []string{"--count 0", "--count=-2", "--count abc"} {
+		ClearParse()
+		os.Args = append([]string{"bin/ociregistry", "prune", "--pattern", "frobozz"}, strings.Fields(args)...)
+		if _, _, err := Parse(); err == nil {
+			t.Errorf("%q: expected an error", args)
+		}
+	}
+
 	// the date must be UTC
 	for _, date := range []string{"2025-02-28T12:59:59", "2025-02-28T12:59:59-05:00", "2025-02-28"} {
 		ClearParse()

@@ -370,7 +370,8 @@ var cmds = &cli.Command{
 			},
 			Description: "Prunes the cache on the filesystem (server should not be running). Note: --dry-run defaults\n" +
 				"to true so specify --dry-run false to actually prune. Important: the date format must be exactly as\n" +
-				"in the --date arg help.",
+				"in the --date arg help. As a safety, at most --count matching manifests are pruned (default 5, -1\n" +
+				"for all), in url order, along with the image manifests of any image list among them.",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:        "pattern",
@@ -395,6 +396,22 @@ var cmds = &cli.Command{
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.PruneConfig = true
 						cfg.PruneConfig.Type = "date"
+						return nil
+					},
+				},
+				&cli.IntFlag{
+					Name:        "count",
+					Value:       config.DefaultPruneCount,
+					Usage:       "Prune at most this many matching manifests, -1 for all",
+					Destination: &cfg.PruneConfig.Count,
+					Validator: func(count int) error {
+						if count != -1 && count < 1 {
+							return fmt.Errorf("--count must be a positive number, or -1 for all")
+						}
+						return nil
+					},
+					Action: func(ctx context.Context, cmd *cli.Command, _ int) error {
+						fromCmdline.PruneConfig = true
 						return nil
 					},
 				},

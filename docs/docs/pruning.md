@@ -39,6 +39,10 @@ docker.io/kubernetesui/dashboard-api@sha256:dcc897f8...
 
 Dry run is enabled by default. Therefore, to actually prune you must specify `--dry-run false`.
 
+## Count
+
+As a safety, the CLI prunes at most `--count` matching manifests, which defaults to `5`. Specify `--count -1` to prune all the matches. Matches are taken in URL order, so a dry run shows exactly what the same command will prune with `--dry-run false`. When an image list manifest is pruned, its image manifests are pruned with it and don't add to the count (see below).
+
 ## By Pattern
 
 Specify `--pattern` with single parameter consisting of one or more manifest URL patterns separated by commas. The patterns are Golang regular expressions as documented in the [regexp/syntax](https://pkg.go.dev/regexp/syntax) package documentation. The expressions on the command line are passed _directly_ to the Golang `regex` parser _as received from the shell_, and are matched to manifest URLs. As such, shell expansion and escaping must be taken into consideration. Simplicity wins the day here. Examples:

@@ -3,7 +3,7 @@ module github.com/aceeric/ociregistry
 go 1.27.4
 
 require (
-	github.com/aceeric/imgpull v1.16.0
+	github.com/aceeric/imgpull v1.17.0
 	github.com/aws/aws-sdk-go-v2/config v1.33.18
 	github.com/aws/aws-sdk-go-v2/service/ecr v1.67.6
 	github.com/getkin/kin-openapi v0.153.0

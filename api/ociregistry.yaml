@@ -1435,3 +1435,17 @@ paths:
           description: ""
         '404':
           description: ""
+  /cmd/config:
+    get:
+      operationId: cmd-config
+      parameters:
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum: [yaml, json]
+      responses:
+        '200':
+          description: ''
+        '400':
+          description: ''

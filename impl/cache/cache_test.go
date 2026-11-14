@@ -746,6 +746,46 @@ func TestDigestRequestUpdatesTagEntry(t *testing.T) {
 	}
 }
 
+// Tests that a cache hit updates a pull date older than pullDateResolution in the in-mem cache
+// and on the file system, leaves a recent one alone, and updates a missing or unparseable one.
+// A manifest that can't be written is still served, with the in-mem pull date updated.
+func TestPullDateResolution(t *testing.T) {
+	ago := func(d time.Duration) string { return time.Now().Add(-d).Format(globals.DateFormat) }
+	tests := []struct {
+		pulled  string
+		updated bool
+	}{
+		{ago(2 * pullDateResolution), true},
+		{ago(pullDateResolution / 2), false},
+		{"", true},
+		{"foobar", true},
+	}
+	for _, tst := range tests {
+		td, build := aliasFixture(t, aliasBlob1, aliasBlob2)
+		pr, mh := build("quay.io/org/app:v1", aliasDigestD, aliasBlob1, aliasBlob2)
+		mh.Pulled = tst.pulled
+		if err := serialize.MhToFilesystem(mh, td, true); err != nil {
+			t.Fatal(err)
+		} else if err := addToCache(pr, mh, td); err != nil {
+			t.Fatal(err)
+		}
+		got, found := getManifestFromCache(pr, td)
+		fromFs, _ := serialize.MhFromFilesystem(pr.Url(), td)
+		if !found || (got.Pulled != tst.pulled) != tst.updated || mc.entries[imageUrl(pr.Url())].Pulled != got.Pulled || fromFs.Pulled != got.Pulled {
+			t.Errorf("pulled %q: expected updated=%t, got %q in-mem %q on the file system", tst.pulled, tst.updated, got.Pulled, fromFs.Pulled)
+		}
+	}
+
+	_, build := aliasFixture(t, aliasBlob1, aliasBlob2)
+	pr, mh := build("quay.io/org/app:v1", aliasDigestD, aliasBlob1, aliasBlob2)
+	mh.Pulled = ago(2 * pullDateResolution)
+	putInCache(pr, mh)
+	got, found := getManifestFromCache(pr, filepath.Join(t.TempDir(), "missing"))
+	if !found || got.Pulled == mh.Pulled || mc.entries[imageUrl(pr.Url())].Pulled != got.Pulled {
+		t.Fatalf("a manifest that can't be written should be served with its in-mem pull date updated, got %t %q", found, got.Pulled)
+	}
+}
+
 // Tests that a digest entry of its own is preferred over a tag alias, and that the two are
 // independent entries with their own blob refs.
 func TestDigestEntryAndTagEntry(t *testing.T) {

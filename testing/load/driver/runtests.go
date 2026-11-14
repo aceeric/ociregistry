@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -56,7 +57,7 @@ func runTest(config Config) error {
 		time.Sleep(duration)
 	}
 	// scale down
-	for i := len(config.patterns) - 1; i >= 0; i-- {
+	for i := range slices.Backward(config.patterns) {
 		fmt.Fprintf(logFile, "%s\ttest driver stop test #%d\n", now(), i)
 		signalBoolChan(stopCh[i])
 		if i == 0 {
@@ -113,11 +114,7 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 	var puller imgpull.Puller
 
 	firstPull := true
-	tmpTarfile := ""
 	if !config.dryRun {
-		td, _ := os.MkdirTemp("", "")
-		defer os.RemoveAll(td)
-		tmpTarfile = fmt.Sprintf("%s/tarfile.tar", td)
 		if config.prune {
 			pruneClient = makePruneClient()
 		}
@@ -126,7 +123,7 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 	re, _ := regexp.Compile(pattern)
 
 	// make a copy of the image pull list so this goroutine can shuffle it between passes
-	images := config.images
+	images := slices.Clone(config.images)
 	for {
 		for i := range images {
 			select {
@@ -147,9 +144,13 @@ func pullOnePattern(testNum int, stopChan chan bool, logCh chan string, config C
 							defer puller.Close()
 							firstPull = false
 						} else {
-							puller.SetUrl(fullImage)
+							if err := puller.SetUrl(fullImage); err != nil {
+								logCh <- fmt.Sprintf("%s\tgoroutine #%d error calling puller.SetUrl %s, the error was: %s\n", now(), testNum, fullImage, err)
+								return
+							}
 						}
-						if err := puller.PullTar(tmpTarfile); err != nil {
+						pull(puller)
+						if err := pull(puller); err != nil {
 							logCh <- fmt.Sprintf("%s\tgoroutine #%d error pulling %s, the error was: %s\n", now(), testNum, fullImage, err)
 							return
 						}

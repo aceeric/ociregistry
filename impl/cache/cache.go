@@ -102,6 +102,14 @@ var (
 	// shorten them.
 	waitPullsTimeout  = time.Minute
 	waitPullsInterval = 2 * time.Second
+	// pullDateResolution is how stale a manifest pull date can be before a cache hit updates
+	// it - both in memory and on the file system. Pull dates support pruning and typically
+	// people care about image ages in days or weeks (not minutes). A manifest pull date is
+	// updated once per this resolution rather than on each pull. It's a variable to support
+	// unit tests. The typical use case is - a cluster starts up or autoscales and a bunch of
+	// daemonsets pull the same image at close to the same time, but only the first daemonset
+	// updates the pull date.
+	pullDateResolution = time.Hour
 	// mc is the manifest in-mem cache
 	mc = newManifestCache()
 	// bc is the blob cache, keyed by digest with a ref count of cached manifests that
@@ -519,9 +527,13 @@ func getManifestOrEnqueue(pr pullrequest.PullRequest, imagePath string, forcePul
 
 // getManifestFromCache gets a manifest from the in-mem manifest cache, or returns
 // an empty manifest holder if the manifest for the passed URL is not cached. If the
-// manifest exists, the 'Pulled' field of the entry that holds it is updated to the current
-// time and the manifest is written back to the file system. A request by digest that is
-// served from a tag entry updates that tag entry.
+// manifest exists and its pull date is older than pullDateResolution, the 'Pulled' field of
+// the entry that holds it is updated to the current time and the manifest is written back to
+// the file system. A manifest that can't be written is logged and still served: the in-mem
+// pull date is current, and the next update after pullDateResolution writes it again. A
+// request by digest that is served from a tag entry updates that tag entry. The inability to
+// write a manifest is probably a symptom of an unhealthy operational environment but all we
+// can do it log it.
 func getManifestFromCache(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, bool) {
 	mc.Lock()
 	defer mc.Unlock()
@@ -529,13 +541,22 @@ func getManifestFromCache(pr pullrequest.PullRequest, imagePath string) (imgpull
 	if !exists {
 		return emptyManifestHolder, false
 	}
-	mh.Pulled = globals.CurTime()
-	mc.entries[key] = mh
-	if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
-		log.Errorf("error serializing manifest %q, the error was: %s", key, err)
-		return emptyManifestHolder, false
+	if pullDateStale(mh.Pulled) {
+		mh.Pulled = globals.CurTime()
+		mc.entries[key] = mh
+		if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
+			log.Errorf("error updating the pull date of manifest %q, the error was: %s", key, err)
+		}
 	}
 	return mh, true
+}
+
+// pullDateStale reports whether the passed pull date is older than pullDateResolution, or is
+// missing or can't be parsed. Pull dates are local time without a zone (globals.CurTime), so
+// it's parsed as local time.
+func pullDateStale(pulled string) bool {
+	t, err := time.ParseInLocation(globals.DateFormat, pulled, time.Local)
+	return err != nil || time.Since(t) >= pullDateResolution
 }
 
 // enqueuePull returns the channel for the url and whether the caller is the puller (mustPull) or

@@ -60,7 +60,7 @@ func main() {
 	}
 
 	// run the load test
-	if runTest(config) != nil {
+	if err := runTest(config); err != nil {
 		fmt.Printf("Error running tests: %s\n", err)
 	}
 }

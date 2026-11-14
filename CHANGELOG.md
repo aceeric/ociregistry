@@ -1,8 +1,22 @@
 # CHANGELOG
 
-## TODO (2.2.0)
+## 2.2.0
 
-1. Replace echo server with golang net.http since most API scaffolding already provided by oapi-codegen.
+Please see the [Release Notes](release_notes/2.2.0.md) for additional details.
+
+1. Replace [echo](https://github.com/labstack/echo) server with golang [net/http](https://pkg.go.dev/net/http) package since most REST API scaffolding was already provided by [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen)
+2. Store manifest dates as UTC ("Z" suffix) and auto-convert on first start of **this** version (or later) running over a prior version's file system
+3. Optimize manifest _pull date_ update for better concurrency
+4. Improve load test driver to load the server more aggressively
+5. Add `/cmd/config` endpoint to view running server config (with secrets masked)
+6. Fix REST API response buffering defect
+7. Add release link to Mkdocs
+8. Update README with releases
+9. Correct outdated Helm chart README verbiage
+10. Add a `--count` arg to the `prune` CLI subcommand defaulting to `5` as a safety
+11. Module updates: aceeric/imgpull v1.17.0, aws/aws-sdk-go-v2/config v1.33.18, aws/aws-sdk-go-v2/service/ecr v1.67.6, getkin/kin-openapi v0.153.0, oapi-codegen/nethttp-middleware v1.3.1, oapi-codegen/runtime v1.9.0, yaml/v4 v4.0.0
+12. Go 1.27.4
+
 
 ## 2.1.0
 

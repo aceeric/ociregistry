@@ -254,14 +254,26 @@ func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolde
 // associated with a manifest are not present on the file system then the function will
 // not load the manifest into cache. The manifest technically does not exist then from
 // the perspective of a client. (A re-pull will heal that.)
+//
+// Load also converts the manifest dates to UTC, which the rest of the server requires: a
+// manifest with a legacy date (local time with no zone) is rewritten with its dates in UTC,
+// read in this server's local time zone (see globals.LegacyToUtc). A date that can't be read
+// in either format is blanked, with a warning. A manifest that can't be rewritten is an error,
+// so the server doesn't start with dates it can't use.
 func Load(imagePath string) error {
 	start := time.Now()
 	log.Infof("load in-mem cache from file system")
 	if err := serialize.RemoveTempFiles(imagePath); err != nil {
 		return err
 	}
-	itemcnt := 0
+	itemcnt, converted := 0, 0
 	err := serialize.WalkTheCache(imagePath, func(mh imgpull.ManifestHolder, fi os.FileInfo) error {
+		if utcDates(&mh) {
+			if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
+				return fmt.Errorf("erroring converting manifest dates to UCT for %q - the error was: %w", mh.ImageUrl, err)
+			}
+			converted++
+		}
 		pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
 		if err != nil {
 			log.Errorf("load: manifest url %q can't be parsed - will not be cached: %s", mh.ImageUrl, err)
@@ -281,6 +293,9 @@ func Load(imagePath string) error {
 		itemcnt++
 		return nil
 	})
+	if converted > 0 {
+		log.Infof("converted the dates of %d manifest(s) to UTC", converted)
+	}
 	log.Infof("loaded %d manifest(s) from the file system in %s", itemcnt, time.Since(start))
 	return err
 }
@@ -552,11 +567,33 @@ func getManifestFromCache(pr pullrequest.PullRequest, imagePath string) (imgpull
 }
 
 // pullDateStale reports whether the passed pull date is older than pullDateResolution, or is
-// missing or can't be parsed. Pull dates are local time without a zone (globals.CurTime), so
-// it's parsed as local time.
+// missing or can't be parsed.
 func pullDateStale(pulled string) bool {
-	t, err := time.ParseInLocation(globals.DateFormat, pulled, time.Local)
+	t, err := globals.ParseTime(pulled)
 	return err != nil || time.Since(t) >= pullDateResolution
+}
+
+// utcDates converts the Created and Pulled dates of the passed manifest to UTC (see
+// globals.LegacyToUtc), and returns true if either was changed. A date that can't be converted
+// is blanked with a warning: an empty date is never pruned by that date, and an empty pull
+// date is set by the next pull.
+func utcDates(mh *imgpull.ManifestHolder) bool {
+	changed := false
+	for _, d := range []struct {
+		name string
+		date *string
+	}{{"create", &mh.Created}, {"pull", &mh.Pulled}} {
+		utc, converted, err := globals.LegacyToUtc(*d.date)
+		if err != nil {
+			log.Warnf("load: manifest %q: %s - the %s date is blanked", mh.ImageUrl, err, d.name)
+			utc, converted = "", true
+		}
+		if converted {
+			*d.date = utc
+			changed = true
+		}
+	}
+	return changed
 }
 
 // enqueuePull returns the channel for the url and whether the caller is the puller (mustPull) or

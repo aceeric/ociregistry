@@ -750,7 +750,7 @@ func TestDigestRequestUpdatesTagEntry(t *testing.T) {
 // and on the file system, leaves a recent one alone, and updates a missing or unparseable one.
 // A manifest that can't be written is still served, with the in-mem pull date updated.
 func TestPullDateResolution(t *testing.T) {
-	ago := func(d time.Duration) string { return time.Now().Add(-d).Format(globals.DateFormat) }
+	ago := func(d time.Duration) string { return time.Now().UTC().Add(-d).Format(globals.DateFormat) }
 	tests := []struct {
 		pulled  string
 		updated bool
@@ -783,6 +783,63 @@ func TestPullDateResolution(t *testing.T) {
 	got, found := getManifestFromCache(pr, filepath.Join(t.TempDir(), "missing"))
 	if !found || got.Pulled == mh.Pulled || mc.entries[imageUrl(pr.Url())].Pulled != got.Pulled {
 		t.Fatalf("a manifest that can't be written should be served with its in-mem pull date updated, got %t %q", found, got.Pulled)
+	}
+}
+
+// Tests that Load converts legacy manifest dates to UTC in the local time zone, in place (one
+// file per manifest, also for a url that isn't canonical), removes a date that can't be read,
+// leaves UTC and empty dates alone, and that a second Load rewrites nothing.
+func TestLoadConvertsDates(t *testing.T) {
+	saved := time.Local
+	time.Local = time.FixedZone("EST", -5*60*60)
+	t.Cleanup(func() { time.Local = saved })
+	td, build := aliasFixture(t, aliasBlob1, aliasBlob2)
+	manifests := []struct {
+		url, created, pulled    string
+		wantCreated, wantPulled string
+	}{
+		{"quay.io/org/legacy:v1", "2026-11-01T10:00:00", "2026-11-14T12:00:00", "2026-11-01T15:00:00Z", "2026-11-14T17:00:00Z"},
+		{"quay.io/org/utc:v1", "2026-11-01T10:00:00Z", "", "2026-11-01T10:00:00Z", ""},
+		{"quay.io/org/garbage:v1", "foobar", "2026-11-14T12:00:00", "", "2026-11-14T17:00:00Z"},
+		// cached before urls were canonicalized
+		{"docker.io/busybox:1.36", "2026-11-01T10:00:00", "", "2026-11-01T15:00:00Z", ""},
+	}
+	for _, m := range manifests {
+		_, mh := build(m.url, aliasDigestD, aliasBlob1, aliasBlob2)
+		mh.ImageUrl, mh.Created, mh.Pulled = m.url, m.created, m.pulled
+		if err := serialize.MhToFilesystem(mh, td, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	files := func() map[string]os.FileInfo {
+		entries, _ := os.ReadDir(filepath.Join(td, globals.ManifestPath))
+		infos := map[string]os.FileInfo{}
+		for _, e := range entries {
+			infos[e.Name()], _ = e.Info()
+		}
+		return infos
+	}
+	if err := Load(td); err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range manifests {
+		mh, found := serialize.MhFromFilesystem(m.url, td)
+		if !found || mh.Created != m.wantCreated || mh.Pulled != m.wantPulled {
+			t.Errorf("%s: expected %q %q, got %t %q %q", m.url, m.wantCreated, m.wantPulled, found, mh.Created, mh.Pulled)
+		}
+	}
+	before := files()
+	if len(before) != len(manifests) {
+		t.Fatalf("expected %d manifest files, got %d", len(manifests), len(before))
+	}
+	ResetCache()
+	if err := Load(td); err != nil {
+		t.Fatal(err)
+	}
+	for name, fi := range files() {
+		if !os.SameFile(fi, before[name]) {
+			t.Errorf("%s: a manifest with UTC dates should not be rewritten", name)
+		}
 	}
 }
 

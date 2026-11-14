@@ -189,7 +189,7 @@ func TestParseCriteria(t *testing.T) {
 // correctly.
 func TestComparer(t *testing.T) {
 	timeStr := func(dur string) string {
-		t := time.Now()
+		t := time.Now().UTC()
 		d, _ := time.ParseDuration(dur)
 		t = t.Add(d)
 		return t.Format(globals.DateFormat)
@@ -235,7 +235,7 @@ func setupPrune() (string, error) {
 	ResetCache()
 	td, _ := os.MkdirTemp("", "")
 	serialize.CreateDirs(td, true)
-	curDt := time.Now()
+	curDt := time.Now().UTC()
 	for i := range 3 {
 		digest := fmt.Sprintf("000000000000000000000000000000000000000000000000000000000000000%d", i)
 		if err := os.WriteFile(filepath.Join(td, globals.BlobPath, digest), []byte(digest), 0755); err != nil {

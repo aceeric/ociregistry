@@ -3,7 +3,7 @@
 # Once you've locally built the executable using 'make server' you can
 # install it as a systemd service using this script. Run this script from
 # the root of the cloned repository. I use it this way to run the server
-# on my desktop and then I configure my local Kubernetes cluster to
+# on my desktop and then I configure my local Kubernetes cluster(s) to
 # mirror to my desktop.
 #
 
@@ -16,7 +16,14 @@ fi
 
 systemctl stop ociregistry || echo  "ociregistry is not running"
 cp $script_dir/../bin/ociregistry /bin/ociregistry-server
+
 if [[ ! -f /etc/systemd/system/ociregistry.service ]]; then
   cp $script_dir/ociregistry.service /etc/systemd/system/
+else
+  DNEW=$(sha256sum $script_dir/ociregistry.service | awk '{print $1}')
+  DCUR=$(sha256sum /etc/systemd/system/ociregistry.service | awk '{print $1}')
+  if [[ $DNEW != $DCUR ]]; then
+    cp $script_dir/ociregistry.service /etc/systemd/system/
+  fi
 fi
 systemctl enable --now ociregistry

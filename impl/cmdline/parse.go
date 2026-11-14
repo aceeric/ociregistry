@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
 
 	"github.com/urfave/cli/v3"
@@ -383,8 +384,14 @@ var cmds = &cli.Command{
 				},
 				&cli.StringFlag{
 					Name:        "date",
-					Usage:       "Prune images created before a timestamp, e.g. '--date 2025-02-28T12:59:59'",
+					Usage:       "Prune images created before a UTC timestamp, e.g. '--date 2025-02-28T12:59:59Z'",
 					Destination: &cfg.PruneConfig.Expr,
+					Validator: func(date string) error {
+						if _, err := globals.ParseTime(date); err != nil {
+							return fmt.Errorf("--date %q must be UTC in the form YYYY-MM-DDTHH:MM:SSZ", date)
+						}
+						return nil
+					},
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.PruneConfig = true
 						cfg.PruneConfig.Type = "date"

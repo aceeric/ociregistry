@@ -1,22 +1,20 @@
 package subcmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/aceeric/ociregistry/impl/config"
+	"github.com/aceeric/ociregistry/impl/globals"
 	"github.com/aceeric/ociregistry/impl/helpers"
 	"github.com/aceeric/ociregistry/impl/pullrequest"
 	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )
-
-// magic numbers from 'format.go' in package 'time'
-const dateFormat = "2006-01-02T15:04:05"
 
 // match holds a ManifestHolder matching a prune search
 type match struct {
@@ -26,10 +24,13 @@ type match struct {
 // matches has the map of manifests that matched the prune criteria
 var matches map[string]match
 
+// ErrNotUtc is returned by Prune if a manifest in the cache has a date that isn't UTC.
+var ErrNotUtc = errors.New("prune requires the manifest cache to have UTC dates - the serve command automatically performs this migration on first start")
+
 // Prune prunes the cache on the file system. It is intended for use when the server is not
 // running. It supports prune by date, or by go regex. Prune by date selects manifests for
-// deletion whose create date is earlier than a specified date/time. The date/time
-// must be formatted like: '2025-02-28T12:59:59'. Prune by regex accepts a comma-separated
+// deletion whose create date is earlier than a specified date/time. The date/time is UTC
+// and must be formatted like: '2025-02-28T12:59:59Z'. Prune by regex accepts a comma-separated
 // list of patterns and selects manifests whose urls match the any of the patterns. E.g.:
 // 'cert-manger' or 'cilium:v1.15.1' or 'cilium,coredns'.
 //
@@ -37,6 +38,9 @@ var matches map[string]match
 // example, pruning 'nginx:1.14-4' will remove an image list manifest. The pruner will then
 // get all the image manifest digests from the image list and if any of those images have
 // been cached, they will also be removed.
+//
+// Every manifest in the cache must have UTC dates, which the serve command converts them to
+// when it starts. Otherwise ErrNotUtc is returned, before anything is pruned.
 //
 // When an image manifest is removed, then for each blob in the manifest - if no other image
 // manifest in cache references that blob, then the blob is also removed from the filesystem.
@@ -59,24 +63,28 @@ func Prune() error {
 	}
 
 	// populate the 'matches' variable
+	/////if err = serialize.WalkTheCache(config.GetImagePath(), requireUtc(handler)); err != nil {
 	if err = serialize.WalkTheCache(config.GetImagePath(), handler); err != nil {
 		return err
 	}
 	return doPrune(config.GetImagePath(), pruneCfg.DryRun, matches)
 }
 
-// dateHandler finds manifests whose create date is earlier than the passed date/time
-// in the format 'YYYY-MM-DDTHH:MM:SS'.
+// dateHandler finds manifests whose create date is earlier than the passed UTC date/time
+// in the format 'YYYY-MM-DDTHH:MM:SSZ'.
 func dateHandler(date string) (serialize.CacheEntryHandler, error) {
-	cutoffDate, err := time.ParseInLocation(dateFormat, date, time.Local)
+	cutoffDate, err := globals.ParseTime(date)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("prune date %q must be UTC in the form YYYY-MM-DDTHH:MM:SSZ", date)
 	}
 	return func(mh imgpull.ManifestHolder, fi os.FileInfo) error {
+		if !globals.IsUtc(mh.Created) || !globals.IsUtc(mh.Pulled) {
+			return ErrNotUtc
+		}
 		if mh.Created == "" {
 			return nil
 		}
-		createDate, err := time.ParseInLocation(dateFormat, mh.Created, time.Local)
+		createDate, err := globals.ParseTime(mh.Created)
 		if err != nil {
 			return err
 		}
@@ -90,7 +98,8 @@ func dateHandler(date string) (serialize.CacheEntryHandler, error) {
 
 // patternHandler finds manifests whose urls match the passed pattern(s). E.g.:
 // 'cilium:v1.15.1'. Multiple search patterns are accepted separated by commas.
-// E.g.: 'cilium,coredns'.
+// E.g.: 'cilium,coredns'. Even though this handler doesn't operate on manifest
+// dates it still validates the UTC date format.
 func patternHandler(pattern string) (serialize.CacheEntryHandler, error) {
 	srchs := []*regexp.Regexp{}
 	for ref := range strings.SplitSeq(pattern, ",") {
@@ -102,6 +111,9 @@ func patternHandler(pattern string) (serialize.CacheEntryHandler, error) {
 		}
 	}
 	return func(mh imgpull.ManifestHolder, fi os.FileInfo) error {
+		if !globals.IsUtc(mh.Created) || !globals.IsUtc(mh.Pulled) {
+			return ErrNotUtc
+		}
 		for _, srch := range srchs {
 			if srch.MatchString(mh.ImageUrl) {
 				matches[mh.ImageUrl] = match{mh}

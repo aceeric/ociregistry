@@ -56,7 +56,7 @@ pruneConfig:
   enabled: false
   duration: 30d
   type: %s
-  expr: %s
+  expr: '%s'
   dryRun: false
 `
 
@@ -86,6 +86,36 @@ func TestPrunebyPattern(t *testing.T) {
 	}
 }
 
+// Tests that prune by pattern and by date refuses a cache with a date that isn't UTC, and
+// prunes nothing.
+func TestPruneRequiresUtc(t *testing.T) {
+	manifestCnt := 4
+	td, _, mhs, err := makeTestFiles(manifestCnt)
+	if td != "" {
+		defer os.RemoveAll(td)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	mh, _ := serialize.MhFromFilesystem(mhs[manifestCnt-1].ImageUrl, td)
+	mh.Pulled = "2026-11-14T12:00:00"
+	if err := serialize.MhToFilesystem(mh, td, true); err != nil {
+		t.Fatal(err)
+	}
+	for _, crit := range [][2]string{{"pattern", "."}, {"date", "2099-01-01T00:00:00Z"}} {
+		cfg := fmt.Sprintf(cfgYaml, td, crit[0], crit[1])
+		if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
+			t.Fatal(err)
+		}
+		if err := Prune(); !errors.Is(err, ErrNotUtc) {
+			t.Errorf("%s: expected ErrNotUtc, got %v", crit[0], err)
+		}
+		if entries, _ := os.ReadDir(filepath.Join(td, globals.ManifestPath)); len(entries) != manifestCnt {
+			t.Fatalf("%s: nothing should be pruned, %d of %d manifests left", crit[0], len(entries), manifestCnt)
+		}
+	}
+}
+
 // Test prune by date/time.
 func TestPrunebyDate(t *testing.T) {
 	manifestCnt := 10
@@ -103,8 +133,8 @@ func TestPrunebyDate(t *testing.T) {
 	for _, mh := range mhs {
 		// change create date - one per month
 		year, month, day := time.Now().AddDate(0, 0, -30+i).Date()
-		datestr := fmt.Sprintf("%04d-%02d-%02dT23:24:25", year, month, day)
-		tstamp, err := time.Parse(dateFormat, datestr)
+		datestr := fmt.Sprintf("%04d-%02d-%02dT23:24:25Z", year, month, day)
+		tstamp, err := time.Parse(globals.DateFormat, datestr)
 		if err != nil {
 			t.FailNow()
 		}
@@ -122,7 +152,7 @@ func TestPrunebyDate(t *testing.T) {
 		}
 		i++
 	}
-	cfg := fmt.Sprintf(cfgYaml, td, "date", cutoff.Format(dateFormat))
+	cfg := fmt.Sprintf(cfgYaml, td, "date", cutoff.Format(globals.DateFormat))
 	if err := config.SetConfigFromStr([]byte(cfg)); err != nil {
 		t.FailNow()
 	}
@@ -205,7 +235,7 @@ func makeTestFiles(cnt int) (string, string, []imgpull.ManifestHolder, error) {
 				return "", "", nil, err
 			}
 		}
-		mh.Created = time.Now().Format(dateFormat)
+		mh.Created = globals.CurTime()
 		mhs[i] = mh
 		err = serialize.MhToFilesystem(mh, dir, true)
 		if err != nil {

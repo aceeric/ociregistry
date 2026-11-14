@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/aceeric/ociregistry/impl/config"
@@ -133,11 +134,20 @@ func TestParsePrune(t *testing.T) {
 
 	// dry run is the default
 	ClearParse()
-	os.Args = []string{"bin/ociregistry", "prune", "--date", "2025-02-28T12:59:59"}
+	os.Args = []string{"bin/ociregistry", "prune", "--date", "2025-02-28T12:59:59Z"}
 	fromCmdline, cfg, err = Parse()
 	if err != nil || fromCmdline.Command != "prune" || !fromCmdline.PruneConfig || !cfg.PruneConfig.DryRun ||
-		cfg.PruneConfig.Expr != "2025-02-28T12:59:59" || cfg.PruneConfig.Type != "date" {
+		cfg.PruneConfig.Expr != "2025-02-28T12:59:59Z" || cfg.PruneConfig.Type != "date" {
 		t.Fail()
+	}
+
+	// the date must be UTC
+	for _, date := range []string{"2025-02-28T12:59:59", "2025-02-28T12:59:59-05:00", "2025-02-28"} {
+		ClearParse()
+		os.Args = []string{"bin/ociregistry", "prune", "--date", date}
+		if _, _, err := Parse(); err == nil || !strings.Contains(err.Error(), "must be UTC") {
+			t.Errorf("%q: expected an error, got %v", date, err)
+		}
 	}
 }
 

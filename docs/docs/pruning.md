@@ -55,11 +55,13 @@ Patterns match the canonical URL. The server stores manifests in their canonical
 
 ## By Create Date/time
 
-The `--date` option accepts a single parameter consisting of a local date/time in the form `YYYY-MM-DDTHH:MM:SS`. All manifests created **before** that time stamp will be selected. Example:
+The `--date` option accepts a single parameter consisting of a UTC date/time in the form `YYYY-MM-DDTHH:MM:SSZ`. All manifests created **before** that time stamp will be selected. Example:
 
 ```shell
-bin/ociregistry prune --date 2024-03-01T22:17:31
+bin/ociregistry prune --date 2024-03-01T22:17:31Z
 ```
+
+As of version `2.2.0`, _ociregistry_ stores manifest dates in UTC, and the `list` sub-command shows them in the same form. Manifests cached by earler versions of the server stored dates in local time. Those manifests are converted to UTC by the `serve` command of `v2.2.0`+ on start. Until conversion, the `prune` sub-command refuses to run.
 
 The intended workflow is to use the CLI with `list` sub-command to determine desired a cutoff date and then to use that date as an input to the `prune` sub-command.
 

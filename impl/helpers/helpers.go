@@ -3,20 +3,29 @@ package helpers
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/aceeric/ociregistry/impl/globals"
 )
 
-var srch = `.*([a-f0-9]{64}).*`
-var re = regexp.MustCompile(srch)
+// digestLen is the length of a sha256 digest in hex characters.
+const digestLen = 64
 
-// GetDigestFrom looks in the passed arg for a 64-character digest and, if
-// found, returns the digest without a sha256: prefix.
+// GetDigestFrom looks in the passed arg for a 64-character digest and, if found, returns the
+// digest without a sha256: prefix. If there's more than one run of 64 or more lowercase hex
+// characters, the last 64 characters of the last such run are returned, as the regex
+// `.*([a-f0-9]{64}).*` did. It's called at least once for every blob request, so it scans the
+// string once from the end instead of using that regex, whose backtracking was the server's
+// largest CPU cost under load.
 func GetDigestFrom(str string) string {
-	tmpdgst := re.FindStringSubmatch(str)
-	if len(tmpdgst) == 2 {
-		return tmpdgst[1]
+	run := 0
+	for i := len(str) - 1; i >= 0; i-- {
+		if c := str[i]; ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') {
+			if run++; run == digestLen {
+				return str[i : i+digestLen]
+			}
+		} else {
+			run = 0
+		}
 	}
 	return ""
 }

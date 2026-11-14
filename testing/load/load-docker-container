@@ -34,15 +34,19 @@ for opt in "$@"; do
     cleanup=1
   elif [[ -z "$tarfile_dir" ]]; then
     tarfile_dir=$opt
-    if [[ ! -d $tarfile_dir ]]; then
-      echo "not a directory: $tarfile_dir"
-      exit 1
-    fi
   else
     echo "unable to part command line option: $opt"
     exit 1
   fi
 done
+
+if [[ -z "$tarfile_dir" ]]; then
+  echo "path positional param is required. E.g.: load-docker-container ~/tmp/testfiles [--start-docker] [--load-images] [--cleanup]"
+  exit 1
+elif [[ ! -d $tarfile_dir ]]; then
+  echo "not a directory: $tarfile_dir"
+  exit 1
+fi
 
 if [[ $start_docker -eq 1 ]]; then
   docker run\

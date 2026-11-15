@@ -13,10 +13,14 @@ import (
 	"github.com/aceeric/imgpull/pkg/imgpull"
 )
 
-// set by the compiler (see the Makefile):
 var (
+	// buildVer is set by the compiler. See the Makefile.
 	buildVer string
-	buildDtm string // UTC
+	// buildDtm is a UTC date set by the compiler. See the Makefile.
+	buildDtm string
+	// writeable assumes the image cache on the file system needs to be writeable by
+	// the executable as is the case for the serve and prune sub-commands.
+	writeable = true
 )
 
 const (
@@ -40,10 +44,6 @@ func main() {
 // to the OS.
 func realMain() int {
 	command, err := getCfg()
-	writeable := true
-	if command == listCmd {
-		writeable = false
-	}
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error getting configuration: %s\n", err)
 		return 1
@@ -54,7 +54,13 @@ func realMain() int {
 		return 0
 	}
 
-	// before anything touches the cache, including creating its directories
+	if command == listCmd {
+		writeable = false
+	}
+
+	// for load, list, and prune, if this is a >=2.0.0 server running over a <2.0.0 file system,
+	// the file system image cache must already have been migrated either by the serve sub-
+	// command or the migrate-cache sub-command.
 	switch command {
 	case loadCmd, listCmd, pruneCmd:
 		if needs, err := serialize.NeedsMigration(config.GetImagePath()); err != nil {

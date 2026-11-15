@@ -14,9 +14,9 @@ import (
 // legacy manifests that have not been migrated.
 const NotMigratedMsg = "You must manually migrate the cache using the migrate-cache command, or run the serve command which automatically migrates the cache"
 
-// MigrateCache migrates the cache from the legacy layout to the current layout and prints the
-// report to the console. With --dry-run nothing is written. An error is returned if the
-// migration is incomplete (a manifest could not be written); skipped files are not errors
+// MigrateCache migrates the cache from the < 2.0.0 layout to the >= 2.0.0 layout and prints the
+// migration report to the console. With --dry-run nothing is written. An error is returned if the
+// migration is incomplete (a manifest could not be written). Skipped files are not errors
 // and are listed in the report.
 func MigrateCache() error {
 	report, err := serialize.Migrate(config.GetImagePath(), config.GetMigrateConfig().DryRun)

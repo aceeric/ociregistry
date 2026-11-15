@@ -60,10 +60,10 @@ var ErrPruneBusy = errors.New("prune not started: upstream pulls in progress, tr
 var pruneLockWait = 10 * time.Second
 
 // RunPruner runs the pruner goroutine if enabled, performing the prune according to the criteria
-// and frequency specified in the passed prune configuration. For example, if the configuration
-// string has `{"accessed": "15d"}` then using built-in defaults, the pruner will remove images
+// and frequency specified in the system global prune configuration. For example, if the config
+// struct has `{"accessed": "15d"}` then using built-in defaults, the pruner will remove images
 // that have not been accessed (pulled) within the last 15 days. Unless configured differently,
-// the process will run every 5 hours.
+// the process will run every 5 hours (the default).
 func RunPruner(stopChan, stoppedChan chan bool) error {
 	cfg := config.GetPruneConfig()
 	if !cfg.Enabled {

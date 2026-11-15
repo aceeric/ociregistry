@@ -7,7 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// initMetrics initializes metrics. If the passed port is zero, no action is taken. Otherwise,
+// InitMetrics initializes metrics. If the passed port is zero, no action is taken. Otherwise,
 // the function creates all the go runtime and ociregistry metrics and registers them for availability
 // at the passed port number under the '/metrics' path. Then it starts an HTTP server to
 // serve the metrics.

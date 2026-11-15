@@ -20,6 +20,9 @@ import (
 	yaml "go.yaml.in/yaml/v4"
 )
 
+// redactedValue replaces a secret in the configuration shown by Redacted.
+const redactedValue = "*****"
+
 // TokenAuth configures external token provisioning. The Static member is mainly for test.
 type TokenAuth struct {
 	Provider     string `yaml:"provider"`
@@ -127,7 +130,7 @@ type Configuration struct {
 // FromCmdLine has a flag for every command-line option. The parsing code
 // sets the flag to true if the option was explicitly provided on the command
 // line by the user. This supports merging command line config into
-// file-based config.
+// file-based config specified via the `--config-file` arg.
 type FromCmdLine struct {
 	Command          string
 	LogLevel         bool
@@ -163,20 +166,26 @@ var (
 	emptyOpts = imgpull.PullerOpts{}
 )
 
-// getters and setters for when I re-implement hot reload
-
+// GetLogLevel gets the server log level, e.g. "debug", "warn", "info", or "error".
+// Command line arg is `--log-level`.
 func GetLogLevel() string {
 	return config.LogLevel
 }
 
+// GetLogFile gets the log file path, or the empty string if not defined. (By default
+// the server logs to stdout). Command line arg is `--log-file`.
 func GetLogFile() string {
 	return config.LogFile
 }
 
+// GetConfigFile gets the configuration file path or the empty string if not defined.
+// Command line arg is `--config-file`.
 func GetConfigFile() string {
 	return config.ConfigFile
 }
 
+// GetImagePath gets the path to the file system image cache. Command line arg is
+// `--image-path`.
 func GetImagePath() string {
 	return config.ImagePath
 }
@@ -185,6 +194,8 @@ func SetImagePath(newVal string) {
 	config.ImagePath = newVal
 }
 
+// GetPreloadImages gets the preload image arg value for the serve sub-command. Command
+// line arg is `--preload-images`.
 func GetPreloadImages() string {
 	return config.PreloadImages
 }
@@ -193,6 +204,8 @@ func SetPreloadImages(newVal string) {
 	config.PreloadImages = newVal
 }
 
+// GetImageFile gets the image file arg value for the load sub-command. Command
+// line arg is `--image-file`.
 func GetImageFile() string {
 	return config.ImageFile
 }
@@ -206,34 +219,49 @@ func GetResolveRef() string {
 	return config.ResolveRef
 }
 
+// GetPort gets the port to serve on. Command line arg is `--port`.
 func GetPort() int {
 	return config.Port
 }
 
+// GetOs gets the OS that the server uses to select an image manifest for from a
+// multi-arch manifest list. Command line arg is `--os`.
 func GetOs() string {
 	return config.Os
 }
 
+// GetArch gets the architecture that the server uses to select an image manifest for from a
+// multi-arch manifest list. Command line arg is `--arch`.
 func GetArch() string {
 	return config.Arch
 }
 
+// GetPullTimeout gets the max time to pull an image in milliseconds before timing
+// out. Command line arg is `--pull-timeouet`.
 func GetPullTimeout() int {
 	return config.PullTimeout
 }
 
+// GetHealth gets the port on which the server runs a /health endpoint for liveness/readiness.
+// Command line arg is `--health`.
 func GetHealth() int {
 	return config.Health
 }
 
+// GetMetrics gets the port on which the server runs a /metrics endpoint for metrics exposition.
+// Command line arg is `--metrics`.
 func GetMetrics() int {
 	return config.Metrics
 }
 
+// GetAlwaysPullLatest is the same as --no-cache ':latest$' (kept for compatibility).
+// Command line arg is `--always-pull-latest`.
 func GetAlwaysPullLatest() bool {
 	return config.AlwaysPullLatest
 }
 
+// GetNoCache returns multiple patterns each representing mutable tags. These tags are
+// not cached and are always re-pulled from the upstream. Command line arg is `--no-cache`.
 func GetNoCache() []string {
 	return config.NoCache
 }
@@ -262,42 +290,58 @@ func NoCachePatterns() []*regexp.Regexp {
 	return compiled
 }
 
+// GetAirGapped returns whether the server is air-gapped. Command line arg is `--air-gapped`.
 func GetAirGapped() bool {
 	return config.AirGapped
 }
 
+// SetAirGapped sets the server into (or not into) air-gapped mode based on the
+// value of 'newVal'.
 func SetAirGapped(newVal bool) {
 	config.AirGapped = newVal
 }
 
+// GetHelloWorld returns whether or not the server is running in "hello world" test mode.
+// Command line arg is `--hello-world`.
 func GetHelloWorld() bool {
 	return config.HelloWorld
 }
 
+// GetDefaultNs gets the default namespace for pulls that don't specify it. Command line arg
+// is `--default-ns`.
 func GetDefaultNs() string {
 	return config.DefaultNs
 }
 
+// GetHost gets the host to serve one. Commadn line arg is `--host`.
 func GetHost() string {
 	return config.Host
 }
 
+// GetRegistries gets the upstream registry configuration(s). Supports unit testing.
 func GetRegistries() []RegistryConfig {
 	return config.Registries
 }
 
+// GetPruneConfig gets the background server prune configuration. There is no command line
+// arg - values are specified by operators in the server config specified by `--config-file`.
 func GetPruneConfig() PruneConfig {
 	return config.PruneConfig
 }
 
+// GetListConfig gets the configuration options for the list sub-command. From the command line,
+// this is `--header`, `--pattern`, and `--short-digest`.
 func GetListConfig() ListConfig {
 	return config.ListConfig
 }
 
+// GetMigrateConfig gets pre 2.0.0 cache migration options. Currently only `--dry-run` for the
+// migrate-cache sub-command.
 func GetMigrateConfig() MigrateConfig {
 	return config.MigrateConfig
 }
 
+// GetServerTlsCfg
 func GetServerTlsCfg() ServerTlsCfg {
 	return config.ServerTlsCfg
 }
@@ -315,12 +359,15 @@ func Load(configFile string) error {
 	return nil
 }
 
-// Get gets the current configuration
+// Get gets the current configuration which is a merge of the `--config-file` if
+// provided and all command-line overrides plus server defaults.
 func Get() Configuration {
 	return config
 }
 
-// Set replaces the configuration with the passed configuration
+// Set replaces the configuration with the passed configuration. Used for tests, and
+// to set the final server config from `--config-file` settings, plus cmdline overrides,
+// and compiled defaults.
 func Set(cfg Configuration) {
 	config = cfg
 }
@@ -354,7 +401,8 @@ func SetConfigFromStr(configBytes []byte) error {
 //
 // Since the config might involve loading and calculating a tls.Config with certs, once the
 // parsing is complete, the final config struct saved for reuse so it doesn't need to be
-// re-parsed in the future.
+// re-parsed in the future. Currently these aren't hot-loaded so a config file change requires
+// a server restart.
 func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 	// default options if no configuration
 	opts := imgpull.PullerOpts{
@@ -490,9 +538,6 @@ func Marshal(format string) ([]byte, error) {
 	b, err = json.MarshalIndent(v, "", "  ")
 	return append(b, '\n'), err
 }
-
-// redactedValue replaces a secret in the configuration shown by Redacted.
-const redactedValue = "*****"
 
 // redact returns redactedValue for a secret that is set, and an empty one unchanged.
 func redact(secret string) string {

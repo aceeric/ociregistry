@@ -60,7 +60,7 @@ func (r *OciRegistry) handleV2BlobsDigest(w http.ResponseWriter, req *http.Reque
 		writeJSON(w, http.StatusNotFound, "")
 		return
 	}
-	fi, err, blob_file := helpers.GetBlob(r.imagePath, digest)
+	fi, blob_file, err := helpers.GetBlob(r.imagePath, digest)
 	if err != nil {
 		log.Errorf("blob not on the file system for %q, digest %q", strings.Join(repoSegments, "/"), digest)
 		metrics.IncApiErrorResults()

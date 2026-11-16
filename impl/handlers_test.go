@@ -136,8 +136,7 @@ func TestBlobGetFails(t *testing.T) {
 
 	r := NewOciRegistry(nil)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	var rec *httptest.ResponseRecorder
-	rec = httptest.NewRecorder()
+	rec := httptest.NewRecorder()
 	r.handleV2BlobsDigest(rec, req, "d2c94e258dcb3c5ac2798d32e1249e42ef01cba4841c2234249495f87264ac5a", "hello-world")
 	if rec.Code != 404 {
 		t.Fail()

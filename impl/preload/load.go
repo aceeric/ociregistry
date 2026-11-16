@@ -63,7 +63,7 @@ func Load(path string, resolveRefStr string) error {
 // producing an empty or partial result.
 func expandPaths(path string) ([]string, error) {
 	var out []string
-	for _, segment := range strings.Split(path, ",") {
+	for segment := range strings.SplitSeq(path, ",") {
 		segment = strings.TrimSpace(segment)
 		if segment == "" {
 			continue

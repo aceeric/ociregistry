@@ -87,19 +87,14 @@ func ListCache() error {
 // splitImageRef splits "docker.io/coredns/coredns:1.11.1" into "docker.io/coredns/coredns" and "1.11.1", and also splits
 // "docker.io/coredns/coredns@sha256:2169b3b9..." into "docker.io/coredns/coredns" and "2169b3b9...".
 func splitImageRef(ref string) (repo string, tagOrDigest string) {
-	if idx := strings.Index(ref, "@"); idx != -1 {
-		// digest form: repo@sha256:abcdef...
-		repo = ref[:idx]
-		digest := ref[idx+1:]
-		digest = strings.TrimPrefix(digest, "sha256:")
-		return repo, digest
+	if before, after, ok := strings.Cut(ref, "@"); ok {
+		return before, strings.TrimPrefix(after, "sha256:")
 	}
 
 	// tag form: repo:tag  (split on last colon in case repo has a port, e.g. host:5000/repo:tag)
-	if idx := strings.LastIndex(ref, ":"); idx != -1 {
-		repo = ref[:idx]
-		tagOrDigest = ref[idx+1:]
-		return repo, tagOrDigest
+	//if idx := strings.LastIndex(ref, ":"); idx != -1 {
+	if before, after, ok := strings.CutLast(ref, ":"); ok {
+		return before, after
 	}
 
 	// no tag or digest present

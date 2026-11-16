@@ -486,6 +486,7 @@ func TestPruneBusy(t *testing.T) {
 	newPull := make(chan struct{})
 	go func() {
 		pullGate.RLock()
+		//lint:ignore SA2001 the test only checks that the read lock can be taken
 		pullGate.RUnlock()
 		close(newPull)
 	}()

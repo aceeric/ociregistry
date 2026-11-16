@@ -62,7 +62,7 @@ func Serve(buildVer string, buildDtm string) error {
 	if err != nil {
 		return fmt.Errorf("error parsing TLS configuration: %s", err)
 	}
-	swagger, err := api.GetSwagger()
+	swagger, err := api.GetSpec()
 	if err != nil {
 		return fmt.Errorf("error loading swagger spec: %s", err)
 	}

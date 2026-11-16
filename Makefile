@@ -74,6 +74,19 @@ server:
 server-install:
 	$(ROOT)/systemd-service/manual-install
 
+.PHONY: staticcheck
+staticcheck:
+	docker run --rm\
+	  -v $(ROOT):/src:ro\
+	  -v staticcheck-cache:/cache\
+	  -e GOPATH=/cache/gopath\
+	  -e GOMODCACHE=/cache/mod\
+	  -e GOCACHE=/cache/build\
+	  -e XDG_CACHE_HOME=/cache/xdg\
+	  -w /src\
+	  golang:$(GO_VERSION)\
+	  sh -c 'go install honnef.co/go/tools/cmd/staticcheck@latest && $$GOPATH/bin/staticcheck ./...'
+
 .PHONY: image
 image:
 	docker buildx inspect ociregistry > /dev/null 2>&1 && docker buildx rm ociregistry || :
@@ -175,10 +188,10 @@ update-go         Pulls down and installs the latest golang. Must run as sudo. E
                   'sudo make update-go'.
 
 bump-go           Updates the go version in go.mod, builds (with no binary output - just a test
-                  build, and runs the unit tests.) E.g.: 'make bump-go GO_VERSION=n.nn.n'
+                  build, and runs the unit tests.) E.g.: 'make bump-go GO_VERSION=n.nn.n'.
 
 bump-chart        Updates the chart version in charts/ociregistry/Chart.yaml. E.g.:
-                  'make bump-chart CHART_VERSION_NEW=n.nn.n'
+                  'make bump-chart CHART_VERSION_NEW=n.nn.n'.
 
 test              Runs the unit tests.
 
@@ -198,7 +211,7 @@ update-modules    Runs 'go get -u' and 'go mod tidy' and does a validation build
                   nothing about the module updates broke the server.
 
 coverage-rpt      Creates a coverage report of the most recent test run. (Does not run the unit tests.)
-                  Requires 'go install github.com/vladopajic/go-test-coverage/v2@latest'
+                  Requires 'go install github.com/vladopajic/go-test-coverage/v2@latest'.
 
 oapi-codegen      Generates go code in the 'api' directory from the 'ociregistry.yaml' open API
                   schema and configuration files in that directory.
@@ -209,7 +222,10 @@ server            Builds the server binary on your desktop. After building then 
                   binary as a systemd service. See the 'systemd-service' directory for more details.
 
 server-install    Runs systemd-service/manual-install to install the server as a systemd service.
-                  Requires sudo. E.g.: 'sudo make server-install'
+                  Requires sudo. E.g.: 'sudo make server-install'.
+
+staticcheck       Runs staticcheck in a docker container, mounting the current working directory
+                  into the container.
 
 image             Builds the server '$(SERVER_VERSION)' OCI image and and pushes it to the
                   '$(REGISTRY)' OCI distribution server, in the '$(ORG)' user/org.

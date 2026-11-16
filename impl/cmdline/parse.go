@@ -17,8 +17,8 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// fromCmdline will be populated with flags indicating which configuration settings were
-// specified on the command line.
+// fromCmdline will be populated - after command line parsing - with flags indicating which
+// configuration settings were specified on the command line.
 var fromCmdline config.FromCmdLine
 
 // cfg has the parsed configuration - including defaults (e.g. port) if the user does not override
@@ -475,7 +475,7 @@ var cmds = &cli.Command{
 //
 //  1. A FromCmdLine struct which has the command to run ("serve", "list", etc.). If the command
 //     is the empty string then no sub-command was specified in which case the parser auto-displays
-//     help. This struct also has flags telling you which configuration values were provided by the
+//     help. This struct also has flags indicating which configuration values were provided by the
 //     user on the command line.
 //  2. A Configuration struct containing the parsed configuration values. For any configuration flag
 //     in the FromCmdLine struct with a false value, the corresponding configuration value in *this*

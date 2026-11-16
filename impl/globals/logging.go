@@ -63,6 +63,8 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		start := time.Now()
 		sw := &statusWriter{ResponseWriter: w}
 
+		// this causes all the registry handlers in handlers.go to have their
+		// http.ResponseWriter arg (arg 1) be a ref to 'sw' above.
 		next.ServeHTTP(sw, req)
 
 		// don't log the health check because it clutters the log and it is intended to
@@ -121,12 +123,19 @@ func remoteIP(req *http.Request) string {
 	return host
 }
 
-// statusWriter records the status code a handler sends, for logging.
+// statusWriter records the status code a handler sends, for logging. It is used by the
+// function wrapped inside LoggingMiddleware to get the status code. E.g. when function
+// handleV2ManifestsReference in handlers.go calls w.WriteHeader(http.StatusOK), its
+// calling the WriteHeader function below which stores the status code before sending it
+// so the logger can get that code.
 type statusWriter struct {
 	http.ResponseWriter
 	status int
 }
 
+// WriteHeader saves the passed code and then calls the encapsulated
+// ResponseWriter. Only the first counts, because net/http ignores
+// later calls too.
 func (s *statusWriter) WriteHeader(code int) {
 	if s.status == 0 {
 		s.status = code
@@ -134,6 +143,10 @@ func (s *statusWriter) WriteHeader(code int) {
 	s.ResponseWriter.WriteHeader(code)
 }
 
+// Write calls the encapsulated ResponseWriter. A handler can write a body without
+// calling WriteHeader, and net/http then sends 200 on its own. This function catches
+// that case, so the log shows 200. Only the first counts, because net/http ignores
+// later calls too.
 func (s *statusWriter) Write(b []byte) (int, error) {
 	if s.status == 0 {
 		s.status = http.StatusOK
@@ -142,7 +155,8 @@ func (s *statusWriter) Write(b []byte) (int, error) {
 }
 
 // ReadFrom passes io.Copy through to the underlying connection, so blob downloads from a
-// file can use the kernel's sendfile instead of copying through a buffer.
+// file can use the kernel's sendfile instead of copying through a buffer. See the
+// writeStream function in impl/respond.go.
 func (s *statusWriter) ReadFrom(src io.Reader) (int64, error) {
 	if s.status == 0 {
 		s.status = http.StatusOK

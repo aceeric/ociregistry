@@ -1,3 +1,3 @@
 // Package preload supports loading the pull-through distribution server cache from
-// a file containing a list of images.
+// a files containing lists of images, and from image tarballs.
 package preload

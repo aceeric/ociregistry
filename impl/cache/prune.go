@@ -41,11 +41,13 @@ type teeLog struct {
 	own *log.Logger
 }
 
+// Infof generates info log messages to both loggers
 func (t teeLog) Infof(format string, args ...any) {
 	t.own.Infof(format, args...)
 	log.Infof(format, args...)
 }
 
+// Errorf generates error log messages to both loggers
 func (t teeLog) Errorf(format string, args ...any) {
 	t.own.Errorf(format, args...)
 	log.Errorf(format, args...)

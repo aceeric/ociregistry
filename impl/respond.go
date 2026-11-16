@@ -47,7 +47,10 @@ func writeBlob(w http.ResponseWriter, code int, contentType string, b []byte) {
 	}
 }
 
-// writeStream copies rdr to the response with the passed content type.
+// writeStream copies rdr to the response with the passed content type. It is used to
+// send blobs to clients. It calls io.Copy which internally checks to see if the writer
+// implements ReadFrom. If the writer does then if rdr is a file, io.Copy uses the kernel's
+// sendfile, so the data never goes through user space.
 func writeStream(w http.ResponseWriter, code int, contentType string, rdr io.Reader) {
 	setContentType(w, contentType)
 	w.WriteHeader(code)

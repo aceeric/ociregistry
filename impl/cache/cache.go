@@ -42,11 +42,9 @@ type digestUrl string
 // tagUrl is a canonical image url by tag, e.g. ghcr.io/org/app:v1.0.0
 type tagUrl string
 
-// tagSet is a set of tag urls.
+// tagSet is a set of tag urls. (Go does not have a native set type so map of empty struct
+// is one idiomatic way to create a set.)
 type tagSet map[tagUrl]struct{}
-
-func (s tagSet) add(t tagUrl)    { s[t] = struct{}{} }
-func (s tagSet) remove(t tagUrl) { delete(s, t) }
 
 // Type manifestCache is the in-mem representation of the manifest cache. It has one entry per
 // manifest file on disk. Every manifest GET is also an UPDATE (of the last accessed timestamp)
@@ -259,7 +257,8 @@ func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolde
 // manifest with a legacy date (local time with no zone) is rewritten with its dates in UTC,
 // read in this server's local time zone (see globals.LegacyToUtc). A date that can't be read
 // in either format is blanked, with a warning. A manifest that can't be rewritten is an error,
-// so the server doesn't start with dates it can't use.
+// so the server doesn't start with dates it can't use. UTC manifest dates were introduced
+// in version 2.2.0.
 func Load(imagePath string) error {
 	start := time.Now()
 	log.Infof("load in-mem cache from file system")
@@ -384,7 +383,7 @@ func (mc *manifestCache) set(pr pullrequest.PullRequest, mh imgpull.ManifestHold
 		if mc.aliases[alias] == nil {
 			mc.aliases[alias] = tagSet{}
 		}
-		mc.aliases[alias].add(tagUrl(key))
+		mc.aliases[alias][tagUrl(key)] = struct{}{}
 	}
 }
 
@@ -403,7 +402,7 @@ func (mc *manifestCache) drop(key imageUrl) {
 	}
 	alias := digestUrl(pr.UrlWithDigest("sha256:" + mh.Digest))
 	if tags := mc.aliases[alias]; tags != nil {
-		tags.remove(tagUrl(key))
+		delete(tags, tagUrl(key))
 		if len(tags) == 0 {
 			delete(mc.aliases, alias)
 		}

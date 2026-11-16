@@ -1,13 +1,16 @@
 package config
 
-// Merge takes a struct indicating which configuration options have been provided on the command
-// line, as well as a configuration struct parsed from the command line which ALSO includes defaults
-// that the user didn't specify. For example the default port is 8080 and if you don't specify
-// that on the command line - it gets defaulted into the parsed configuration struct. So:
+// Merge updates the global config. It takes a struct indicating which configuration options
+// have been provided on the command line, as well as a configuration struct parsed from the
+// command line which ALSO includes defaults that the user didn't specify. For example the
+// default port is 8080 and if you don't specify that on the command line - it gets defaulted
+// into the configuration struct this function expects in arg 2. Basically what that means is
+// if you start the server with no args, the parsed configuration struct will have all the
+// defaults. This function implements three behaviors:
 //
-//  1. User provided a value: overwrite current config using the user's value
-//  2. User did not provide a value, current config is unspecified: use the default in the parsed config
-//  3. User did not provide a value, current config is specified: leave the current config untouched
+//  1. User provided a value: set global config using the user's value
+//  2. User did not provide a value, global config is uninitialized: set global config from passed config
+//  3. User did not provide a value, global config is initialized: leave the global config untouched
 func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 	if fromCmdline.LogLevel || config.LogLevel == "" {
 		config.LogLevel = cfg.LogLevel

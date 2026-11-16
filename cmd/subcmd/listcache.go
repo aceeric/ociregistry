@@ -106,6 +106,8 @@ func splitImageRef(ref string) (repo string, tagOrDigest string) {
 	return ref, ""
 }
 
+// dash replaces empty val with dash so formatted output has a visual indication that something
+// is blank.
 func dash(val string) string {
 	if val == "" {
 		return "-"

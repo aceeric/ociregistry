@@ -11,12 +11,12 @@ import (
 )
 
 // NotMigratedMsg is the error shown by the load, list and prune commands when the cache has
-// legacy manifests that have not been migrated.
+// legacy (< 2.0.0) manifests that have not been migrated.
 const NotMigratedMsg = "You must manually migrate the cache using the migrate-cache command, or run the serve command which automatically migrates the cache"
 
 // MigrateCache migrates the cache from the < 2.0.0 layout to the >= 2.0.0 layout and prints the
-// migration report to the console. With --dry-run nothing is written. An error is returned if the
-// migration is incomplete (a manifest could not be written). Skipped files are not errors
+// migration report to the console. With --dry-run nothing is written. An error is returned if
+// the migration is incomplete (a manifest could not be written). Skipped files are not errors
 // and are listed in the report.
 func MigrateCache() error {
 	report, err := serialize.Migrate(config.GetImagePath(), config.GetMigrateConfig().DryRun)
@@ -25,7 +25,8 @@ func MigrateCache() error {
 }
 
 // migrateOnStartup migrates the cache when the server starts, logging the summary. It returns
-// an error, which stops the server from starting, if the migration is incomplete.
+// an error, which stops the server from starting, if the migration is incomplete. The cache
+// migration happens when a >= 2.0.0 server starts over a < 2.0.0 server's cache.
 func migrateOnStartup(imagePath string) error {
 	report, err := serialize.Migrate(imagePath, false)
 	if report.Found > 0 {

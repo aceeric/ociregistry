@@ -35,9 +35,9 @@ func DumpCache(digestLen int) string {
 	tw.Flush()
 	sb.WriteString("\nALIASES:\n\nALIAS URL / TAGS\n")
 	for _, alias := range slices.Sorted(maps.Keys(mc.aliases)) {
-		sb.WriteString(shortUrl(string(alias), digestLen) + "\n")
+		fmt.Fprintf(&sb, "%s\n", shortUrl(string(alias), digestLen))
 		for _, tag := range slices.Sorted(maps.Keys(mc.aliases[alias])) {
-			sb.WriteString("    " + string(tag) + "\n")
+			fmt.Fprintf(&sb, "    %s\n", tag)
 		}
 	}
 	return sb.String()

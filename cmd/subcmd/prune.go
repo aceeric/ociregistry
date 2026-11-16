@@ -70,7 +70,6 @@ func Prune() error {
 	}
 
 	// populate the 'matches' variable
-	/////if err = serialize.WalkTheCache(config.GetImagePath(), requireUtc(handler)); err != nil {
 	if err = serialize.WalkTheCache(config.GetImagePath(), handler); err != nil {
 		return err
 	}

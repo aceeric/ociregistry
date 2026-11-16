@@ -58,7 +58,7 @@ func Serve(buildVer string, buildDtm string) error {
 			return fmt.Errorf("error pre-loading images: %s", err)
 		}
 	}
-	tlsCfg, err := globals.ParseTls()
+	tlsCfg, err := config.ParseTls()
 	if err != nil {
 		return fmt.Errorf("error parsing TLS configuration: %s", err)
 	}
@@ -91,7 +91,10 @@ func Serve(buildVer string, buildDtm string) error {
 	ociRegistry := impl.NewOciRegistry(shutdownCh)
 
 	// The generated router dispatches requests to the registry handlers. Each request is
-	// logged, then validated against the OpenAPI schema before it is routed.
+	// logged, then validated against the OpenAPI schema before it is routed. The handlers are
+	// chained: LoggingMiddleware > OapiRequestValidator > api.Handler. At the end there is where this
+	// server's handlers are invoked. In every handler function in handlers.go, the http.ResponseWriter
+	// arg (arg 1) is a ref to globals.statusWriter that LoggingMiddleware created for that request.
 	handler := globals.LoggingMiddleware(middleware.OapiRequestValidator(swagger)(api.Handler(ociRegistry)))
 
 	if err := cache.RunPruner(stopPruneCh, pruneStoppedCh); err != nil {
@@ -107,8 +110,7 @@ func Serve(buildVer string, buildDtm string) error {
 	fmt.Fprintf(os.Stderr, startupBanner, buildVer, buildDtm, time.Unix(0, time.Now().UnixNano()), config.GetPort(),
 		os.Getuid(), os.Getgid(), os.Getpid(), tlsMsg(), strings.Join(os.Args, " "))
 
-	// Create the listener here rather than in the server goroutine: nothing has to wait or poll
-	// for it, and a port that can't be bound is an ordinary startup error.
+	// Create the listener
 	addr := net.JoinHostPort(config.GetHost(), strconv.Itoa(int(config.GetPort())))
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -122,6 +124,8 @@ func Serve(buildVer string, buildDtm string) error {
 	server := &http.Server{
 		Addr:    addr,
 		Handler: handler,
+		// TODO ReadHeaderTimeout: 10 * time.Second,
+		// TODO IdleTimeout:       120 * time.Second,
 	}
 
 	// start the API server
@@ -162,7 +166,7 @@ func Serve(buildVer string, buildDtm string) error {
 	return nil
 }
 
-// tlsMsg formats the server TLS configuration for the startup banner
+// tlsMsg formats the server TLS configuration for the startup banner.
 func tlsMsg() string {
 	msg := "none"
 	tlsCfg := config.GetServerTlsCfg()
@@ -179,7 +183,8 @@ func tlsMsg() string {
 }
 
 // health handles the /health endpoint always on plain HTTP and is not part of the
-// server itself, hence a separate goroutine running an http server.
+// server itself, hence a separate goroutine running an http server. The health
+// endpoint is only run if the passed port is non-zero.
 func health(port int) {
 	if port != 0 {
 		http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

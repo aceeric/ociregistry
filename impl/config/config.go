@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"strings"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/aceeric/ociregistry/impl/auth"
@@ -23,8 +24,8 @@ import (
 // redactedValue replaces a secret in the configuration shown by Redacted.
 const redactedValue = "*****"
 
-// TokenAuth configures external token provisioning. The Static member is mainly for test.
-type TokenAuth struct {
+// tokenAuth configures external token provisioning. The Static member is mainly for test.
+type tokenAuth struct {
 	Provider     string `yaml:"provider"`
 	ProviderOpts string `yaml:"providerOpts"`
 	Expiry       string `yaml:"expiry"`
@@ -39,7 +40,7 @@ type authCfg struct {
 	User            string    `yaml:"user"`
 	Password        string    `yaml:"password"`
 	PasswordFromEnv string    `yaml:"passwordFromEnv"`
-	Token           TokenAuth `yaml:"token"`
+	Token           tokenAuth `yaml:"token"`
 }
 
 // tlsCfg holds TLS configuration for upstream registry access
@@ -50,18 +51,18 @@ type tlsCfg struct {
 	InsecureSkipVerify bool   `yaml:"insecureSkipVerify"`
 }
 
-// ServerTlsCfg holds TLS configuration for TLS with (downstream) clients,
+// serverTlsCfg holds TLS configuration for TLS with (downstream) clients,
 // i.e. containerd. Valid values for ClientAuth: "none", and "verify"
-type ServerTlsCfg struct {
+type serverTlsCfg struct {
 	Cert       string `yaml:"cert"`
 	Key        string `yaml:"key"`
 	CA         string `yaml:"ca"`
 	ClientAuth string `yaml:"clientAuth"`
 }
 
-// RegistryConfig combines authCfg and tlsCfg and configures the pull client
+// registryConfig combines authCfg and tlsCfg and configures the pull client
 // for access to one upstream registry
-type RegistryConfig struct {
+type registryConfig struct {
 	Name        string             `yaml:"name"`
 	Description string             `yaml:"description"`
 	Auth        authCfg            `yaml:"auth"`
@@ -71,7 +72,8 @@ type RegistryConfig struct {
 }
 
 // PruneConfig configures the prune behavior. When loaded from the config file, DryRun is true
-// unless the file has dryRun: false (see SetConfigFromStr).
+// unless the file has dryRun: false (see SetConfigFromStr). PruneConfig is used by the
+// prune package.
 type PruneConfig struct {
 	Enabled  bool   `yaml:"enabled"`
 	Duration string `yaml:"duration"`
@@ -86,9 +88,9 @@ type PruneConfig struct {
 // prunes, as a safety. It's also used for a prune config with no count.
 const DefaultPruneCount = 5
 
-// MigrateConfig configures the migrate-cache sub-command. It is only set from the
+// migrateConfig configures the migrate-cache sub-command. It is only set from the
 // command line.
-type MigrateConfig struct {
+type migrateConfig struct {
 	DryRun bool `yaml:"-"`
 }
 
@@ -120,17 +122,20 @@ type Configuration struct {
 	HelloWorld       bool             `yaml:"helloWorld"`
 	DefaultNs        string           `yaml:"defaultNs"`
 	Host             string           `yaml:"host"`
-	Registries       []RegistryConfig `yaml:"registries"`
+	Registries       []registryConfig `yaml:"registries"`
 	PruneConfig      PruneConfig      `yaml:"pruneConfig"`
 	ListConfig       ListConfig       `yaml:"listConfig"`
-	MigrateConfig    MigrateConfig    `yaml:"-"`
-	ServerTlsCfg     ServerTlsCfg     `yaml:"serverTlsConfig"`
+	MigrateConfig    migrateConfig    `yaml:"-"`
+	ServerTlsCfg     serverTlsCfg     `yaml:"serverTlsConfig"`
 }
 
 // FromCmdLine has a flag for every command-line option. The parsing code
 // sets the flag to true if the option was explicitly provided on the command
 // line by the user. This supports merging command line config into
-// file-based config specified via the `--config-file` arg.
+// file-based config specified via the `--config-file` arg. PruneConfig
+// and ListConfig are a little different - the command line accepts multiple
+// args each of which configure one element of the struct. So setting any
+// arg will set the entire struct-level flag.
 type FromCmdLine struct {
 	Command          string
 	LogLevel         bool
@@ -161,7 +166,7 @@ var (
 	// config is the global configuration, accessed through getters and setters
 	// below
 	config    Configuration
-	emptyAuth = authCfg{User: "", Password: "", PasswordFromEnv: "", Token: TokenAuth{}}
+	emptyAuth = authCfg{User: "", Password: "", PasswordFromEnv: "", Token: tokenAuth{}}
 	emptyTls  = tlsCfg{Cert: "", Key: "", CA: "", InsecureSkipVerify: false}
 	emptyOpts = imgpull.PullerOpts{}
 )
@@ -190,6 +195,7 @@ func GetImagePath() string {
 	return config.ImagePath
 }
 
+// SetImagePath sets the path to the image cache.
 func SetImagePath(newVal string) {
 	config.ImagePath = newVal
 }
@@ -200,6 +206,7 @@ func GetPreloadImages() string {
 	return config.PreloadImages
 }
 
+// SetPreloadImages sets the preload image path.
 func SetPreloadImages(newVal string) {
 	config.PreloadImages = newVal
 }
@@ -319,7 +326,7 @@ func GetHost() string {
 }
 
 // GetRegistries gets the upstream registry configuration(s). Supports unit testing.
-func GetRegistries() []RegistryConfig {
+func GetRegistries() []registryConfig {
 	return config.Registries
 }
 
@@ -337,12 +344,12 @@ func GetListConfig() ListConfig {
 
 // GetMigrateConfig gets pre 2.0.0 cache migration options. Currently only `--dry-run` for the
 // migrate-cache sub-command.
-func GetMigrateConfig() MigrateConfig {
+func GetMigrateConfig() migrateConfig {
 	return config.MigrateConfig
 }
 
 // GetServerTlsCfg
-func GetServerTlsCfg() ServerTlsCfg {
+func GetServerTlsCfg() serverTlsCfg {
 	return config.ServerTlsCfg
 }
 
@@ -394,6 +401,52 @@ func SetConfigFromStr(configBytes []byte) error {
 	return nil
 }
 
+// ParseTls parses the TLS configuration for the server to use to establish TLS with
+// downsteam clients like containerd. Supports:
+//   - 1-way: we provide our certs to the client and do not request client certs
+//   - mTls: we provide our certs to the client, and require and verify client certs
+//
+// Client cert verification can be via the OS trust store (no CA specified in config), or
+// via the provided CA. If there is no TLS configuration, then a nil tls.Config is returned
+// to the caller. This means the server should serve on HTTP. Otherwise the specifics
+// of the TLS handshake requirements will be encapsulated in the returned struct.
+func ParseTls() (*tls.Config, error) {
+	tlsCfg := config.ServerTlsCfg
+	cfg := &tls.Config{}
+	hasCfg := false
+	if tlsCfg.Cert != "" && tlsCfg.Key != "" {
+		if cert, err := tls.LoadX509KeyPair(tlsCfg.Cert, tlsCfg.Key); err != nil {
+			return nil, err
+		} else {
+			cfg.Certificates = []tls.Certificate{cert}
+			hasCfg = true
+		}
+	}
+	cliAuth := strings.ToLower(tlsCfg.ClientAuth)
+	if !slices.Contains([]string{"", "none", "verify"}, cliAuth) {
+		return nil, fmt.Errorf("unsupported client auth value: %s", tlsCfg.ClientAuth)
+	}
+	if cliAuth == "verify" {
+		hasCfg = true
+		cfg.ClientAuth = tls.RequireAndVerifyClientCert
+		if tlsCfg.CA != "" {
+			if caCert, err := os.ReadFile(tlsCfg.CA); err != nil {
+				return nil, err
+			} else {
+				cp := x509.NewCertPool()
+				if !cp.AppendCertsFromPEM(caCert) {
+					return nil, err
+				}
+				cfg.ClientCAs = cp
+			}
+		}
+	}
+	if hasCfg {
+		return cfg, nil
+	}
+	return nil, nil
+}
+
 // ConfigFor looks for an upstream registry configuration entry keyed by the passed 'registry'
 // arg (e.g. 'index.docker.io') and returns configuration options for that registry from the
 // config. If no matching config is found, then a default configuration is returned specifying
@@ -411,7 +464,7 @@ func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 		ArchType: runtime.GOARCH,
 	}
 
-	found := RegistryConfig{}
+	found := registryConfig{}
 	for _, reg := range config.Registries {
 		if reg.Name == registry {
 			found = reg
@@ -419,7 +472,7 @@ func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 		}
 	}
 
-	if found == (RegistryConfig{}) {
+	if found == (registryConfig{}) {
 		return opts, nil
 	}
 
@@ -491,7 +544,7 @@ func ConfigFor(registry string) (imgpull.PullerOpts, error) {
 
 // UpstreamAuthProviders is an iterator over the registries configuration that returns
 // the TokenAuth struct for all the registries that have an auth token provider configured.
-func UpstreamAuthProviders(yield func(TokenAuth) bool) {
+func UpstreamAuthProviders(yield func(tokenAuth) bool) {
 	for _, reg := range config.Registries {
 		if reg.Auth.Token.Provider != "" {
 			if !yield(reg.Auth.Token) {

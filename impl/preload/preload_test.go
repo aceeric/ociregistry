@@ -109,7 +109,7 @@ func TestLoad(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	err = LoadFromListFile(d + "/image-list")
+	_, err = LoadFromListFile(d + "/image-list")
 	if err != nil {
 		t.Fail()
 	}

@@ -301,7 +301,7 @@ func Migrate(imagePath string, dryRun bool) (MigrationReport, error) {
 			mh.ImageUrl = p.target
 			if b, err := json.Marshal(mh); err != nil {
 				entry.Outcome, entry.Detail = Failed, fmt.Sprintf("can't marshal: %s", err)
-			} else if err := writeFileAtomic(fname, b, 0644); err != nil {
+			} else if err := WriteFileAtomic(fname, b, 0644); err != nil {
 				entry.Outcome, entry.Detail = Failed, fmt.Sprintf("can't write: %s", err)
 			}
 		}
@@ -363,7 +363,7 @@ func finishMigration(imagePath string, report *MigrationReport) error {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
 	}
-	if err := writeFileAtomic(filepath.Join(dir, MigrationReportFile), []byte(report.String()), 0644); err != nil {
+	if err := WriteFileAtomic(filepath.Join(dir, MigrationReportFile), []byte(report.String()), 0644); err != nil {
 		return fmt.Errorf("unable to write the migration report: %w", err)
 	}
 	if !report.Complete() {
@@ -371,7 +371,7 @@ func finishMigration(imagePath string, report *MigrationReport) error {
 			report.Count(Failed), filepath.Join(dir, MigrationReportFile))
 	}
 	marker := fmt.Sprintf("migrated %d legacy manifest file(s) on %s\n", report.Found, globals.CurTime())
-	if err := writeFileAtomic(filepath.Join(dir, MigrationMarker), []byte(marker), 0644); err != nil {
+	if err := WriteFileAtomic(filepath.Join(dir, MigrationMarker), []byte(marker), 0644); err != nil {
 		return fmt.Errorf("unable to write the migration marker: %w", err)
 	}
 	return nil

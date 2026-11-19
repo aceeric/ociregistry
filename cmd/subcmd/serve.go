@@ -54,7 +54,7 @@ func Serve(buildVer string, buildDtm string) error {
 		return err
 	}
 	if config.GetPreloadImages() != "" {
-		if err := preload.Load(config.GetPreloadImages(), config.GetResolveRef()); err != nil {
+		if err := preload.Preload(config.GetPreloadImages(), config.GetResolveRef()); err != nil {
 			return fmt.Errorf("error pre-loading images: %s", err)
 		}
 	}

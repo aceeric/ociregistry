@@ -17,6 +17,9 @@ const (
 	ImgPath = "img"
 	// BlobPath is the subdirectory under the image cache root where blobs are stored
 	BlobPath = "blobs"
+	// MetadataPath is the subdirectory under the image cache root for files about the cache
+	// that aren't manifests or blobs, such as the preload ledger
+	MetadataPath = "metadata"
 	// DateFormat is the format of the ManifestHolder dates (Created and Pulled): UTC, with a Z
 	// suffix. It has magic numbers from 'format.go' in package 'time'.
 	DateFormat = "2006-01-02T15:04:05Z"

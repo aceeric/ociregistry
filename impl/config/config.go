@@ -109,6 +109,7 @@ type Configuration struct {
 	ImagePath        string           `yaml:"imagePath"`
 	PreloadImages    string           `yaml:"preloadImages"`
 	ImageFile        string           `yaml:"imageFile"`
+	Images           string           `yaml:"images"`
 	ResolveRef       string           `yaml:"resolveRef"`
 	Port             int              `yaml:"port"`
 	Os               string           `yaml:"os"`
@@ -144,6 +145,7 @@ type FromCmdLine struct {
 	ImagePath        bool
 	PreloadImages    bool
 	ImageFile        bool
+	Images           bool
 	ResolveRef       bool
 	Port             bool
 	Os               bool
@@ -211,9 +213,12 @@ func SetPreloadImages(newVal string) {
 	config.PreloadImages = newVal
 }
 
-// GetImageFile gets the image file arg value for the load sub-command. Command
-// line arg is `--image-file`.
+// GetImageFile gets the images to load for the load sub-command: images (the --images arg),
+// or if that's empty, imageFile (the deprecated --image-file arg).
 func GetImageFile() string {
+	if config.Images != "" {
+		return config.Images
+	}
 	return config.ImageFile
 }
 

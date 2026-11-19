@@ -30,6 +30,9 @@ func Merge(fromCmdline FromCmdLine, cfg Configuration) {
 	if fromCmdline.ImageFile || config.ImageFile == "" {
 		config.ImageFile = cfg.ImageFile
 	}
+	if fromCmdline.Images || config.Images == "" {
+		config.Images = cfg.Images
+	}
 	if fromCmdline.ResolveRef || config.ResolveRef == "" {
 		config.ResolveRef = cfg.ResolveRef
 	}

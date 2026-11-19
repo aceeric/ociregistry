@@ -54,7 +54,7 @@ func TestTopLvlCLIs(t *testing.T) {
 	}{
 		{name: "No command", args: []string{"bin/ociregistry"}, expResult: 0},
 		{name: "Version", args: []string{"bin/ociregistry", "version"}, expResult: 0},
-		{name: "Load", args: []string{"bin/ociregistry", "--image-path", td, "load", "--image-file", imgFilename}, expResult: 0},
+		{name: "Load", args: []string{"bin/ociregistry", "--image-path", td, "load", "--images", imgFilename}, expResult: 0},
 		{name: "List", args: []string{"bin/ociregistry", "--image-path", td, "list"}, expResult: 0},
 		{name: "Prune", args: []string{"bin/ociregistry", "--image-path", td, "prune", "--pattern", "frobozz"}, expResult: 0},
 		{name: "Load - invalid image url", args: []string{"bin/ociregistry", "--image-path", td, "load", "--image-file", imgFilenameBad}, expResult: 1},

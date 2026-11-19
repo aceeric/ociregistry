@@ -255,15 +255,24 @@ var cmds = &cli.Command{
 				fromCmdline.Command = "load"
 				return nil
 			},
-			Description: "Loads the image cache using the server as a cli. The --image-file arg accepts the following: the\n" +
+			Description: "Loads the image cache using the server as a cli. The --images arg accepts the following: the\n" +
 				"name of a plain text file containing an image list, the name of a tarball, a glob expression for either of the\n" +
 				"above, or all of the above comma-separated. Glob expressions must be single-quote enclosed to prevent shell\n" +
-				"expansion. Complex example: --image-file 'foo*.tar,myimagelist.txt,myotherlist.txt,frobozz*.tgz'",
+				"expansion. Complex example: --images 'foo*.tar,myimagelist.txt,myotherlist.txt,frobozz*.tgz'",
 			Flags: []cli.Flag{
 				// validation at point of use
 				&cli.StringFlag{
-					Name:        "image-file",
+					Name:        "images",
 					Usage:       "Loads images from file(s) containing a list of image refs, or from tarball(s)",
+					Destination: &cfg.Images,
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.Images = true
+						return nil
+					},
+				},
+				&cli.StringFlag{
+					Name:        "image-file",
+					Usage:       "DEPRECATED (will be removed in future) use --images instead",
 					Destination: &cfg.ImageFile,
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.ImageFile = true
@@ -272,7 +281,7 @@ var cmds = &cli.Command{
 				},
 				&cli.StringFlag{
 					Name:        "resolve-ref",
-					Usage:       "Image ref to use when --image-file is a single-image tarball with no usable tag",
+					Usage:       "Image ref to use when --images is a single-image tarball with no usable tag",
 					Destination: &cfg.ResolveRef,
 					Validator: func(ref string) error {
 						if _, err := pullrequest.NewPullRequestFromUrl(ref); err != nil {

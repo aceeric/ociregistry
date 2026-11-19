@@ -104,6 +104,22 @@ func TestParseLoad(t *testing.T) {
 	}
 }
 
+// Tests that --images and the deprecated --image-file each set their own value and flag.
+func TestParseLoadImages(t *testing.T) {
+	ClearParse()
+	os.Args = []string{"bin/ociregistry", "load", "--images", "new.tar"}
+	fromCmdline, cfg, err := Parse()
+	if err != nil || !fromCmdline.Images || fromCmdline.ImageFile || cfg.Images != "new.tar" || cfg.ImageFile != "" {
+		t.Fatalf("--images: unexpected parse: %v %+v %+v", err, fromCmdline, cfg)
+	}
+	ClearParse()
+	os.Args = []string{"bin/ociregistry", "load", "--images", "new.tar", "--image-file", "old.tar"}
+	fromCmdline, cfg, err = Parse()
+	if err != nil || !fromCmdline.Images || !fromCmdline.ImageFile || cfg.Images != "new.tar" || cfg.ImageFile != "old.tar" {
+		t.Fatalf("both: unexpected parse: %v %+v %+v", err, fromCmdline, cfg)
+	}
+}
+
 // Test that --resolve-ref rejects a value that doesn't parse as a
 // fully-qualified image ref
 func TestParseLoadResolveRefValidation(t *testing.T) {

@@ -19,7 +19,7 @@ import (
 //
 // Each resolved file is inspected and routed independently to LoadFromListFile
 // or LoadTarball based on the content of the file at path - not its name or
-// the CLI flag that supplied it, so the --image-file or --preload-images args
+// the CLI flag that supplied it, so the --images or --preload-images args
 // can point at any combination of list-of-image files or tarballs by name, glob,
 // or combination thereof.
 //

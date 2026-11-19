@@ -425,6 +425,29 @@ func TestMergeNoCache(t *testing.T) {
 	}
 }
 
+// Tests the images to load: images wins over the deprecated imageFile, imageFile is used when
+// images isn't set, and each is merged from the command line separately.
+func TestGetImageFile(t *testing.T) {
+	if err := SetConfigFromStr([]byte("imageFile: /old\n")); err != nil {
+		t.Fatal(err)
+	}
+	Merge(FromCmdLine{}, Configuration{})
+	if GetImageFile() != "/old" {
+		t.Fatalf("expected the file's imageFile, got %q", GetImageFile())
+	}
+	Merge(FromCmdLine{Images: true}, Configuration{Images: "/new"})
+	if GetImageFile() != "/new" || config.ImageFile != "/old" {
+		t.Fatalf("expected --images to win and imageFile to be kept, got %q %q", GetImageFile(), config.ImageFile)
+	}
+	if err := SetConfigFromStr([]byte("images: /new\nimageFile: /old\n")); err != nil || GetImageFile() != "/new" {
+		t.Fatalf("expected images to win over imageFile in the file, got %q %v", GetImageFile(), err)
+	}
+	Merge(FromCmdLine{ImageFile: true}, Configuration{ImageFile: "/cmdline"})
+	if GetImageFile() != "/new" || config.ImageFile != "/cmdline" {
+		t.Fatalf("expected images still to win over a command line --image-file, got %q %q", GetImageFile(), config.ImageFile)
+	}
+}
+
 // Tests that prune dry run is true unless the config file explicitly has dryRun: false.
 func TestPruneDryRun(t *testing.T) {
 	tests := []struct {

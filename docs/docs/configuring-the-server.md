@@ -65,7 +65,8 @@ serverTlsConfig: {}
 |`logLevel` | keyword | error | `--log-level` | Error level logging. See help for valid values. |
 |`logFile` | Path spec | - | `--log-file` | Empty means log to stderr. If you specify a file, the logging is directed to the file. |
 |`preloadImages` | Path spec | - | `--preload-images` | Used by the `serve` subcommand to pre-load images before starting the server. See "Loading Images" below. |
-|`imageFile` | Path spec | - | `--image-file` | Used by the `load` subcommand to load images while the server is not running (expects exclusive access to the image cache.) See "Loading Images" below. |
+|`images` | Path spec | - | `--images` | Used by the `load` subcommand to load images while the server is not running (expects exclusive access to the image cache.) See "Loading Images" below. |
+|`imageFile` | Path spec | - | `--image-file` | Deprecated (will be removed in future): use `images`. Used only if `images` is not set. |
 | `resolveRef` | string | n/a | `--resolve-ref` | Don't use this field in the configuration yaml file. This is a very narrow use case for single-image tarballs. See the load sub-command, e.g. `ociregistry load --help` |
 |`port` | Integer | 8080 | `--port` | The port to serve on |
 |`os` | keyword | runtime.GOOS | `--os` | If loading or preloading, the OS and arch. If empty, then defaults to the host running the server. So usually comment these out. |
@@ -101,7 +102,7 @@ The following methods are supported to load the server with images.
 1. By specifying a plain text file containing a list of image urls. The server reads the file and pulls each image from the upstream.
 2. By specifying an image tarball created by `docker save`, `ctr images export`, etc. The server extracts all images from the tarball into cache.
 
-The `--preload-images` and `--image-file` arg values are as follows:
+The `--preload-images` and `--images` arg values are as follows:
 
 1. A single filename like `foo.txt` or `bar.tar`
 2. A glob expression **enclosed in single quotes to prevent shell expansion**, e.g. `'*.tar'`, or `'image-list-*.txt'`

@@ -5,7 +5,7 @@ Loading and Pre-loading supports the air-gapped use case of populating the regis
 You can pre-load the cache two ways:
 
 1. As a startup task before running the service: `bin/ociregistry serve --preload-images ...`. The server will load the image cache and then serve.
-2. By using the binary as a CLI: `bin/ociregistry load --image-file ...`. The executable will load the cache and then exit back to the command prompt.
+2. By using the binary as a CLI: `bin/ociregistry load --images ...`. The executable will load the cache and then exit back to the command prompt.
 
 More details are presented in the [Loading Images](configuring-the-server.md#loading-images) section of the  _Configuring The Server_ page. Since the entirety of the image cache consists of files and sub-directories under the image cache directory, you can tar that directory up at any time, copy it somewhere, untar it, and start an _Ociregistry_ server instance there pointing to the copied directory and it will _just work_.
 

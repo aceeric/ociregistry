@@ -141,7 +141,7 @@ func TestExpandPaths_SinglePlainFile(t *testing.T) {
 	path := filepath.Join(dir, "a.tar")
 	writePlainFile(t, path, []byte("x"))
 
-	got, err := expandPaths(path)
+	got, err := expandPaths(path, false)
 	if err != nil {
 		t.Fatalf("expandPaths: %s", err)
 	}
@@ -157,7 +157,7 @@ func TestExpandPaths_CommaSeparatedPlainFiles(t *testing.T) {
 	writePlainFile(t, a, []byte("x"))
 	writePlainFile(t, b, []byte("x"))
 
-	got, err := expandPaths(a + "," + b)
+	got, err := expandPaths(a+","+b, false)
 	if err != nil {
 		t.Fatalf("expandPaths: %s", err)
 	}
@@ -173,7 +173,7 @@ func TestExpandPaths_WhitespaceAroundCommas(t *testing.T) {
 	writePlainFile(t, a, []byte("x"))
 	writePlainFile(t, b, []byte("x"))
 
-	got, err := expandPaths(a + " , " + b)
+	got, err := expandPaths(a+" , "+b, false)
 	if err != nil {
 		t.Fatalf("expandPaths: %s", err)
 	}
@@ -188,7 +188,7 @@ func TestExpandPaths_Glob(t *testing.T) {
 		writePlainFile(t, filepath.Join(dir, n), []byte("x"))
 	}
 
-	got, err := expandPaths(filepath.Join(dir, "multi-*.tar"))
+	got, err := expandPaths(filepath.Join(dir, "multi-*.tar"), false)
 	if err != nil {
 		t.Fatalf("expandPaths: %s", err)
 	}
@@ -205,7 +205,7 @@ func TestExpandPaths_MixedPlainAndGlob(t *testing.T) {
 		writePlainFile(t, filepath.Join(dir, n), []byte("x"))
 	}
 
-	got, err := expandPaths(solo + "," + filepath.Join(dir, "xyz-*.tar"))
+	got, err := expandPaths(solo+","+filepath.Join(dir, "xyz-*.tar"), false)
 	if err != nil {
 		t.Fatalf("expandPaths: %s", err)
 	}
@@ -216,7 +216,7 @@ func TestExpandPaths_MixedPlainAndGlob(t *testing.T) {
 
 func TestExpandPaths_NoMatches(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := expandPaths(filepath.Join(dir, "nonexistent-*.tar")); err == nil {
+	if _, err := expandPaths(filepath.Join(dir, "nonexistent-*.tar"), false); err == nil {
 		t.Fatalf("expected an error when a glob matches nothing")
 	}
 }
@@ -224,7 +224,7 @@ func TestExpandPaths_NoMatches(t *testing.T) {
 func TestExpandPaths_InvalidGlobPattern(t *testing.T) {
 	// An unmatched '[' is a malformed pattern per filepath.Match's syntax
 	// rules, which filepath.Glob uses internally.
-	if _, err := expandPaths("["); err == nil {
+	if _, err := expandPaths("[", false); err == nil {
 		t.Fatalf("expected an error for a malformed glob pattern")
 	}
 }
@@ -236,7 +236,7 @@ func TestExpandPaths_TrailingCommaIgnored(t *testing.T) {
 
 	// A trailing (or doubled) comma should not produce a spurious empty
 	// segment that errors as "no matches".
-	got, err := expandPaths(a + ",")
+	got, err := expandPaths(a+",", false)
 	if err != nil {
 		t.Fatalf("expandPaths: %s", err)
 	}

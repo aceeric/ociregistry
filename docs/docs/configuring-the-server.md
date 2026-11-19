@@ -105,8 +105,11 @@ The following methods are supported to load the server with images.
 The `--preload-images` and `--images` arg values are as follows:
 
 1. A single filename like `foo.txt` or `bar.tar`
-2. A glob expression **enclosed in single quotes to prevent shell expansion**, e.g. `'*.tar'`, or `'image-list-*.txt'`
-3. A comma-separated expression containing all of the above. E.g.: `'foo.txt,bar.tar,image-list*.txt',multi*.tar`
+2. A directory like `/mnt/preload`: every file in it, one level deep (subdirectories are not searched)
+3. A glob expression **enclosed in single quotes to prevent shell expansion**, e.g. `'*.tar'`, or `'image-list-*.txt'`
+4. A comma-separated expression containing all of the above. E.g.: `'foo.txt,bar.tar,image-list*.txt',multi*.tar`
+
+Each file is inspected by its content, not its name, to tell a tarball (optionally gzip-compressed) from an image list file. Only regular files are used: symlinks are followed (so the files of a mounted Kubernetes ConfigMap or Secret work), and anything else, such as a subdirectory, is skipped. A file named more than once is loaded once. Files whose names end in `.part` are skipped: a producer that copies a tarball in should write it as `x.tar.part` and rename it to `x.tar` when the copy is complete.
 
 The `load` command also supports `--resolve-ref` which is an edge-case arg. If you are loading a **single-image tarball** and you know that the image ref is not correct you can override the image ref like `--resolve-ref docker.io/theright/repo:v1.2.3`.
 

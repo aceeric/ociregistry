@@ -37,6 +37,8 @@ imagePath: /var/lib/ociregistry
 logLevel: error
 logFile:
 preloadImages:
+watchFrequency:
+images:
 imageFile:
 resolveRef:
 port: 8080
@@ -65,6 +67,7 @@ serverTlsConfig: {}
 |`logLevel` | keyword | error | `--log-level` | Error level logging. See help for valid values. |
 |`logFile` | Path spec | - | `--log-file` | Empty means log to stderr. If you specify a file, the logging is directed to the file. |
 |`preloadImages` | Path spec | - | `--preload-images` | Used by the `serve` subcommand to pre-load images before starting the server. See "Loading Images" below. |
+|`watchFrequency` | Duration | - | `--watch-frequency` | If set (e.g. `30s`, at least `5s`), the server keeps checking the `preloadImages` path at this interval and loads new or changed files into the running cache. See [Watching For New Images](watching.md). |
 |`images` | Path spec | - | `--images` | Used by the `load` subcommand to load images while the server is not running (expects exclusive access to the image cache.) See "Loading Images" below. |
 |`imageFile` | Path spec | - | `--image-file` | Deprecated (will be removed in future): use `images`. Used only if `images` is not set. |
 | `resolveRef` | string | n/a | `--resolve-ref` | Don't use this field in the configuration yaml file. This is a very narrow use case for single-image tarballs. See the load sub-command, e.g. `ociregistry load --help` |
@@ -110,6 +113,8 @@ The `--preload-images` and `--images` arg values are as follows:
 4. A comma-separated expression containing all of the above. E.g.: `'foo.txt,bar.tar,image-list*.txt',multi*.tar`
 
 Each file is inspected by its content, not its name, to tell a tarball (optionally gzip-compressed) from an image list file. Only regular files are used: symlinks are followed (so the files of a mounted Kubernetes ConfigMap or Secret work), and anything else, such as a subdirectory, is skipped. A file named more than once is loaded once. Files whose names end in `.part` are skipped: a producer that copies a tarball in should write it as `x.tar.part` and rename it to `x.tar` when the copy is complete.
+
+When preloading (`serve --preload-images`), each processed file is recorded in the [preload ledger](loading.md#the-preload-ledger) and not processed again on later starts unless it changes. A given preload path may not matche any files at startup - that's not an error since files can be added later for the [watcher](watching.md). (The `load` sub-command doesn't use the ledger.)
 
 The `load` command also supports `--resolve-ref` which is an edge-case arg. If you are loading a **single-image tarball** and you know that the image ref is not correct you can override the image ref like `--resolve-ref docker.io/theright/repo:v1.2.3`.
 
@@ -276,7 +281,11 @@ The following permutations are supported or serving over HTTPS:
 
 ## Prune Configuration
 
-Pruning configures the server to remove images as a background process based on create date or recency of a pull. (Each time an image is pulled the server updates the pull date/time for the image.) Pruning is disabled by default. An example full prune configuration is as follows:
+Pruning configures the server to remove images as a background process based on create date or recency of a pull.
+
+Background: when a client (e.g. containerd) pulls an image the server updates the pull date/time for that image. However, images that are preloaded (`ociregistry serve --preload ...`), loaded (`ociregistry load ...`), or loaded by the watcher (`... serve --watch-frequency ...`) don't have a pull date until a client pulls them. Pruning by pull recency therefore never removes one of these images until they are pulled.
+
+Pruning is disabled by default. An example full prune configuration is as follows:
 
 ```yaml
 pruneConfig:

@@ -187,7 +187,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 func pullToCache(pr pullrequest.PullRequest, imagePath string, forcePull bool) (imgpull.ManifestHolder, error) {
 	pullGate.RLock()
 	defer pullGate.RUnlock()
-	mh, err := doPull(pr, imagePath)
+	mh, err := doPull(pr, imagePath, true)
 	if err != nil {
 		log.Errorf("doPull failed for %q: %s", pr.Url(), err)
 		return emptyManifestHolder, err
@@ -215,8 +215,10 @@ func GetBlob(digest string) int {
 // doPull gets an image list manifest - or image manifest - from an upstream OCI distribution
 // server. If an image manifest is pulled, then all the blobs for the image manifest are
 // also pulled. On return, the blobs and the pulled manifest will have been serialized to the
-// file system.
-func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, error) {
+// file system. The manifest's pull date is set only for a client's pull (clientPull): the
+// date a client last pulled the image, which pruning by pull date uses. A load that isn't a
+// client's, such as the preload watcher's, leaves it empty.
+func doPull(pr pullrequest.PullRequest, imagePath string, clientPull bool) (imgpull.ManifestHolder, error) {
 	metrics.IncUpstreamPullsByNs(pr.Remote)
 	opts, err := config.ConfigFor(pr.Remote)
 	if err != nil {
@@ -238,7 +240,9 @@ func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolde
 		}
 	}
 	mh.Created = globals.CurTime()
-	mh.Pulled = mh.Created
+	if clientPull {
+		mh.Pulled = mh.Created
+	}
 	if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
 		return emptyManifestHolder, err
 	}
@@ -329,6 +333,17 @@ func IsCached(pr pullrequest.PullRequest) bool {
 	defer mc.Unlock()
 	_, _, exists := mc.lookup(imageUrl(pr.Url()))
 	return exists
+}
+
+// CachedManifest returns the manifest cached for the passed request, and whether one is
+// cached. Like IsCached, a digest url with no entry of its own is found through a tag entry
+// with that digest. Unlike a cache hit in GetManifest, it doesn't update the manifest's pull
+// date: it's for a caller that isn't a client pulling the image, such as the preload watcher.
+func CachedManifest(pr pullrequest.PullRequest) (imgpull.ManifestHolder, bool) {
+	mc.Lock()
+	defer mc.Unlock()
+	mh, _, exists := mc.lookup(imageUrl(pr.Url()))
+	return mh, exists
 }
 
 // ResetCache supports unit tests

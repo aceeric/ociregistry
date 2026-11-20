@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/aceeric/ociregistry/mock"
@@ -445,6 +446,32 @@ func TestGetImageFile(t *testing.T) {
 	Merge(FromCmdLine{ImageFile: true}, Configuration{ImageFile: "/cmdline"})
 	if GetImageFile() != "/new" || config.ImageFile != "/cmdline" {
 		t.Fatalf("expected images still to win over a command line --image-file, got %q %q", GetImageFile(), config.ImageFile)
+	}
+}
+
+// Tests parsing the watch frequency: empty is no watcher, a duration of at least the minimum is
+// accepted, and anything else is an error, including in the config file, where it names the
+// key.
+func TestWatchFrequency(t *testing.T) {
+	for freq, want := range map[string]time.Duration{"": 0, "5s": 5 * time.Second, "30s": 30 * time.Second, "1h": time.Hour} {
+		if got, err := ParseWatchFrequency(freq); err != nil || got != want {
+			t.Errorf("%q: expected %s, got %s %v", freq, want, got, err)
+		}
+	}
+	for _, freq := range []string{"4s", "30ms", "0s", "-1m", "30", "abc"} {
+		if _, err := ParseWatchFrequency(freq); err == nil {
+			t.Errorf("%q: expected an error", freq)
+		}
+	}
+	if err := SetConfigFromStr([]byte("watchFrequency: 10m\n")); err != nil || GetWatchFrequency() != 10*time.Minute {
+		t.Fatalf("expected 10m, got %s %v", GetWatchFrequency(), err)
+	}
+	if err := SetConfigFromStr([]byte("watchFrequency: 1s\n")); err == nil || !strings.Contains(err.Error(), "watchFrequency") {
+		t.Fatalf("expected an error naming watchFrequency, got %v", err)
+	}
+	Merge(FromCmdLine{WatchFrequency: true}, Configuration{WatchFrequency: "45s"})
+	if GetWatchFrequency() != 45*time.Second {
+		t.Fatalf("expected the command line's 45s, got %s", GetWatchFrequency())
 	}
 }
 

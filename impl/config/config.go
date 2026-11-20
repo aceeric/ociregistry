@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/aceeric/ociregistry/impl/auth"
@@ -120,6 +121,7 @@ type Configuration struct {
 	AlwaysPullLatest bool             `yaml:"alwaysPullLatest"`
 	NoCache          []string         `yaml:"noCache"`
 	AirGapped        bool             `yaml:"airGapped"`
+	WatchFrequency   string           `yaml:"watchFrequency"`
 	HelloWorld       bool             `yaml:"helloWorld"`
 	DefaultNs        string           `yaml:"defaultNs"`
 	Host             string           `yaml:"host"`
@@ -156,6 +158,7 @@ type FromCmdLine struct {
 	AlwaysPullLatest bool
 	NoCache          bool
 	AirGapped        bool
+	WatchFrequency   bool
 	HelloWorld       bool
 	DefaultNs        bool
 	Host             bool
@@ -302,6 +305,33 @@ func NoCachePatterns() []*regexp.Regexp {
 	return compiled
 }
 
+// MinWatchFrequency is the shortest watchFrequency, so a typo such as 30ms doesn't make the
+// server scan the preload files continuously.
+const MinWatchFrequency = 5 * time.Second
+
+// ParseWatchFrequency parses a watchFrequency: a Go duration of at least MinWatchFrequency.
+// The empty string is zero, meaning no watcher.
+func ParseWatchFrequency(freq string) (time.Duration, error) {
+	if freq == "" {
+		return 0, nil
+	}
+	d, err := time.ParseDuration(freq)
+	if err != nil {
+		return 0, fmt.Errorf("invalid duration %q, e.g. 30s or 5m", freq)
+	} else if d < MinWatchFrequency {
+		return 0, fmt.Errorf("%q is less than the minimum of %s", freq, MinWatchFrequency)
+	}
+	return d, nil
+}
+
+// GetWatchFrequency returns how often the preload watcher looks for new or changed preload
+// files, or zero if there's no watcher. Command line arg is `--watch-frequency`. The value was
+// validated when the configuration was loaded or parsed.
+func GetWatchFrequency() time.Duration {
+	d, _ := ParseWatchFrequency(config.WatchFrequency)
+	return d
+}
+
 // GetAirGapped returns whether the server is air-gapped. Command line arg is `--air-gapped`.
 func GetAirGapped() bool {
 	return config.AirGapped
@@ -401,6 +431,8 @@ func SetConfigFromStr(configBytes []byte) error {
 		return err
 	} else if err := validateNoCache(cfg.NoCache); err != nil {
 		return err
+	} else if _, err := ParseWatchFrequency(cfg.WatchFrequency); err != nil {
+		return fmt.Errorf("watchFrequency: %w", err)
 	}
 	config = cfg
 	return nil

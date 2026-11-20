@@ -104,6 +104,24 @@ func TestParseLoad(t *testing.T) {
 	}
 }
 
+// Tests serve --watch-frequency: a valid duration sets the value and flag, and one below the
+// minimum or not a duration is an error.
+func TestParseWatchFrequency(t *testing.T) {
+	ClearParse()
+	os.Args = []string{"bin/ociregistry", "serve", "--watch-frequency", "30s"}
+	fromCmdline, cfg, err := Parse()
+	if err != nil || !fromCmdline.WatchFrequency || cfg.WatchFrequency != "30s" {
+		t.Fatalf("unexpected parse: %v %+v %q", err, fromCmdline, cfg.WatchFrequency)
+	}
+	for _, freq := range []string{"1s", "abc"} {
+		ClearParse()
+		os.Args = []string{"bin/ociregistry", "serve", "--watch-frequency", freq}
+		if _, _, err := Parse(); err == nil {
+			t.Errorf("%q: expected an error", freq)
+		}
+	}
+}
+
 // Tests that --images and the deprecated --image-file each set their own value and flag.
 func TestParseLoadImages(t *testing.T) {
 	ClearParse()

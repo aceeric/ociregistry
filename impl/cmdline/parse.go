@@ -227,6 +227,19 @@ var cmds = &cli.Command{
 					},
 				},
 				&cli.StringFlag{
+					Name:        "watch-frequency",
+					Usage:       "Load new or changed --preload-images files at this interval, e.g. 30s",
+					Destination: &cfg.WatchFrequency,
+					Validator: func(freq string) error {
+						_, err := config.ParseWatchFrequency(freq)
+						return err
+					},
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.WatchFrequency = true
+						return nil
+					},
+				},
+				&cli.StringFlag{
 					Name:        "default-ns",
 					Value:       "",
 					Usage:       "A default namespace if none is provided (otherwise a pull without one is an error)",

@@ -88,6 +88,8 @@ func Serve(buildVer string, buildDtm string) error {
 	shutdownCh := make(chan bool)
 	stopPruneCh := make(chan bool)
 	pruneStoppedCh := make(chan bool)
+	stopWatchCh := make(chan bool)
+	watchStoppedCh := make(chan bool)
 	ociRegistry := impl.NewOciRegistry(shutdownCh)
 
 	// The generated router dispatches requests to the registry handlers. Each request is
@@ -105,6 +107,10 @@ func Serve(buildVer string, buildDtm string) error {
 
 	if err := cache.Load(config.GetImagePath()); err != nil {
 		return fmt.Errorf("error loading the image cache: %s", err)
+	}
+	// after the cache is loaded: the watcher loads into the running cache
+	if err := preload.RunWatcher(stopWatchCh, watchStoppedCh); err != nil {
+		return fmt.Errorf("error starting the preload watcher: %s", err)
 	}
 
 	fmt.Fprintf(os.Stderr, startupBanner, buildVer, buildDtm, time.Unix(0, time.Now().UnixNano()), config.GetPort(),
@@ -160,6 +166,12 @@ func Serve(buildVer string, buildDtm string) error {
 		log.Infof("waiting for pruner to stop")
 		<-pruneStoppedCh
 		log.Infof("pruner stopped")
+	}
+	if preload.WatcherEnabled() {
+		stopWatchCh <- true
+		log.Infof("waiting for the preload watcher to stop")
+		<-watchStoppedCh
+		log.Infof("preload watcher stopped")
 	}
 	cache.WaitPulls()
 	log.Infof("stopped")

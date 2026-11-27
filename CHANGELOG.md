@@ -1,6 +1,21 @@
 # CHANGELOG
 
+## 2.3.0
+
+27-Nov-2026
+
+Please see the [Release Notes](release_notes/2.3.0.md) for additional details.
+
+1. Implement the watcher: watch the preload directory for new/changed image list files and tarballs and load while server is running
+2. Module updates: aws/aws-sdk-go-v2/config v1.33.22, aws/aws-sdk-go-v2/service/ecr v1.69.1, oapi-codegen/runtime v1.9.1
+3. Update workflow versions
+4. Add `staticcheck` Makefile target
+5. Misc. source documentation cleanups
+6. Change console logging to show UTC timstamps vs time since start
+
 ## 2.2.0
+
+14-Nov-2026
 
 Please see the [Release Notes](release_notes/2.2.0.md) for additional details.
 

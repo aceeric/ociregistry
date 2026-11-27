@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
 	"github.com/aceeric/ociregistry/mock"
@@ -422,6 +423,55 @@ func TestMergeNoCache(t *testing.T) {
 	Merge(FromCmdLine{NoCache: true}, Configuration{NoCache: []string{":latest$"}})
 	if !slices.Equal(GetNoCache(), []string{":latest$"}) {
 		t.Fatalf("command line patterns should replace the file's, got %v", GetNoCache())
+	}
+}
+
+// Tests the images to load: images wins over the deprecated imageFile, imageFile is used when
+// images isn't set, and each is merged from the command line separately.
+func TestGetImageFile(t *testing.T) {
+	if err := SetConfigFromStr([]byte("imageFile: /old\n")); err != nil {
+		t.Fatal(err)
+	}
+	Merge(FromCmdLine{}, Configuration{})
+	if GetImageFile() != "/old" {
+		t.Fatalf("expected the file's imageFile, got %q", GetImageFile())
+	}
+	Merge(FromCmdLine{Images: true}, Configuration{Images: "/new"})
+	if GetImageFile() != "/new" || config.ImageFile != "/old" {
+		t.Fatalf("expected --images to win and imageFile to be kept, got %q %q", GetImageFile(), config.ImageFile)
+	}
+	if err := SetConfigFromStr([]byte("images: /new\nimageFile: /old\n")); err != nil || GetImageFile() != "/new" {
+		t.Fatalf("expected images to win over imageFile in the file, got %q %v", GetImageFile(), err)
+	}
+	Merge(FromCmdLine{ImageFile: true}, Configuration{ImageFile: "/cmdline"})
+	if GetImageFile() != "/new" || config.ImageFile != "/cmdline" {
+		t.Fatalf("expected images still to win over a command line --image-file, got %q %q", GetImageFile(), config.ImageFile)
+	}
+}
+
+// Tests parsing the watch frequency: empty is no watcher, a duration of at least the minimum is
+// accepted, and anything else is an error, including in the config file, where it names the
+// key.
+func TestWatchFrequency(t *testing.T) {
+	for freq, want := range map[string]time.Duration{"": 0, "5s": 5 * time.Second, "30s": 30 * time.Second, "1h": time.Hour} {
+		if got, err := ParseWatchFrequency(freq); err != nil || got != want {
+			t.Errorf("%q: expected %s, got %s %v", freq, want, got, err)
+		}
+	}
+	for _, freq := range []string{"4s", "30ms", "0s", "-1m", "30", "abc"} {
+		if _, err := ParseWatchFrequency(freq); err == nil {
+			t.Errorf("%q: expected an error", freq)
+		}
+	}
+	if err := SetConfigFromStr([]byte("watchFrequency: 10m\n")); err != nil || GetWatchFrequency() != 10*time.Minute {
+		t.Fatalf("expected 10m, got %s %v", GetWatchFrequency(), err)
+	}
+	if err := SetConfigFromStr([]byte("watchFrequency: 1s\n")); err == nil || !strings.Contains(err.Error(), "watchFrequency") {
+		t.Fatalf("expected an error naming watchFrequency, got %v", err)
+	}
+	Merge(FromCmdLine{WatchFrequency: true}, Configuration{WatchFrequency: "45s"})
+	if GetWatchFrequency() != 45*time.Second {
+		t.Fatalf("expected the command line's 45s, got %s", GetWatchFrequency())
 	}
 }
 

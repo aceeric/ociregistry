@@ -5,6 +5,8 @@ As stated in the Overview, one objective of the project is to support running Ku
 1. Stand the cluster up in a connected environment, pre-load the distribution server with all required images, then disconnect and ship the cluster to its edge location.
 2. Ship the cluster to its edge location and pre-load the distribution server there using stable comms. If comms are later degraded or lost then the required images remain cached.
 
+Once running in its operational location, a server can be loaded with additional images as it is running. See [watching for new images](watching.md) for more detail.
+
 There are two general ways to run the distribution server in support of this objective. These are now discussed.
 
 ## Kubernetes Workload

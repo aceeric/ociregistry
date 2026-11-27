@@ -47,7 +47,7 @@ func TestRunPruner(t *testing.T) {
 	stopPruneCh <- true
 	<-pruneStoppedCh
 	// one of the three manifests is left
-	if mc.len() != 1 {
+	if len(mc.entries) != 1 {
 		t.Fail()
 	}
 }
@@ -70,7 +70,7 @@ func TestPrunerFromApi(t *testing.T) {
 	if err != nil {
 		t.FailNow()
 	}
-	if mc.len() != 1 {
+	if len(mc.entries) != 1 {
 		t.Fail()
 	}
 }
@@ -108,11 +108,11 @@ func TestPrune(t *testing.T) {
 	if err != nil {
 		t.Fail()
 	}
-	if mc.len() != 1 || len(bc.blobs) != 3 {
+	if len(mc.entries) != 1 || len(bc.blobs) != 3 {
 		t.Fail()
 	}
 	prune(mh, pruneAll, td, log.StandardLogger())
-	if mc.len() != 0 {
+	if len(mc.entries) != 0 {
 		t.Fail()
 	}
 	for _, digest := range digests {
@@ -338,8 +338,8 @@ func TestPruneSkipsChangedManifest(t *testing.T) {
 	stale := mh
 	stale.Digest = pruneDigestB // what the prune list saw before the tag moved
 	prune(stale, pruneAll, td, log.StandardLogger())
-	if mc.len() != 1 || bc.blobs[pruneBlob1] != 1 || bc.blobs[pruneBlob2] != 1 {
-		t.Fatalf("current manifest was pruned: mc=%d blobs=%v", mc.len(), bc.blobs)
+	if len(mc.entries) != 1 || bc.blobs[pruneBlob1] != 1 || bc.blobs[pruneBlob2] != 1 {
+		t.Fatalf("current manifest was pruned: mc=%d blobs=%v", len(mc.entries), bc.blobs)
 	}
 }
 
@@ -372,8 +372,8 @@ func TestPruneTwiceDecrementsOnce(t *testing.T) {
 func TestPruneRechecksComparer(t *testing.T) {
 	td, mh := pruneFixture(t, pruneDigestA, pruneBlob1, pruneBlob2)
 	prune(mh, func(imgpull.ManifestHolder) bool { return false }, td, log.StandardLogger())
-	if mc.len() != 1 || len(bc.blobs) != 2 {
-		t.Fatalf("manifest should have been kept: mc=%d blobs=%v", mc.len(), bc.blobs)
+	if len(mc.entries) != 1 || len(bc.blobs) != 2 {
+		t.Fatalf("manifest should have been kept: mc=%d blobs=%v", len(mc.entries), bc.blobs)
 	}
 }
 
@@ -463,8 +463,8 @@ func TestPruneWaitsForPull(t *testing.T) {
 	}
 	pullGate.RUnlock() // the pull finishes
 	wg.Wait()
-	if mc.len() != 0 || blobFileExists(td, pruneBlob1) || blobFileExists(td, orphan) {
-		t.Fatalf("prune did not complete after the pull: mc=%d", mc.len())
+	if len(mc.entries) != 0 || blobFileExists(td, pruneBlob1) || blobFileExists(td, orphan) {
+		t.Fatalf("prune did not complete after the pull: mc=%d", len(mc.entries))
 	}
 }
 
@@ -499,7 +499,7 @@ func TestPruneBusy(t *testing.T) {
 	if err := <-errCh; !errors.Is(err, ErrPruneBusy) {
 		t.Fatalf("expected ErrPruneBusy, got %v", err)
 	}
-	if mc.len() != 1 || !blobFileExists(td, pruneBlob1) {
+	if len(mc.entries) != 1 || !blobFileExists(td, pruneBlob1) {
 		t.Fatal("a busy prune must not change the cache")
 	}
 }
@@ -567,7 +567,7 @@ func TestPruneFromApiLog(t *testing.T) {
 	if strings.Contains(serverOut.String(), "pruning manifest") {
 		t.Fatal("the server log should apply its own level (error) to the prune's info messages")
 	}
-	if mc.len() != 0 {
+	if len(mc.entries) != 0 {
 		t.Fatal("expected the manifest to be pruned")
 	}
 }

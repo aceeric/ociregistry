@@ -9,6 +9,7 @@ nav:
   - Authentication: auth.md
   - The Command Line: command-line.md
   - Loading And Preloading:  loading.md
+  - Watching For New Images: watching.md
   - Pruning The Image Cache: pruning.md
   - Design: design.md
   - Concurrency Design: concur-design.md

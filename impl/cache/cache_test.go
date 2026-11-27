@@ -100,7 +100,7 @@ func TestLoad(t *testing.T) {
 	}
 	// one entry per manifest, found by tag (foo.io/foo/0:v1.2.3) and, through the digest
 	// alias, by digest (foo.io/foo/0@sha256:0)
-	if mc.len() != len(mts) {
+	if len(mc.entries) != len(mts) {
 		t.Fail()
 	}
 	// two image manifests each with a config and two layers
@@ -265,7 +265,7 @@ func TestShortBlobFailsLoad(t *testing.T) {
 	if err := Load(td); err != nil {
 		t.Fail()
 	}
-	if mc.len() != 00 || len(bc.blobs) != 0 {
+	if len(mc.entries) != 00 || len(bc.blobs) != 0 {
 		t.Fail()
 	}
 }
@@ -389,7 +389,7 @@ func validateReplace(expCachedBlobs []string, testDir string, pr pullrequest.Pul
 			return false
 		}
 	}
-	if mhFound, _, exists := mc.lookup(imageUrl(pr.Url())); !exists {
+	if mhFound, _, exists := lookup(imageUrl(pr.Url())); !exists {
 		return false
 	} else if mhFound.Digest != mhExp.Digest {
 		return false
@@ -507,7 +507,7 @@ func TestLatestChangesTagAlignment(t *testing.T) {
 		t.FailNow()
 	}
 	// one entry each for v1, v2 and latest
-	if mc.len() != 3 {
+	if len(mc.entries) != 3 {
 		t.FailNow()
 	}
 	// latest and v1 share a digest: the alias resolves to one of them, and both are tracked
@@ -567,8 +567,8 @@ func TestDockerIoSpellingsShareCache(t *testing.T) {
 	if err := addToCache(short, mh, td); err != nil {
 		t.Fatal(err)
 	}
-	if mc.len() != 1 {
-		t.Fatalf("expected one entry, got %d", mc.len())
+	if len(mc.entries) != 1 {
+		t.Fatalf("expected one entry, got %d", len(mc.entries))
 	}
 	for _, pr := range []pullrequest.PullRequest{short, long} {
 		if !IsCached(pr) {
@@ -604,7 +604,7 @@ func TestLoadCanonicalizesImageUrl(t *testing.T) {
 	if err := Load(td); err != nil {
 		t.Fatal(err)
 	}
-	got, _, exists := mc.lookup("docker.io/library/hello-world:v1")
+	got, _, exists := lookup("docker.io/library/hello-world:v1")
 	if !exists || got.ImageUrl != "docker.io/library/hello-world:v1" {
 		t.Fatalf("expected canonical entry, got exists=%t url=%q", exists, got.ImageUrl)
 	}
@@ -675,16 +675,16 @@ func TestTwoTagsShareDigest(t *testing.T) {
 		}
 	}
 	digestOfD := imageUrl("quay.io/org/app@sha256:" + aliasDigestD)
-	if mc.len() != 2 || bc.blobs[aliasBlob1] != 2 {
-		t.Fatalf("expected 2 entries and 2 refs per blob, got %d entries, refs %v", mc.len(), bc.blobs)
+	if len(mc.entries) != 2 || bc.blobs[aliasBlob1] != 2 {
+		t.Fatalf("expected 2 entries and 2 refs per blob, got %d entries, refs %v", len(mc.entries), bc.blobs)
 	}
-	if _, _, found := mc.lookup(digestOfD); !found {
+	if _, _, found := lookup(digestOfD); !found {
 		t.Fatal("digest request should be served from a tag entry")
 	}
 
 	// prune the release tag: the mutable tag still serves the digest
 	prune(mhRel, pruneAll, td, log.StandardLogger())
-	if _, _, found := mc.lookup(digestOfD); !found {
+	if _, _, found := lookup(digestOfD); !found {
 		t.Fatal("pruning one tag hid the digest from the other")
 	}
 	if _, found := serialize.MhFromFilesystem("quay.io/org/app:nightly-pr", td); !found {
@@ -702,10 +702,10 @@ func TestTwoTagsShareDigest(t *testing.T) {
 	if err := replaceInCache(prNew, mhNew, td); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, found := mc.lookup(digestOfD); found {
+	if _, _, found := lookup(digestOfD); found {
 		t.Fatal("no tag has the old digest any more")
 	}
-	if mh, _, found := mc.lookup(imageUrl("quay.io/org/app@sha256:" + aliasDigestE)); !found || mh.Digest != aliasDigestE {
+	if mh, _, found := lookup(imageUrl("quay.io/org/app@sha256:" + aliasDigestE)); !found || mh.Digest != aliasDigestE {
 		t.Fatal("the new digest should be served from the moved tag")
 	}
 	if bc.blobs[aliasBlob1] != 1 || bc.blobs[aliasBlob3] != 1 {
@@ -735,8 +735,8 @@ func TestDigestRequestUpdatesTagEntry(t *testing.T) {
 	if !found || got.Pulled == "" {
 		t.Fatal("expected a hit with a pulled date")
 	}
-	if mc.len() != 1 || mc.entries["quay.io/org/app:v1"].Pulled != got.Pulled {
-		t.Fatalf("the tag entry should be updated in place: %d entries", mc.len())
+	if len(mc.entries) != 1 || mc.entries["quay.io/org/app:v1"].Pulled != got.Pulled {
+		t.Fatalf("the tag entry should be updated in place: %d entries", len(mc.entries))
 	}
 	if fromFs, _ := serialize.MhFromFilesystem("quay.io/org/app:v1", td); fromFs.Pulled != got.Pulled {
 		t.Fatal("the tag's file should have the new pulled date")
@@ -855,14 +855,14 @@ func TestDigestEntryAndTagEntry(t *testing.T) {
 	if err := addToCache(prTag, mhTag, td); err != nil {
 		t.Fatal(err)
 	}
-	if _, key, _ := mc.lookup(imageUrl(prDigest.Url())); key != imageUrl(prDigest.Url()) {
+	if _, key, _ := lookup(imageUrl(prDigest.Url())); key != imageUrl(prDigest.Url()) {
 		t.Fatalf("expected the digest entry itself, got %q", key)
 	}
-	if mc.len() != 2 || bc.blobs[aliasBlob1] != 2 {
-		t.Fatalf("expected 2 entries and 2 refs, got %d %v", mc.len(), bc.blobs)
+	if len(mc.entries) != 2 || bc.blobs[aliasBlob1] != 2 {
+		t.Fatalf("expected 2 entries and 2 refs, got %d %v", len(mc.entries), bc.blobs)
 	}
 	prune(mhDigest, pruneAll, td, log.StandardLogger())
-	if _, key, found := mc.lookup(imageUrl(prDigest.Url())); !found || key != imageUrl(prTag.Url()) {
+	if _, key, found := lookup(imageUrl(prDigest.Url())); !found || key != imageUrl(prTag.Url()) {
 		t.Fatal("after pruning the digest entry, the tag alias should serve the digest")
 	}
 }
@@ -877,20 +877,20 @@ func TestAddSameUrlKeepsRefCounts(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if mc.len() != 1 || bc.blobs[aliasBlob1] != 1 || bc.blobs[aliasBlob2] != 1 {
-		t.Fatalf("same manifest added twice: %d entries, refs %v", mc.len(), bc.blobs)
+	if len(mc.entries) != 1 || bc.blobs[aliasBlob1] != 1 || bc.blobs[aliasBlob2] != 1 {
+		t.Fatalf("same manifest added twice: %d entries, refs %v", len(mc.entries), bc.blobs)
 	}
 	pr, mh = build("quay.io/org/app:v1", aliasDigestE, aliasBlob1, aliasBlob3)
 	if err := addToCache(pr, mh, td); err != nil {
 		t.Fatal(err)
 	}
-	if mc.len() != 1 || bc.blobs[aliasBlob1] != 1 || bc.blobs[aliasBlob3] != 1 {
-		t.Fatalf("different manifest for the same url: %d entries, refs %v", mc.len(), bc.blobs)
+	if len(mc.entries) != 1 || bc.blobs[aliasBlob1] != 1 || bc.blobs[aliasBlob3] != 1 {
+		t.Fatalf("different manifest for the same url: %d entries, refs %v", len(mc.entries), bc.blobs)
 	}
 	if _, ok := bc.blobs[aliasBlob2]; ok {
 		t.Fatal("the replaced manifest's blob should have no refs")
 	}
-	if _, _, found := mc.lookup(imageUrl("quay.io/org/app@sha256:" + aliasDigestD)); found {
+	if _, _, found := lookup(imageUrl("quay.io/org/app@sha256:" + aliasDigestD)); found {
 		t.Fatal("the replaced digest should no longer resolve")
 	}
 }
@@ -913,16 +913,16 @@ func TestDigestAliasPerRepository(t *testing.T) {
 		imageUrl("ghcr.io/aaa/aaa@sha256:" + aliasDigestD): "ghcr.io/aaa/aaa:v1.0.0",
 		imageUrl("ghcr.io/bbb/bbb@sha256:" + aliasDigestD): "ghcr.io/bbb/bbb:v2.0.0",
 	} {
-		if mh, key, found := mc.lookup(url); !found || key != want || mh.ImageUrl != string(want) {
+		if mh, key, found := lookup(url); !found || key != want || mh.ImageUrl != string(want) {
 			t.Errorf("lookup(%s): expected %s, got %q (found=%t)", url, want, key, found)
 		}
 	}
-	if _, _, found := mc.lookup(imageUrl("ghcr.io/ccc/ccc@sha256:" + aliasDigestD)); found {
+	if _, _, found := lookup(imageUrl("ghcr.io/ccc/ccc@sha256:" + aliasDigestD)); found {
 		t.Error("a repository with no tag for the digest must miss")
 	}
 	// pruning bbb's tag doesn't let bbb's digest fall back to aaa
 	prune(mhB, pruneAll, td, log.StandardLogger())
-	if _, _, found := mc.lookup(imageUrl("ghcr.io/bbb/bbb@sha256:" + aliasDigestD)); found {
+	if _, _, found := lookup(imageUrl("ghcr.io/bbb/bbb@sha256:" + aliasDigestD)); found {
 		t.Error("bbb's digest must not be served from another repository")
 	}
 }
@@ -936,12 +936,12 @@ func TestSetKeepsImageUrlEqualToKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	mh := imgpull.ManifestHolder{Type: imgpull.V1ociIndex, Digest: aliasDigestD, ImageUrl: "quay.io/org/other:v9"}
-	mc.set(pr, mh)
-	got, key, found := mc.lookup("quay.io/org/app:v1")
+	set(pr, mh)
+	got, key, found := lookup("quay.io/org/app:v1")
 	if !found || got.ImageUrl != string(key) {
 		t.Fatalf("expected ImageUrl to equal the key, got %q under %q", got.ImageUrl, key)
 	}
-	if _, _, found := mc.lookup("quay.io/org/other:v9"); found {
+	if _, _, found := lookup("quay.io/org/other:v9"); found {
 		t.Fatal("nothing should be stored under the mismatched url")
 	}
 }

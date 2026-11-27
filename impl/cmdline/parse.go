@@ -103,8 +103,8 @@ var cmds = &cli.Command{
 				return nil
 			},
 			Description: "Runs the pull-through registry. The --preload-images arg accepts the following: the name of\n" +
-				"a plain text file containing an image list, the name of a tarball, a glob expression for either of the\n" +
-				"above, or all of the above comma-separated. Glob expressions must be single-quote enclosed to prevent shell\n" +
+				"a plain text file containing an image list, the name of a tarball, a directory (its files, one level\n" +
+				"deep), a glob expression for any of the above, or all of the above comma-separated. Glob expressions must be single-quote enclosed to prevent shell\n" +
 				"expansion. Complex example: --preload-images 'foo*.tar,myimagelist.txt,myotherlist.txt,frobozz*.tgz'\n\n" +
 				"The --no-cache arg is a Go regex, and is repeatable. An image whose canonical url (e.g.\n" +
 				"docker.io/library/hello-world:latest) matches any --no-cache regex is always pulled from the upstream.\n" +
@@ -227,6 +227,19 @@ var cmds = &cli.Command{
 					},
 				},
 				&cli.StringFlag{
+					Name:        "watch-frequency",
+					Usage:       "Load new or changed --preload-images files at this interval, e.g. 30s",
+					Destination: &cfg.WatchFrequency,
+					Validator: func(freq string) error {
+						_, err := config.ParseWatchFrequency(freq)
+						return err
+					},
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.WatchFrequency = true
+						return nil
+					},
+				},
+				&cli.StringFlag{
 					Name:        "default-ns",
 					Value:       "",
 					Usage:       "A default namespace if none is provided (otherwise a pull without one is an error)",
@@ -255,15 +268,24 @@ var cmds = &cli.Command{
 				fromCmdline.Command = "load"
 				return nil
 			},
-			Description: "Loads the image cache using the server as a cli. The --image-file arg accepts the following: the\n" +
-				"name of a plain text file containing an image list, the name of a tarball, a glob expression for either of the\n" +
-				"above, or all of the above comma-separated. Glob expressions must be single-quote enclosed to prevent shell\n" +
-				"expansion. Complex example: --image-file 'foo*.tar,myimagelist.txt,myotherlist.txt,frobozz*.tgz'",
+			Description: "Loads the image cache using the server as a cli. The --images arg accepts the following: the\n" +
+				"name of a plain text file containing an image list, the name of a tarball, a directory (its files, one\n" +
+				"level deep), a glob expression for any of the above, or all of the above comma-separated. Glob expressions must be single-quote enclosed to prevent shell\n" +
+				"expansion. Complex example: --images 'foo*.tar,myimagelist.txt,myotherlist.txt,frobozz*.tgz'",
 			Flags: []cli.Flag{
 				// validation at point of use
 				&cli.StringFlag{
-					Name:        "image-file",
+					Name:        "images",
 					Usage:       "Loads images from file(s) containing a list of image refs, or from tarball(s)",
+					Destination: &cfg.Images,
+					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
+						fromCmdline.Images = true
+						return nil
+					},
+				},
+				&cli.StringFlag{
+					Name:        "image-file",
+					Usage:       "DEPRECATED (will be removed in future) use --images instead",
 					Destination: &cfg.ImageFile,
 					Action: func(ctx context.Context, cmd *cli.Command, _ string) error {
 						fromCmdline.ImageFile = true
@@ -272,7 +294,7 @@ var cmds = &cli.Command{
 				},
 				&cli.StringFlag{
 					Name:        "resolve-ref",
-					Usage:       "Image ref to use when --image-file is a single-image tarball with no usable tag",
+					Usage:       "Image ref to use when --images is a single-image tarball with no usable tag",
 					Destination: &cfg.ResolveRef,
 					Validator: func(ref string) error {
 						if _, err := pullrequest.NewPullRequestFromUrl(ref); err != nil {

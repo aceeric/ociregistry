@@ -214,10 +214,17 @@ func TestExpandPaths_MixedPlainAndGlob(t *testing.T) {
 	}
 }
 
+// Tests that a glob that matches nothing expands to nothing, while a path with no glob
+// characters that doesn't exist, as a file or a directory, is an error.
 func TestExpandPaths_NoMatches(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := expandPaths(filepath.Join(dir, "nonexistent-*.tar")); err == nil {
-		t.Fatalf("expected an error when a glob matches nothing")
+	if got, err := expandPaths(filepath.Join(dir, "nonexistent-*.tar")); err != nil || len(got) != 0 {
+		t.Fatalf("expected nothing and no error for a glob that matches nothing, got %v %v", got, err)
+	}
+	for _, missing := range []string{filepath.Join(dir, "missing.tar"), filepath.Join(dir, "missing-dir")} {
+		if _, err := expandPaths(missing); err == nil {
+			t.Errorf("%s: expected an error for a path that doesn't exist", missing)
+		}
 	}
 }
 

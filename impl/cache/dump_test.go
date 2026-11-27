@@ -17,7 +17,7 @@ func TestDumpCache(t *testing.T) {
 	add := func(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
 		mc.Lock()
 		defer mc.Unlock()
-		mc.set(pr, mh)
+		set(pr, mh)
 	}
 	prList, mhList := build("docker.io/hello-world:latest", aliasDigestE, aliasBlob1)
 	mhList.Type = imgpull.V1ociIndex

@@ -102,7 +102,7 @@ func MhToFilesystem(mh imgpull.ManifestHolder, imagePath string, replace bool) e
 		log.Errorf("error marshalling manifest for %q, error: %q", mh.ImageUrl, err)
 		return err
 	}
-	if err := writeFileAtomic(fname, mb, 0644); err != nil {
+	if err := WriteFileAtomic(fname, mb, 0644); err != nil {
 		log.Errorf("error serializing manifest for %q, error: %q", mh.ImageUrl, err)
 		return err
 	}
@@ -221,7 +221,7 @@ func GetAllBlobs(imagePath string) map[string]int {
 // not already exists, and if writeable is true, then ensures that the root is writeable
 // by the current process. The legacy manifest directories are not created.
 func CreateDirs(root string, writeable bool) error {
-	for _, subDir := range []string{globals.ManifestPath, globals.BlobPath} {
+	for _, subDir := range []string{globals.ManifestPath, globals.BlobPath, globals.MetadataPath} {
 		if absPath, err := filepath.Abs(filepath.Join(root, subDir)); err == nil {
 			if err := os.MkdirAll(absPath, 0755); err != nil {
 				return err
@@ -238,9 +238,9 @@ func CreateDirs(root string, writeable bool) error {
 	return nil
 }
 
-// writeFileAtomic writes data to a temp file in the same directory as fname, then renames
+// WriteFileAtomic writes data to a temp file in the same directory as fname, then renames
 // it to fname. On any error the temp file is removed and fname is left untouched.
-func writeFileAtomic(fname string, data []byte, perm os.FileMode) (err error) {
+func WriteFileAtomic(fname string, data []byte, perm os.FileMode) (err error) {
 	tmp, err := os.CreateTemp(filepath.Dir(fname), filepath.Base(fname)+".*.tmp")
 	if err != nil {
 		return err

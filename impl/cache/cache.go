@@ -187,7 +187,7 @@ func GetManifest(pr pullrequest.PullRequest, imagePath string, pullTimeout int, 
 func pullToCache(pr pullrequest.PullRequest, imagePath string, forcePull bool) (imgpull.ManifestHolder, error) {
 	pullGate.RLock()
 	defer pullGate.RUnlock()
-	mh, err := doPull(pr, imagePath)
+	mh, err := doPull(pr, imagePath, true)
 	if err != nil {
 		log.Errorf("doPull failed for %q: %s", pr.Url(), err)
 		return emptyManifestHolder, err
@@ -215,8 +215,10 @@ func GetBlob(digest string) int {
 // doPull gets an image list manifest - or image manifest - from an upstream OCI distribution
 // server. If an image manifest is pulled, then all the blobs for the image manifest are
 // also pulled. On return, the blobs and the pulled manifest will have been serialized to the
-// file system.
-func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, error) {
+// file system. The manifest's pull date is set only for a client's pull (clientPull): the
+// date a client last pulled the image, which pruning by pull date uses. A load that isn't a
+// client's, such as the preload watcher's, leaves it empty.
+func doPull(pr pullrequest.PullRequest, imagePath string, clientPull bool) (imgpull.ManifestHolder, error) {
 	metrics.IncUpstreamPullsByNs(pr.Remote)
 	opts, err := config.ConfigFor(pr.Remote)
 	if err != nil {
@@ -238,7 +240,9 @@ func doPull(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolde
 		}
 	}
 	mh.Created = globals.CurTime()
-	mh.Pulled = mh.Created
+	if clientPull {
+		mh.Pulled = mh.Created
+	}
 	if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
 		return emptyManifestHolder, err
 	}
@@ -325,10 +329,19 @@ func WaitPulls() {
 // IsCached checks if the manifest is cached to support efficiently handle air-gapped
 // sites. If the manifest is cached, true is returned, else false.
 func IsCached(pr pullrequest.PullRequest) bool {
+	_, exists := CachedManifest(pr)
+	return exists
+}
+
+// CachedManifest returns the manifest cached for the passed request, and whether one is
+// cached. Like IsCached, a digest url with no entry of its own is found through a tag entry
+// with that digest. Unlike a cache hit in GetManifest, it doesn't update the manifest's pull
+// date: it's for a caller that isn't a client pulling the image, such as the preload watcher.
+func CachedManifest(pr pullrequest.PullRequest) (imgpull.ManifestHolder, bool) {
 	mc.Lock()
 	defer mc.Unlock()
-	_, _, exists := mc.lookup(imageUrl(pr.Url()))
-	return exists
+	mh, _, exists := lookup(imageUrl(pr.Url()))
+	return mh, exists
 }
 
 // ResetCache supports unit tests
@@ -352,8 +365,8 @@ func newManifestCache() manifestCache {
 
 // lookup returns the cached manifest for the passed canonical url, and the key of the entry
 // that holds it. A digest url with no entry of its own is resolved through the digest aliases
-// to a tag entry with that digest. The caller must hold mc.
-func (mc *manifestCache) lookup(url imageUrl) (imgpull.ManifestHolder, imageUrl, bool) {
+// to a tag entry with that digest.
+func lookup(url imageUrl) (imgpull.ManifestHolder, imageUrl, bool) {
 	if mh, exists := mc.entries[url]; exists {
 		return mh, url, true
 	}
@@ -366,12 +379,12 @@ func (mc *manifestCache) lookup(url imageUrl) (imgpull.ManifestHolder, imageUrl,
 	return emptyManifestHolder, "", false
 }
 
-// set stores the passed manifest as the entry for the passed pull request's url, replacing
-// any entry already there, and records the digest alias for a tag url. The manifest's ImageUrl
-// is set to the url. Blob ref counts are not changed. The caller must hold mc.
-func (mc *manifestCache) set(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
+// set stores the passed manifest in the manifest cache as the entry for the passed pull
+// request's url, replacing any entry already there, and records the digest alias for a
+// tag url. The manifest's ImageUrl is set to the url. Blob ref counts are not changed.
+func set(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
 	key := imageUrl(pr.Url())
-	mc.drop(key)
+	drop(key)
 	if mh.ImageUrl != string(key) {
 		log.Warnf("manifest url %q stored under %q (should never happen)", mh.ImageUrl, key)
 		mh.ImageUrl = string(key)
@@ -387,9 +400,9 @@ func (mc *manifestCache) set(pr pullrequest.PullRequest, mh imgpull.ManifestHold
 	}
 }
 
-// drop removes the entry for the passed url, if there is one, and its digest alias. Blob ref
-// counts are not changed. The caller must hold mc.
-func (mc *manifestCache) drop(key imageUrl) {
+// drop removes the entry for the passed url from the manifest cache, if there is one,
+// and its digest alias. Blob ref counts are not changed.
+func drop(key imageUrl) {
 	mh, exists := mc.entries[key]
 	if !exists {
 		return
@@ -407,11 +420,6 @@ func (mc *manifestCache) drop(key imageUrl) {
 			delete(mc.aliases, alias)
 		}
 	}
-}
-
-// len returns the number of cached manifests.
-func (mc *manifestCache) len() int {
-	return len(mc.entries)
 }
 
 // checkBlobs verifies all blobs for a manifest exist and have correct size. Returns true
@@ -440,19 +448,10 @@ func pullsInProgress() int {
 }
 
 // addToCache adds the passed ManifestHolder to the in-mem manifest cache under the passed pull
-// request's url and, for an image manifest, increments the ref counts of its blobs. Every blob
-// must already be on the file system with the expected size; otherwise an error is returned and
-// the cache is not changed.
+// request's url. The manifest and blobs (if image manifest) are expected to already be on the
+// file system.
 func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath string) error {
-	mc.Lock()
-	defer mc.Unlock()
-	bc.Lock()
-	defer bc.Unlock()
-	if !checkBlobs(mh, imagePath) {
-		return fmt.Errorf("unable to add manifest %q to cache: blob check failed (see logs)", mh.ImageUrl)
-	}
-	putInCache(pr, mh)
-	return nil
+	return addOrReplaceInCache(pr, mh, imagePath, false)
 }
 
 // replaceInCache replaces the cached manifest for the passed URL with mhNew, e.g. when a mutable tag moves.
@@ -460,16 +459,26 @@ func addToCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder, imagePath
 // sizes. Blobs left with no refs keep their files until sweepBlobs runs. The file for the url is not touched
 // here: doPull already replaced it with mhNew.
 func replaceInCache(pr pullrequest.PullRequest, mhNew imgpull.ManifestHolder, imagePath string) error {
+	return addOrReplaceInCache(pr, mhNew, imagePath, true)
+}
+
+// addOrReplaceInCache does the work for addToCache and replaceInCache based on the value of the
+// replace arg.
+func addOrReplaceInCache(pr pullrequest.PullRequest, mhNew imgpull.ManifestHolder, imagePath string, replace bool) error {
+	verb := "add"
 	mc.Lock()
 	defer mc.Unlock()
 	bc.Lock()
 	defer bc.Unlock()
-	if mhExisting, exists := mc.entries[imageUrl(pr.Url())]; exists && mhExisting.Digest == mhNew.Digest {
-		log.Debugf("replace manifest %s has same digest - nop", pr.Url())
-		return nil
+	if replace {
+		verb = "replace"
+		if mhExisting, exists := mc.entries[imageUrl(pr.Url())]; exists && mhExisting.Digest == mhNew.Digest {
+			log.Debugf("replace manifest %s has same digest - nop", pr.Url())
+			return nil
+		}
 	}
 	if !checkBlobs(mhNew, imagePath) {
-		return fmt.Errorf("unable to replace manifest %q in cache: blob check failed (see logs)", mhNew.ImageUrl)
+		return fmt.Errorf("unable to %s manifest %q in cache: blob check failed (see logs)", verb, mhNew.ImageUrl)
 	}
 	putInCache(pr, mhNew)
 	return nil
@@ -484,7 +493,7 @@ func putInCache(pr pullrequest.PullRequest, mh imgpull.ManifestHolder) {
 		log.Debugf("replace manifest %s, old digest %s, new digest %s", pr.Url(), old.Digest, mh.Digest)
 	}
 	addBlobsToCache(mh)
-	mc.set(pr, mh)
+	set(pr, mh)
 	if exists {
 		rmBlobs(old)
 	}
@@ -551,7 +560,7 @@ func getManifestOrEnqueue(pr pullrequest.PullRequest, imagePath string, forcePul
 func getManifestFromCache(pr pullrequest.PullRequest, imagePath string) (imgpull.ManifestHolder, bool) {
 	mc.Lock()
 	defer mc.Unlock()
-	mh, key, exists := mc.lookup(imageUrl(pr.Url()))
+	mh, key, exists := lookup(imageUrl(pr.Url()))
 	if !exists {
 		return emptyManifestHolder, false
 	}

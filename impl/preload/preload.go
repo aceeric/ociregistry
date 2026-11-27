@@ -32,7 +32,10 @@ import (
 // list manifest, which is also downloaded. So each url in the file can pull either an image,
 // or a manifest list and  an image. IMPORTANT: each item in the list MUST begin with a remote
 // registry ref - i.e. to the left of the first forward slash (docker.io is not inferred.)
-func LoadFromListFile(imageListFile string) error {
+//
+// It returns the number of images saved to the file system cache (0 if they were all cached
+// already).
+func LoadFromListFile(imageListFile string) (int, error) {
 	imagePath := config.GetImagePath()
 	platformArch := config.GetArch()
 	platformOs := config.GetOs()
@@ -44,7 +47,7 @@ func LoadFromListFile(imageListFile string) error {
 
 	f, err := os.Open(imageListFile)
 	if err != nil {
-		return err
+		return itemcnt, err
 	}
 	defer f.Close()
 
@@ -55,14 +58,14 @@ func LoadFromListFile(imageListFile string) error {
 		}
 		if cnt, err := doPull(imageUrl, imagePath, platformArch, platformOs); err != nil {
 			log.Errorf("error loading image %q, the error was: %s", imageUrl, err)
-			return err
+			return itemcnt, err
 
 		} else {
 			itemcnt += cnt
 		}
 	}
 	log.Infof("loaded %d images to the file system cache in %s", itemcnt, time.Since(start))
-	return nil
+	return itemcnt, nil
 }
 
 // doPull pulls the passed url from the upstream registry ref'd by the url. If a manifest list

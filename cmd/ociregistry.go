@@ -7,7 +7,6 @@ import (
 	"github.com/aceeric/ociregistry/cmd/subcmd"
 	"github.com/aceeric/ociregistry/impl/config"
 	"github.com/aceeric/ociregistry/impl/globals"
-	"github.com/aceeric/ociregistry/impl/preload"
 	"github.com/aceeric/ociregistry/impl/serialize"
 
 	"github.com/aceeric/imgpull/pkg/imgpull"
@@ -90,10 +89,15 @@ func realMain() int {
 	imgpull.SetConcurrentBlobs(int(config.GetPullTimeout()) * 1000)
 
 	switch command {
-	case loadCmd:
-		if err := preload.Load(config.GetImageFile(), config.GetResolveRef()); err != nil {
-			fmt.Fprintf(os.Stderr, "error loading images: %s\n", err)
+	case serveCmd:
+		if err := subcmd.Serve(buildVer, buildDtm); err != nil {
+			fmt.Fprintf(os.Stderr, "error starting the server: %s\n", err)
 			return 1
+		}
+	case loadCmd:
+		if exitCode, err := subcmd.Load(); err != nil {
+			fmt.Fprintf(os.Stderr, "error loading images: %s\n", err)
+			return exitCode
 		}
 	case listCmd:
 		if err := subcmd.ListCache(); err != nil {
@@ -108,11 +112,6 @@ func realMain() int {
 	case migrateCmd:
 		if err := subcmd.MigrateCache(); err != nil {
 			fmt.Fprintf(os.Stderr, "error migrating the cache: %s\n", err)
-			return 1
-		}
-	case serveCmd:
-		if err := subcmd.Serve(buildVer, buildDtm); err != nil {
-			fmt.Fprintf(os.Stderr, "error starting the server: %s\n", err)
 			return 1
 		}
 	}

@@ -108,3 +108,33 @@ The key components of the API scaffolding supported by OAPI-Codegen are shown be
 └── cmd
     └── ociregistry.go     (this is the server - which embeds the standard go http server)
 ```
+
+## Loading images
+
+As discussed in other doc sections, there are multiple ways to load images into the server. The main one is when clients (`containerd`) pull images using the REST API. Each path into the server implements slightly different requirements:
+
+| Operation                                   | Package.Function     | Cache live? | Source                            | Target                    |
+|---------------------------------------------|----------------------|-------------|-----------------------------------|---------------------------|
+| 1. `GET /v2/manifests/.../ref`              | `cache.GetManifest`  | Yes         | REST API                          | in-mem cache & filesystem |
+| 2. `ociregistry load` sub-command           | `preload.Load`       | No          | image list files & image tarballs | filesystem cache          |
+| 3. `ociregistry serve` sub-command          | `cache.Load`         | No          | image cache (filesystem)          | in-mem cache              |
+| 4. `ociregistry serve --preload-images ...` | `preload.Preload`    | No          | image list files & image tarballs | filesystem cache          |
+| 5. `ociregistry ...  --watch-frequency`     | `preload.RunWatcher` | Yes         | image list files & image tarballs | in-mem cache & filesystem |
+
+1. Caller (`containerd`) uses the REST API to pull an image. It not cached,
+   images are pulled from their upstream and added to the running server's cache
+   in mem and on the file system.
+2. Operator uses the binary as a CLI to process image list files for upstream
+   pulls, and tarballs for locally stored images into the server's file system
+   cache - server is not running.
+3. When the server is started, the in-mem cache is reconstituted from the file
+   system cache
+4. When the server is started, if `--preload-images` is specified then just like
+   the load sub-command image list files are parsed for upstream pulls, and
+   tarballs for locally stored images are loaded into the server's file system
+   cache - server is not running. However for pre-load there is journaling to
+   ensure that the same images aren't re-loaded on each re-start.
+5. If a watch frequency is also specified with preload, then according to the
+   defined period, the preload directory is re-evaluated and new files are
+   processed. However in the watch use case, the images are processed into the
+   running servers in-mem and filesystem caches.

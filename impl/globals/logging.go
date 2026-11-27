@@ -17,6 +17,11 @@ const msg_base = "server %s:%s status=%d latency=%s host=%s ip=%s"
 const msg_debug = msg_base + " hdrs=%s"
 const srch = `.*sha256:([a-f0-9]{64}).*`
 
+// utcFormatter logs every entry's time in UTC.
+type utcFormatter struct {
+	log.Formatter
+}
+
 var re = regexp.MustCompile(srch)
 var msg = msg_base
 var logFldcnt = 6
@@ -24,7 +29,10 @@ var logFldcnt = 6
 // ConfigureLogging sets logging attributes
 func ConfigureLogging(level string, logfile string) error {
 	log.SetLevel(xlatLogLevel(level))
-	log.SetFormatter(&log.TextFormatter{})
+	log.SetFormatter(utcFormatter{&log.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: time.RFC3339,
+	}})
 	if logfile != "" {
 		lf, err := os.OpenFile(logfile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
 		if err != nil {
@@ -177,4 +185,10 @@ func (s *statusWriter) Flush() {
 // Unwrap lets http.ResponseController reach the underlying ResponseWriter.
 func (s *statusWriter) Unwrap() http.ResponseWriter {
 	return s.ResponseWriter
+}
+
+// Format converts the entry's time to UTC, then formats it with the wrapped formatter.
+func (f utcFormatter) Format(e *log.Entry) ([]byte, error) {
+	e.Time = e.Time.UTC()
+	return f.Formatter.Format(e)
 }

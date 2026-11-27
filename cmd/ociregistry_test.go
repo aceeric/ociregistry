@@ -34,6 +34,7 @@ func TestTopLvlCLIs(t *testing.T) {
 	os.WriteFile(imgFilename, []byte(""), 0777)
 
 	imgFilenameBad := filepath.Join(td, "images-bad")
+	emptyDir := t.TempDir()
 	os.WriteFile(imgFilenameBad, []byte("ZZZZ\n"), 0777)
 
 	// create a manifest for list to find
@@ -54,10 +55,13 @@ func TestTopLvlCLIs(t *testing.T) {
 	}{
 		{name: "No command", args: []string{"bin/ociregistry"}, expResult: 0},
 		{name: "Version", args: []string{"bin/ociregistry", "version"}, expResult: 0},
-		{name: "Load", args: []string{"bin/ociregistry", "--image-path", td, "load", "--image-file", imgFilename}, expResult: 0},
+		{name: "Load", args: []string{"bin/ociregistry", "--image-path", td, "load", "--images", imgFilename}, expResult: 0},
 		{name: "List", args: []string{"bin/ociregistry", "--image-path", td, "list"}, expResult: 0},
 		{name: "Prune", args: []string{"bin/ociregistry", "--image-path", td, "prune", "--pattern", "frobozz"}, expResult: 0},
-		{name: "Load - invalid image url", args: []string{"bin/ociregistry", "--image-path", td, "load", "--image-file", imgFilenameBad}, expResult: 1},
+		{name: "Load - invalid image url", args: []string{"bin/ociregistry", "--image-path", td, "load", "--image-file", imgFilenameBad}, expResult: 3},
+		{name: "Load - malformed glob", args: []string{"bin/ociregistry", "--image-path", td, "load", "--images", "["}, expResult: 1},
+		{name: "Load - missing path", args: []string{"bin/ociregistry", "--image-path", td, "load", "--images", filepath.Join(td, "no-such-dir")}, expResult: 1},
+		{name: "Load - empty directory", args: []string{"bin/ociregistry", "--image-path", td, "load", "--images", emptyDir}, expResult: 0},
 		{name: "List - regex does not compile", args: []string{"bin/ociregistry", "--image-path", td, "list", "--pattern", "["}, expResult: 1},
 		{name: "Prune - invalid date", args: []string{"bin/ociregistry", "--image-path", td, "prune", "--date", "does-not-parse"}, expResult: 1},
 	}

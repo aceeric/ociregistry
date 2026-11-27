@@ -20,8 +20,9 @@ import (
 // tarball with an override from the command line. Manifests are stored by url, so
 // the override caches the image under the new url even if it's already cached under
 // another. This feature is only supported for single entry tarballs and will error
-// otherwise.
-func LoadTarball(tarPath string, resolveRef string) error {
+// otherwise. It returns the number of images saved to the file system cache (0 if they were
+// all cached already).
+func LoadTarball(tarPath string, resolveRef string) (int, error) {
 	imagePath := config.GetImagePath()
 	blobDir := filepath.Join(imagePath, globals.BlobPath)
 	platformOs := config.GetOs()
@@ -33,24 +34,24 @@ func LoadTarball(tarPath string, resolveRef string) error {
 
 	itb, err := imgpull.OpenImageTarBall(tarPath, platformOs, platformArch)
 	if err != nil {
-		return err
+		return itemcnt, err
 	}
 	defer itb.Close()
 
 	if err := chkResolveRef(itb, resolveRef, tarPath); err != nil {
-		return err
+		return itemcnt, err
 	}
 
 	for mh, err := range itb.TarManifestReader() {
 		if err != nil {
-			return err
+			return itemcnt, err
 		}
 		if resolveRef != "" {
 			mh.ImageUrl = resolveRef
 		}
 		pr, err := pullrequest.NewPullRequestFromUrl(mh.ImageUrl)
 		if err != nil {
-			return fmt.Errorf("unable to parse image ref %q", mh.ImageUrl)
+			return itemcnt, fmt.Errorf("unable to parse image ref %q", mh.ImageUrl)
 		}
 		mh.ImageUrl = pr.Url()
 		if cached, found := serialize.MhFromFilesystem(mh.ImageUrl, imagePath); found && cached.Digest == mh.Digest {
@@ -63,15 +64,15 @@ func LoadTarball(tarPath string, resolveRef string) error {
 		// blobs first, so a manifest on disk always has its blobs
 		if mh.IsImageManifest() {
 			if err := itb.SaveBlobs(mh, blobDir); err != nil {
-				return err
+				return itemcnt, err
 			}
 		}
 		if err := serialize.MhToFilesystem(mh, imagePath, true); err != nil {
-			return err
+			return itemcnt, err
 		}
 	}
 	log.Infof("loaded %d images from tarball %q to the file system cache in %s", itemcnt, tarPath, time.Since(start))
-	return nil
+	return itemcnt, nil
 }
 
 // chkResolveRef guards against applying a single fixed --resolve-ref

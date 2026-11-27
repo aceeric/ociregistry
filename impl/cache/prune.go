@@ -309,7 +309,7 @@ func prune(mh imgpull.ManifestHolder, comparer ManifestComparer, imagePath strin
 // file system. Other entries with the same digest (other tags, or the digest url) are not
 // affected. The blobs for the manifest (if any) are *not* removed. The caller must hold mc.
 func rmManifest(mh imgpull.ManifestHolder, imagePath string, plog pruneLog) {
-	mc.drop(imageUrl(mh.ImageUrl))
+	drop(imageUrl(mh.ImageUrl))
 	if err := serialize.RmManifest(imagePath, mh); err != nil {
 		plog.Errorf("error removing manifest %q from the file system. the error was: %s", mh.ImageUrl, err)
 	}
